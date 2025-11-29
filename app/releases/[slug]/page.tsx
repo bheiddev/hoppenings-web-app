@@ -157,8 +157,8 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
                         href={`/breweries/${brewerySlug}`}
                         className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
                         style={{ 
-                          backgroundColor: Colors.primary,
-                          color: Colors.primaryDark,
+                          backgroundColor: Colors.background,
+                          color: Colors.textDark,
                           fontFamily: 'var(--font-fjalla-one)',
                         }}
                       >

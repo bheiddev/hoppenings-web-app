@@ -176,8 +176,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                 href={`/breweries/${brewerySlug}`}
                 className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
                 style={{ 
-                  backgroundColor: Colors.primary,
-                  color: Colors.primaryDark,
+                  backgroundColor: Colors.background,
+                  color: Colors.textDark,
                   fontFamily: 'var(--font-fjalla-one)',
                 }}
               >
