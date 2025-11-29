@@ -120,7 +120,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             <div style={{ height: '1.5px', backgroundColor: Colors.divider, marginBottom: '2rem', opacity: 0.5 }} />
             
             <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+              <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
                 AVAILABLE AT
               </h2>
 
