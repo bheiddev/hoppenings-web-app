@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fjalla_One, Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+import AppBanner from "@/components/AppBanner";
 import { Colors } from "@/lib/colors";
 
 const fjallaOne = Fjalla_One({
@@ -38,6 +39,7 @@ export default function RootLayout({
         className={`${fjallaOne.variable} ${beVietnamPro.variable} antialiased`}
         style={{ backgroundColor: Colors.background, fontFamily: 'var(--font-be-vietnam-pro)' }}
       >
+        <AppBanner />
         <Navigation />
         {children}
       </body>
