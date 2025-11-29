@@ -223,17 +223,12 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {/* New Releases Section */}
         {releases.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
               NEW RELEASES
             </h2>
             <div className="space-y-4">
-              {releases.map((release, idx) => (
-                <div key={release.id}>
-                  <BeerReleaseCard beerRelease={release} />
-                  {idx < releases.length - 1 && (
-                    <div style={{ height: '1.5px', backgroundColor: Colors.textPrimary, margin: '1rem 0', opacity: 0.5 }} />
-                  )}
-                </div>
+              {releases.map((release) => (
+                <BeerReleaseCard key={release.id} beerRelease={release} />
               ))}
             </div>
           </div>
@@ -242,7 +237,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {/* Events Section */}
         {events.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
               UPCOMING EVENTS
             </h2>
             <div className="space-y-8">
