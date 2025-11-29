@@ -22,7 +22,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
     <div 
       className="rounded-lg p-6 border shadow-sm"
       style={{ 
-        backgroundColor: isFeatured ? Colors.primary : Colors.background,
+        backgroundColor: Colors.background,
         borderColor: Colors.dividerLight,
       }}
     >
@@ -31,7 +31,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           className="text-xl font-bold mb-2" 
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
-            color: isFeatured ? Colors.primaryDark : Colors.textDark
+            color: Colors.textDark
           }}
         >
           {event.title}
@@ -45,7 +45,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
               className="text-sm font-semibold" 
               style={{ 
                 fontFamily: 'var(--font-fjalla-one)',
-                color: isFeatured ? Colors.primaryDark : Colors.textDark
+                color: Colors.textDark
               }}
             >
               {event.breweries.name}
@@ -59,7 +59,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           className="text-sm mb-4 line-clamp-2" 
           style={{ 
             fontFamily: 'var(--font-be-vietnam-pro)',
-            color: isFeatured ? Colors.primaryDark : Colors.textSecondary
+            color: Colors.textSecondary
           }}
         >
           {event.description}
@@ -112,8 +112,8 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           className="px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
-            backgroundColor: isFeatured ? Colors.primaryDark : Colors.backgroundDark,
-            color: isFeatured ? Colors.primary : Colors.textPrimary
+            backgroundColor: Colors.backgroundDark,
+            color: Colors.textPrimary
           }}
         >
           VIEW EVENT
