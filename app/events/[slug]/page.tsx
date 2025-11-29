@@ -105,22 +105,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             
             <div className="flex flex-col gap-3 md:flex-shrink-0">
               {event.start_time && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: Colors.pillBackground }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: Colors.info }}>
-                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="currentColor"/>
-                  </svg>
-                  <span className="text-sm font-medium" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     {formatTime12Hour(event.start_time)}
                   </span>
                 </div>
               )}
 
               {event.cost !== null && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: Colors.pillBackground }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: Colors.textPrimary }}>
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.09 1.05.82 1.87 2 2.05v-4.24h-2V8.5h5.02v1.98c1.83.24 3.15 1.4 3.15 3.1 0 1.72-1.39 2.84-3.15 2.95v.56z" fill="currentColor"/>
-                  </svg>
-                  <span className="text-sm font-medium" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     ${event.cost.toFixed(2)}
                   </span>
                 </div>
@@ -136,8 +130,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </div>
           )}
         </div>
-
-        <div style={{ height: '1.5px', backgroundColor: Colors.divider, marginBottom: '2rem', opacity: 0.5 }} />
 
         {/* Brewery Section */}
         <div>
