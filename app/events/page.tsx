@@ -107,7 +107,7 @@ export default async function EventsPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         <h1 className="text-4xl font-bold mb-8" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
           EVENTS
         </h1>
