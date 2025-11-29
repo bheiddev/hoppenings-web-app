@@ -16,6 +16,20 @@ export default function AppBanner() {
     }
   }, [])
 
+  useEffect(() => {
+    // Add padding to body when banner is visible
+    if (isVisible) {
+      document.body.style.paddingTop = '56px' // Approximate banner height
+    } else {
+      document.body.style.paddingTop = '0'
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.style.paddingTop = '0'
+    }
+  }, [isVisible])
+
   const handleClose = () => {
     setIsVisible(false)
     localStorage.setItem('appBannerDismissed', 'true')
