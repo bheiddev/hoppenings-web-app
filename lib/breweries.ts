@@ -183,7 +183,7 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
 
     if (!data) return []
 
-    return data.map((release: any) => ({
+    const releases = data.map((release: any) => ({
       id: release.id,
       created_at: release.created_at,
       beer_name: release.beer_name,
@@ -200,6 +200,22 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
         location: release.breweries?.location || null
       }
     })) as BeerRelease[]
+
+    // Filter out releases older than 2 weeks, but keep future releases
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+    const twoWeeksAgoStr = twoWeeksAgo.toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
+
+    const filteredReleases = releases.filter((release) => {
+      if (!release.release_date) return true // Keep releases without dates
+      const releaseDate = new Date(release.release_date)
+      const releaseDateStr = releaseDate.toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
+      // Keep if release date is within the last 2 weeks or in the future
+      return releaseDateStr >= twoWeeksAgoStr
+    })
+
+    return filteredReleases
   } catch (error) {
     console.error('Error fetching brewery releases:', error)
     return []
