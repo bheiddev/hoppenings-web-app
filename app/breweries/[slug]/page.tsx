@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     openGraph: {
       title: `${brewery.name}${location ? ` - ${location}` : ''}`,
       description: description,
-      type: 'business.business',
+      type: 'website',
       images: brewery.image_url ? [brewery.image_url] : [],
     },
   }
