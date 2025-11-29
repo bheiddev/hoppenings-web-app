@@ -29,7 +29,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
     >
       <div className="mb-3">
         <h3 
-          className="text-xl font-bold mb-2" 
+          className="text-3xl font-bold mb-2" 
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
             color: Colors.textDark
