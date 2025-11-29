@@ -4,6 +4,7 @@ import { getEventBySlug, getAllEventsWithSlugs } from '@/lib/events'
 import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
+import { generateBrewerySlug } from '@/lib/slug'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -133,11 +134,19 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         {/* Brewery Section */}
         <div>
-          <Link href={`/breweries/${brewery?.id || event.brewery_id}`}>
-            <h2 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
-              {brewery?.name || event.breweries.name}
-            </h2>
-          </Link>
+          {(() => {
+            const breweryName = brewery?.name || event.breweries.name
+            const breweryLocation = brewery?.location || event.breweries.location
+            const breweryId = brewery?.id || event.brewery_id
+            const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
+            return (
+              <Link href={`/breweries/${brewerySlug}`}>
+                <h2 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                  {breweryName}
+                </h2>
+              </Link>
+            )
+          })()}
 
           {brewery?.image_url && (
             <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
@@ -157,20 +166,28 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </p>
           )}
 
-          <Link
-            href={`/breweries/${brewery?.id || event.brewery_id}`}
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
-            style={{ 
-              backgroundColor: Colors.primary,
-              color: Colors.primaryDark,
-              fontFamily: 'var(--font-fjalla-one)',
-            }}
-          >
-            VIEW BREWERY
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
-            </svg>
-          </Link>
+          {(() => {
+            const breweryName = brewery?.name || event.breweries.name
+            const breweryLocation = brewery?.location || event.breweries.location
+            const breweryId = brewery?.id || event.brewery_id
+            const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
+            return (
+              <Link
+                href={`/breweries/${brewerySlug}`}
+                className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
+                style={{ 
+                  backgroundColor: Colors.primary,
+                  color: Colors.primaryDark,
+                  fontFamily: 'var(--font-fjalla-one)',
+                }}
+              >
+                VIEW BREWERY
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
+                </svg>
+              </Link>
+            )
+          })()}
         </div>
       </div>
     </div>
