@@ -121,7 +121,9 @@ export default async function ReleasesPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {Object.entries(groupedReleases).map(([beerType, typeReleases]) => (
+            {Object.entries(groupedReleases)
+              .sort(([typeA], [typeB]) => typeA.localeCompare(typeB))
+              .map(([beerType, typeReleases]) => (
               <div key={beerType} className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b-2" style={{ borderColor: Colors.dividerLight }}>
                   <h2 className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
