@@ -14,13 +14,13 @@ export default function Navigation() {
   ]
 
   return (
-    <nav className="sticky top-0 z-40" style={{ backgroundColor: Colors.backgroundMedium, borderBottom: `2px solid ${Colors.divider}` }}>
+    <nav style={{ backgroundColor: Colors.backgroundMedium, borderBottom: `2px solid ${Colors.divider}` }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="text-3xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
             Hoppenings
           </Link>
-          <div className="flex space-x-8">
+          <div className="flex space-x-2 sm:space-x-8">
             {navItems.map((item) => (
               <Link
                 key={item.href}
