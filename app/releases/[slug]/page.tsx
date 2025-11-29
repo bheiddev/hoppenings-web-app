@@ -136,7 +136,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
                       </Link>
 
                       {brewery.image_url && (
-                        <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
+                        <div className="relative w-full h-80 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
                           <Image
                             src={brewery.image_url}
                             alt={brewery.name}
