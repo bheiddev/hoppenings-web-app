@@ -19,14 +19,14 @@ export default function AppBanner() {
   useEffect(() => {
     // Add padding to body when banner is visible
     if (isVisible) {
-      document.body.style.paddingTop = '56px' // Approximate banner height
+      document.body.style.paddingBottom = '56px' // Approximate banner height
     } else {
-      document.body.style.paddingTop = '0'
+      document.body.style.paddingBottom = '0'
     }
     
     // Cleanup on unmount
     return () => {
-      document.body.style.paddingTop = '0'
+      document.body.style.paddingBottom = '0'
     }
   }, [isVisible])
 
@@ -39,7 +39,7 @@ export default function AppBanner() {
 
   return (
     <div 
-      className="fixed top-0 left-0 right-0 z-50 shadow-md"
+      className="fixed bottom-0 left-0 right-0 z-50 shadow-md"
       style={{ backgroundColor: Colors.background }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-4 max-w-7xl mx-auto">

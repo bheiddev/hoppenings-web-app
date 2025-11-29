@@ -60,7 +60,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <Link 
