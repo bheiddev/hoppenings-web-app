@@ -95,22 +95,16 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             
             <div className="flex flex-col gap-3 md:flex-shrink-0">
               {release.ABV && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: Colors.pillBackground }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: Colors.textPrimary }}>
-                    <path d="M6 3h12v2H6V3zm0 16h12v2H6v-2zm6-13v12l-4-2V8l4-2z" fill="currentColor"/>
-                  </svg>
-                  <span className="text-sm font-medium" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     ABV: {release.ABV}
                   </span>
                 </div>
               )}
 
               {release.release_date && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: Colors.pillBackground }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: Colors.textPrimary }}>
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="currentColor"/>
-                  </svg>
-                  <span className="text-sm font-medium" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     {formatReleaseDate(release.release_date)}
                   </span>
                 </div>
