@@ -63,10 +63,13 @@ export async function getBreweryHours(breweryId: string): Promise<BreweryHours |
       .from('brewery_hours')
       .select('*')
       .eq('brewery_id', breweryId)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      console.error('Error fetching brewery hours:', error)
+      // Only log non-404 errors (PGRST116 is "no rows found" which is expected for some breweries)
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching brewery hours:', error)
+      }
       return null
     }
 
