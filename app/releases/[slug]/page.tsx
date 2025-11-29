@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getReleaseBySlug, getAllReleasesWithSlugs, getReleaseBreweries } from '@/lib/releases'
 import { formatReleaseDate } from '@/lib/utils'
+import { generateBrewerySlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
@@ -124,48 +125,51 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
               </h2>
 
               <div className="space-y-8">
-                {associatedBreweries.map((brewery) => (
-                  <div key={brewery.id} className="mb-8">
-                    <Link href={`/breweries/${brewery.id}`}>
-                      <h3 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
-                        {brewery.name}
-                      </h3>
-                    </Link>
+                {associatedBreweries.map((brewery) => {
+                  const brewerySlug = generateBrewerySlug(brewery.name, brewery.location, brewery.id)
+                  return (
+                    <div key={brewery.id} className="mb-8">
+                      <Link href={`/breweries/${brewerySlug}`}>
+                        <h3 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                          {brewery.name}
+                        </h3>
+                      </Link>
 
-                    {brewery.image_url && (
-                      <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
-                        <Image
-                          src={brewery.image_url}
-                          alt={brewery.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    )}
+                      {brewery.image_url && (
+                        <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
+                          <Image
+                            src={brewery.image_url}
+                            alt={brewery.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      )}
 
-                    {brewery.description && (
-                    <p className="text-base leading-relaxed mb-6" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                      {brewery.description}
-                    </p>
-                    )}
+                      {brewery.description && (
+                      <p className="text-base leading-relaxed mb-6" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                        {brewery.description}
+                      </p>
+                      )}
 
-                    <Link
-                      href={`/breweries/${brewery.id}`}
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
-            style={{ 
-              backgroundColor: Colors.primary,
-              color: Colors.primaryDark,
-              fontFamily: 'var(--font-fjalla-one)',
-            }}
-                    >
-                      VIEW BREWERY
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
-                      </svg>
-                    </Link>
-                  </div>
-                ))}
+                      <Link
+                        href={`/breweries/${brewerySlug}`}
+                        className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
+                        style={{ 
+                          backgroundColor: Colors.primary,
+                          color: Colors.primaryDark,
+                          fontFamily: 'var(--font-fjalla-one)',
+                        }}
+                      >
+                        VIEW BREWERY
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
+                        </svg>
+                      </Link>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </>
