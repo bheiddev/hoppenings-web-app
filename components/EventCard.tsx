@@ -70,17 +70,16 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
         <div className="flex items-center gap-3">
           {event.cost !== null && (
             <div 
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{ backgroundColor: Colors.backgroundLight }}
+              className="px-2.5 py-1 rounded-full"
+              style={{ 
+                backgroundColor: Colors.backgroundDark,
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: Colors.info }}>
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.09 1.05.82 1.87 2 2.05v-4.24h-2V8.5h5.02v1.98c1.83.24 3.15 1.4 3.15 3.1 0 1.72-1.39 2.84-3.15 2.95v.56z" fill="currentColor"/>
-              </svg>
               <span 
                 className="text-xs font-medium" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.textDark
+                  color: Colors.background
                 }}
               >
                 ${event.cost.toFixed(2)}
@@ -89,17 +88,16 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           )}
           {event.start_time && (
             <div 
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{ backgroundColor: Colors.backgroundLight }}
+              className="px-2.5 py-1 rounded-full"
+              style={{ 
+                backgroundColor: Colors.backgroundDark,
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: Colors.info }}>
-                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="currentColor"/>
-              </svg>
               <span 
                 className="text-xs font-medium" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.textDark
+                  color: Colors.background
                 }}
               >
                 {event.start_time}
