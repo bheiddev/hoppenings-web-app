@@ -76,7 +76,24 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
       }
     })
 
-    return releasesWithSlugs
+    // Filter out releases older than 2 weeks, but keep future releases
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+    const twoWeeksAgoStr = twoWeeksAgo.toLocaleDateString('en-CA', {
+      timeZone: 'America/Denver'
+    })
+
+    const filteredReleases = releasesWithSlugs.filter((release) => {
+      if (!release.release_date) return true // Keep releases without dates
+      const releaseDate = new Date(release.release_date)
+      const releaseDateStr = releaseDate.toLocaleDateString('en-CA', {
+        timeZone: 'America/Denver'
+      })
+      // Keep if release date is within the last 2 weeks or in the future
+      return releaseDateStr >= twoWeeksAgoStr
+    })
+
+    return filteredReleases
   } catch (error) {
     console.error('Error fetching releases with slugs:', error)
     return []
