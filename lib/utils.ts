@@ -1,6 +1,28 @@
 import { Event } from '@/types/supabase';
 
 /**
+ * Convert 24-hour time to 12-hour format with AM/PM
+ * Example: "18:30:00" -> "6:30 PM", "09:00:00" -> "9:00 AM"
+ */
+export function formatTime12Hour(time24: string | null): string {
+  if (!time24) return ''
+  
+  const [hours, minutes] = time24.split(':')
+  const hour = parseInt(hours, 10)
+  const minute = minutes || '00'
+  
+  if (hour === 0) {
+    return `12:${minute} AM`
+  } else if (hour === 12) {
+    return `12:${minute} PM`
+  } else if (hour < 12) {
+    return `${hour}:${minute} AM`
+  } else {
+    return `${hour - 12}:${minute} PM`
+  }
+}
+
+/**
  * Format date to display format (e.g., "Monday, January 1, 2024")
  */
 export function formatEventDate(dateString: string): string {

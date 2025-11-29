@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getEventBySlug, getAllEventsWithSlugs } from '@/lib/events'
-import { formatEventDate } from '@/lib/utils'
+import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
@@ -110,7 +110,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                     <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="currentColor"/>
                   </svg>
                   <span className="text-sm font-medium" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                    {event.start_time}
+                    {formatTime12Hour(event.start_time)}
                   </span>
                 </div>
               )}

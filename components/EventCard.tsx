@@ -2,6 +2,7 @@ import { Event } from '@/types/supabase';
 import { Colors } from '@/lib/colors';
 import Link from 'next/link';
 import { generateEventSlug } from '@/lib/slug';
+import { formatTime12Hour } from '@/lib/utils';
 
 interface EventCardProps {
   event: Event;
@@ -100,7 +101,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
                   color: Colors.background
                 }}
               >
-                {event.start_time}
+                {formatTime12Hour(event.start_time)}
               </span>
             </div>
           )}
