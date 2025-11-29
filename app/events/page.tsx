@@ -99,6 +99,9 @@ async function getEvents(): Promise<Event[]> {
 }
 
 export default async function EventsPage() {
+  // Check environment variables first
+  const hasEnvVars = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  
   const events = await getEvents()
   const groupedEvents = groupEventsByDate(events)
 
@@ -109,7 +112,16 @@ export default async function EventsPage() {
           EVENTS
         </h1>
         
-        {events.length === 0 ? (
+        {!hasEnvVars ? (
+          <div className="text-center py-12">
+            <p className="text-lg mb-4" style={{ color: Colors.error, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+              ⚠️ Configuration Error: Supabase environment variables are missing.
+            </p>
+            <p className="text-sm" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+              Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your deployment settings.
+            </p>
+          </div>
+        ) : events.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-lg" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
               No events found. Check back soon for upcoming brewery events!
