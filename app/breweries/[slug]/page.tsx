@@ -119,23 +119,30 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {/* Information Section */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <div className="mb-4">
-              <div className="flex items-start gap-2 mb-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: Colors.primary, marginTop: '4px' }}>
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
-                </svg>
-                <p className="text-sm" style={{ color: Colors.textPrimary, textDecoration: 'underline', fontFamily: 'var(--font-be-vietnam-pro)' }}>
+            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+              ADDRESS AND PHONE NUMBER
+            </h3>
+            <div className="space-y-3">
+              {brewery.address && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(brewery.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-sm hover:underline"
+                  style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                >
                   {brewery.address}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: Colors.primary }}>
-                  <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="currentColor"/>
-                </svg>
-                <p className="text-sm" style={{ color: Colors.textPrimary, textDecoration: 'underline', fontFamily: 'var(--font-be-vietnam-pro)' }}>
+                </a>
+              )}
+              {brewery.phone && (
+                <a
+                  href={`tel:${brewery.phone.replace(/\D/g, '')}`}
+                  className="block text-sm hover:underline"
+                  style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                >
                   {brewery.phone}
-                </p>
-              </div>
+                </a>
+              )}
             </div>
           </div>
 
