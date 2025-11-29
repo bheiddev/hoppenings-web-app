@@ -71,13 +71,13 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
         <div className="flex items-center gap-3">
           {event.cost !== null && (
             <div 
-              className="px-2.5 py-1 rounded-full"
+              className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
                 backgroundColor: Colors.backgroundDark,
               }}
             >
               <span 
-                className="text-xs font-medium" 
+                className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
                   color: Colors.background
@@ -89,13 +89,13 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           )}
           {event.start_time && (
             <div 
-              className="px-2.5 py-1 rounded-full"
+              className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
                 backgroundColor: Colors.backgroundDark,
               }}
             >
               <span 
-                className="text-xs font-medium" 
+                className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
                   color: Colors.background
