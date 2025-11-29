@@ -83,7 +83,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </svg>
             Back to Events
           </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {event.title}
           </h1>
           <p className="text-xl" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>

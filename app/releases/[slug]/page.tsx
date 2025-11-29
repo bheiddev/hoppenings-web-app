@@ -73,7 +73,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             </svg>
             Back to Releases
           </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {release.beer_name}
           </h1>
           {release.Type && (

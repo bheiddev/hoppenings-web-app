@@ -98,7 +98,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
             </svg>
             Back to Breweries
           </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {brewery.name.toUpperCase()}
           </h1>
         </div>
