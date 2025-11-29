@@ -17,8 +17,9 @@ export async function generateStaticParams() {
 // Revalidate every hour to pick up new releases
 export const revalidate = 3600
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const release = await getReleaseBySlug(params.slug)
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const release = await getReleaseBySlug(slug)
   
   if (!release) {
     return {
@@ -45,8 +46,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function ReleaseDetailPage({ params }: { params: { slug: string } }) {
-  const release = await getReleaseBySlug(params.slug)
+export default async function ReleaseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const release = await getReleaseBySlug(slug)
 
   if (!release) {
     notFound()
