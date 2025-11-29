@@ -44,7 +44,7 @@ export default function AppBanner() {
             className="hover:opacity-80 transition-opacity"
           >
             <Image
-              src="/2bf6380e-ec99-48bb-9e57-aa140bba88b8.png"
+              src="/apple.png"
               alt="Download on the App Store"
               width={120}
               height={40}
@@ -60,7 +60,7 @@ export default function AppBanner() {
             className="hover:opacity-80 transition-opacity"
           >
             <Image
-              src="/69d4f50a-6d3f-44cc-bc5e-0c188429bc7c.png"
+              src="/playimage.png"
               alt="Get it on Google Play"
               width={135}
               height={40}
