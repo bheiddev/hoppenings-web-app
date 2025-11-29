@@ -116,6 +116,15 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
 
+        {/* Description */}
+        {brewery.description && (
+          <div className="mb-8">
+            <p className="text-sm leading-relaxed" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
+              {brewery.description}
+            </p>
+          </div>
+        )}
+
         {/* Information Section */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
@@ -128,7 +137,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(brewery.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-sm hover:underline"
+                  className="block text-sm underline"
                   style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
                   {brewery.address}
@@ -137,7 +146,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
               {brewery.phone && (
                 <a
                   href={`tel:${brewery.phone.replace(/\D/g, '')}`}
-                  className="block text-sm hover:underline"
+                  className="block text-sm underline"
                   style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
                   {brewery.phone}
@@ -172,17 +181,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
         </div>
-
-        <div style={{ height: '1px', backgroundColor: Colors.divider, marginBottom: '2rem' }} />
-
-        {/* Description */}
-        {brewery.description && (
-          <div className="mb-8">
-            <p className="text-sm leading-relaxed" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-              {brewery.description}
-            </p>
-          </div>
-        )}
 
         {/* Amenities */}
         <div className="mb-8">
@@ -230,6 +228,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {/* New Releases Section */}
         {releases.length > 0 && (
           <div className="mb-8">
+            <div style={{ height: '1px', backgroundColor: 'white', marginBottom: '2rem' }} />
             <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
               NEW RELEASES
             </h2>
