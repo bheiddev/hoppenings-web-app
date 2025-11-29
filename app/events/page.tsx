@@ -18,6 +18,12 @@ export const metadata: Metadata = {
 
 async function getEvents(): Promise<Event[]> {
   try {
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('❌ Supabase environment variables are missing!')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('events_base')
       .select(`
@@ -43,11 +49,17 @@ async function getEvents(): Promise<Event[]> {
       .order('event_date', { ascending: true })
 
     if (error) {
-      console.error('Error fetching events:', error)
+      console.error('❌ Error fetching events:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
       return []
     }
 
-    if (!data) return []
+    if (!data) {
+      console.warn('⚠️ No data returned from Supabase')
+      return []
+    }
+
+    console.log(`✅ Fetched ${data.length} events from database`)
 
     // Expand recurring events and filter to show from today forward
     const events = data.map((event: any) => ({
@@ -72,9 +84,16 @@ async function getEvents(): Promise<Event[]> {
       }
     })) as Event[]
 
-    return expandRecurringEvents(events)
+    const expandedEvents = expandRecurringEvents(events)
+    console.log(`✅ Expanded to ${expandedEvents.length} events after filtering`)
+    
+    return expandedEvents
   } catch (error) {
-    console.error('Error fetching events:', error)
+    console.error('❌ Exception fetching events:', error)
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
     return []
   }
 }

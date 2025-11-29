@@ -50,6 +50,7 @@ export function expandRecurringEvents(events: Event[]): Event[] {
   const today = new Date().toLocaleDateString('en-CA', {
     timeZone: 'America/Denver'
   });
+  const todayDate = new Date(today);
   
   const expandedEvents: Event[] = [];
   
@@ -58,7 +59,17 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Weekly recurring - expand for next 12 weeks
       const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
-        let currentDate = new Date(baseEventDate);
+        // Start from today if base date is in the past, otherwise start from base date
+        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
+        
+        // For past events, find the next occurrence
+        if (baseEventDate < todayDate) {
+          const daysDiff = Math.floor((todayDate.getTime() - baseEventDate.getTime()) / (1000 * 60 * 60 * 24));
+          const weeksPast = Math.floor(daysDiff / 7);
+          currentDate = new Date(baseEventDate);
+          currentDate.setDate(currentDate.getDate() + (weeksPast + 1) * 7);
+        }
+        
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + (12 * 7)); // 12 weeks from today
         
@@ -80,7 +91,17 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Bi-weekly recurring - expand for next 12 weeks
       const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
-        let currentDate = new Date(baseEventDate);
+        // Start from today if base date is in the past, otherwise start from base date
+        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
+        
+        // For past events, find the next occurrence
+        if (baseEventDate < todayDate) {
+          const daysDiff = Math.floor((todayDate.getTime() - baseEventDate.getTime()) / (1000 * 60 * 60 * 24));
+          const biweeksPast = Math.floor(daysDiff / 14);
+          currentDate = new Date(baseEventDate);
+          currentDate.setDate(currentDate.getDate() + (biweeksPast + 1) * 14);
+        }
+        
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + (12 * 7)); // 12 weeks from today
         
@@ -102,7 +123,19 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Monthly recurring - expand for next 3 months (12 weeks ≈ 3 months)
       const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
-        let currentDate = new Date(baseEventDate);
+        // Start from today if base date is in the past, otherwise start from base date
+        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
+        
+        // For past events, find the next occurrence
+        if (baseEventDate < todayDate) {
+          currentDate = new Date(baseEventDate);
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          // Keep incrementing until we're at or past today
+          while (currentDate < todayDate) {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+        }
+        
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + 3);
         
