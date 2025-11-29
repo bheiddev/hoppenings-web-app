@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${brewery.name}${location ? ` - ${location}` : ''} | Hoppenings`,
     description: description,
-    keywords: `${brewery.name}, ${location}, brewery, craft beer, brewery events, beer releases${brewery.is_pet_friendly ? ', pet friendly' : ''}${brewery.has_outdoor_seating ? ', outdoor seating' : ''}`,
+    keywords: `${brewery.name}, ${location}, brewery, craft beer, brewery events, beer releases`,
     openGraph: {
       title: `${brewery.name}${location ? ` - ${location}` : ''}`,
       description: description,
@@ -72,7 +72,15 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     return groups
   }, {})
 
-  const amenities = getBreweryAmenities(brewery)
+  const allAmenities = getBreweryAmenities(brewery)
+  // Filter out pet friendly, non-alcoholic, outdoor seating, food, and wifi
+  const amenities = allAmenities.filter(amenity => 
+    amenity.key !== 'is_pet_friendly' &&
+    amenity.key !== 'has_na_beer' &&
+    amenity.key !== 'has_outdoor_seating' &&
+    amenity.key !== 'has_food_trucks' &&
+    amenity.key !== 'has_wifi'
+  )
   const hoursGroups = hours ? groupHours(hours) : []
 
   return (
