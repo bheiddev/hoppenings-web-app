@@ -66,13 +66,90 @@ export function groupEventsByDate(events: Event[]): Record<string, Event[]> {
 }
 
 /**
+ * Get current date/time components in Mountain Time
+ */
+function getCurrentMountainTime(): { date: string; hours: number; minutes: number; seconds: number } {
+  const now = new Date();
+  
+  // Get date components in Mountain Time
+  const dateStr = now.toLocaleDateString('en-CA', {
+    timeZone: 'America/Denver'
+  });
+  
+  // Get time components in Mountain Time
+  const timeStr = now.toLocaleTimeString('en-US', {
+    timeZone: 'America/Denver',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  
+  const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+  
+  return {
+    date: dateStr,
+    hours,
+    minutes,
+    seconds
+  };
+}
+
+/**
+ * Check if an event should be shown (happening today or in the future in Mountain Time)
+ */
+function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
+  const mountainTime = getCurrentMountainTime();
+  const todayMountain = mountainTime.date;
+  
+  // Compare dates
+  if (eventDate > todayMountain) {
+    // Event is in the future
+    return true;
+  }
+  
+  if (eventDate < todayMountain) {
+    // Event is in the past
+    return false;
+  }
+  
+  // Event is today - check the time if available
+  if (startTime) {
+    // Parse the start time (format: "HH:MM:SS" or "HH:MM")
+    const [eventHours, eventMinutes] = startTime.split(':').map(Number);
+    
+    // Compare hours first
+    if (eventHours > mountainTime.hours) {
+      return true;
+    }
+    if (eventHours < mountainTime.hours) {
+      return false;
+    }
+    
+    // Same hour, compare minutes
+    if (eventMinutes > mountainTime.minutes) {
+      return true;
+    }
+    if (eventMinutes < mountainTime.minutes) {
+      return false;
+    }
+    
+    // Same hour and minute - check seconds if available
+    const eventSeconds = startTime.split(':')[2] ? Number(startTime.split(':')[2]) : 0;
+    return eventSeconds >= mountainTime.seconds;
+  }
+  
+  // If no start time, include events happening today (to be safe)
+  return true;
+}
+
+/**
  * Expand recurring events to 12 weeks (for detail page generation)
  */
 export function expandRecurringEvents(events: Event[]): Event[] {
-  const today = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Denver'
-  });
-  const todayDate = new Date(today);
+  const mountainTime = getCurrentMountainTime();
+  const todayMountain = mountainTime.date;
+  const todayDate = new Date(todayMountain + 'T00:00:00');
   
   const expandedEvents: Event[] = [];
   
@@ -99,7 +176,9 @@ export function expandRecurringEvents(events: Event[]): Event[] {
           const dateStr = currentDate.toLocaleDateString('en-CA', {
             timeZone: 'America/Denver'
           });
-          if (dateStr >= today) {
+          
+          // Check if this event occurrence should be shown
+          if (shouldShowEvent(dateStr, event.start_time)) {
             expandedEvents.push({
               ...event,
               id: `${event.id}-${dateStr}`,
@@ -131,7 +210,9 @@ export function expandRecurringEvents(events: Event[]): Event[] {
           const dateStr = currentDate.toLocaleDateString('en-CA', {
             timeZone: 'America/Denver'
           });
-          if (dateStr >= today) {
+          
+          // Check if this event occurrence should be shown
+          if (shouldShowEvent(dateStr, event.start_time)) {
             expandedEvents.push({
               ...event,
               id: `${event.id}-${dateStr}`,
@@ -165,7 +246,9 @@ export function expandRecurringEvents(events: Event[]): Event[] {
           const dateStr = currentDate.toLocaleDateString('en-CA', {
             timeZone: 'America/Denver'
           });
-          if (dateStr >= today) {
+          
+          // Check if this event occurrence should be shown
+          if (shouldShowEvent(dateStr, event.start_time)) {
             expandedEvents.push({
               ...event,
               id: `${event.id}-${dateStr}`,
@@ -177,7 +260,7 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       }
     } else {
       // One-time events - only include if from today forward
-      if (event.event_date >= today) {
+      if (shouldShowEvent(event.event_date, event.start_time)) {
         expandedEvents.push(event);
       }
     }
