@@ -96,19 +96,35 @@ function getCurrentMountainTime(): { date: string; hours: number; minutes: numbe
 }
 
 /**
+ * Normalize an event date to Mountain Time format (YYYY-MM-DD)
+ */
+function normalizeEventDateToMountainTime(eventDate: string): string {
+  // Parse the event date - it might be in various formats
+  const date = new Date(eventDate);
+  
+  // Convert to Mountain Time date string (YYYY-MM-DD)
+  return date.toLocaleDateString('en-CA', {
+    timeZone: 'America/Denver'
+  });
+}
+
+/**
  * Check if an event should be shown (happening today or in the future in Mountain Time)
  */
 function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
   const mountainTime = getCurrentMountainTime();
   const todayMountain = mountainTime.date;
   
+  // Normalize the event date to Mountain Time format
+  const eventDateMountain = normalizeEventDateToMountainTime(eventDate);
+  
   // Compare dates
-  if (eventDate > todayMountain) {
+  if (eventDateMountain > todayMountain) {
     // Event is in the future
     return true;
   }
   
-  if (eventDate < todayMountain) {
+  if (eventDateMountain < todayMountain) {
     // Event is in the past
     return false;
   }
@@ -149,14 +165,20 @@ function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
 export function expandRecurringEvents(events: Event[]): Event[] {
   const mountainTime = getCurrentMountainTime();
   const todayMountain = mountainTime.date;
+  
+  // Create a date object for today at midnight for date comparisons
+  // We'll use the normalized Mountain Time date string
   const todayDate = new Date(todayMountain + 'T00:00:00');
   
   const expandedEvents: Event[] = [];
   
   events.forEach((event) => {
+    // Normalize the base event date to Mountain Time for comparison
+    const baseEventDateMountain = normalizeEventDateToMountainTime(event.event_date);
+    const baseEventDate = new Date(baseEventDateMountain + 'T00:00:00');
+    
     if (event.is_recurring) {
       // Weekly recurring - expand for next 12 weeks
-      const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
         // Start from today if base date is in the past, otherwise start from base date
         let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
@@ -190,7 +212,6 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       }
     } else if (event.is_recurring_biweekly) {
       // Bi-weekly recurring - expand for next 12 weeks
-      const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
         // Start from today if base date is in the past, otherwise start from base date
         let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
@@ -224,7 +245,6 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       }
     } else if (event.is_recurring_monthly) {
       // Monthly recurring - expand for next 3 months (12 weeks ≈ 3 months)
-      const baseEventDate = new Date(event.event_date);
       if (!isNaN(baseEventDate.getTime())) {
         // Start from today if base date is in the past, otherwise start from base date
         let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
@@ -259,9 +279,14 @@ export function expandRecurringEvents(events: Event[]): Event[] {
         }
       }
     } else {
-      // One-time events - only include if from today forward
+      // One-time events - normalize date and check if should be shown
       if (shouldShowEvent(event.event_date, event.start_time)) {
-        expandedEvents.push(event);
+        // Normalize the event date to Mountain Time format for consistency
+        const normalizedDate = normalizeEventDateToMountainTime(event.event_date);
+        expandedEvents.push({
+          ...event,
+          event_date: normalizedDate,
+        });
       }
     }
   });
