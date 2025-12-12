@@ -159,33 +159,8 @@ function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
     return false;
   }
   
-  // Event is today - check the time if available
-  if (startTime) {
-    // Parse the start time (format: "HH:MM:SS" or "HH:MM")
-    const [eventHours, eventMinutes] = startTime.split(':').map(Number);
-    
-    // Compare hours first
-    if (eventHours > mountainTime.hours) {
-      return true;
-    }
-    if (eventHours < mountainTime.hours) {
-      return false;
-    }
-    
-    // Same hour, compare minutes
-    if (eventMinutes > mountainTime.minutes) {
-      return true;
-    }
-    if (eventMinutes < mountainTime.minutes) {
-      return false;
-    }
-    
-    // Same hour and minute - check seconds if available
-    const eventSeconds = startTime.split(':')[2] ? Number(startTime.split(':')[2]) : 0;
-    return eventSeconds >= mountainTime.seconds;
-  }
-  
-  // If no start time, include events happening today (to be safe)
+  // Event is today - show it regardless of start time
+  // (events happening today should be visible even if they've already started)
   return true;
 }
 
