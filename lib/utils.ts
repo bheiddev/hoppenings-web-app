@@ -24,15 +24,38 @@ export function formatTime12Hour(time24: string | null): string {
 
 /**
  * Format date to display format (e.g., "Monday, January 1, 2024")
+ * Treats date strings as dates in Mountain Time
  */
 export function formatEventDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // If it's a date-only string (YYYY-MM-DD), treat it as Mountain Time
+  // Parse it at noon Mountain Time to avoid timezone edge cases
+  let date: Date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    // Date-only format - create date at noon Mountain Time to avoid timezone shifts
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Create date string in ISO format with time in Mountain Time
+    // We'll use a formatter to ensure it's interpreted correctly
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`;
+    date = new Date(dateStr);
+    // Format using Mountain Time timezone
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/Denver',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } else {
+    // Has time component - parse normally but format in Mountain Time
+    date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/Denver',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
 }
 
 /**
@@ -97,9 +120,16 @@ function getCurrentMountainTime(): { date: string; hours: number; minutes: numbe
 
 /**
  * Normalize an event date to Mountain Time format (YYYY-MM-DD)
+ * Treats date-only strings as dates in Mountain Time (not UTC)
  */
 function normalizeEventDateToMountainTime(eventDate: string): string {
-  // Parse the event date - it might be in various formats
+  // If it's already a date-only string in YYYY-MM-DD format, return it as-is
+  // (assuming it's already in Mountain Time)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    return eventDate;
+  }
+  
+  // If it has a time component, parse it and convert to Mountain Time date
   const date = new Date(eventDate);
   
   // Convert to Mountain Time date string (YYYY-MM-DD)
@@ -160,123 +190,155 @@ function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
 }
 
 /**
+ * Compare two date strings in YYYY-MM-DD format
+ * Returns: -1 if date1 < date2, 0 if equal, 1 if date1 > date2
+ */
+function compareDateStrings(date1: string, date2: string): number {
+  if (date1 < date2) return -1;
+  if (date1 > date2) return 1;
+  return 0;
+}
+
+/**
+ * Add days to a date string in YYYY-MM-DD format, returning a new date string
+ * Works with date components directly to avoid timezone issues
+ */
+function addDaysToDateString(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  // Create a date object and add days
+  // Use UTC methods to avoid timezone shifts, then format in Mountain Time
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0));
+  
+  // Format in Mountain Time
+  return date.toLocaleDateString('en-CA', {
+    timeZone: 'America/Denver'
+  });
+}
+
+/**
  * Expand recurring events to 12 weeks (for detail page generation)
  */
 export function expandRecurringEvents(events: Event[]): Event[] {
   const mountainTime = getCurrentMountainTime();
   const todayMountain = mountainTime.date;
   
-  // Create a date object for today at midnight for date comparisons
-  // We'll use the normalized Mountain Time date string
-  const todayDate = new Date(todayMountain + 'T00:00:00');
-  
   const expandedEvents: Event[] = [];
   
   events.forEach((event) => {
     // Normalize the base event date to Mountain Time for comparison
     const baseEventDateMountain = normalizeEventDateToMountainTime(event.event_date);
-    const baseEventDate = new Date(baseEventDateMountain + 'T00:00:00');
     
     if (event.is_recurring) {
       // Weekly recurring - expand for next 12 weeks
-      if (!isNaN(baseEventDate.getTime())) {
-        // Start from today if base date is in the past, otherwise start from base date
-        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
-        
-        // For past events, find the next occurrence
-        if (baseEventDate < todayDate) {
-          const daysDiff = Math.floor((todayDate.getTime() - baseEventDate.getTime()) / (1000 * 60 * 60 * 24));
-          const weeksPast = Math.floor(daysDiff / 7);
-          currentDate = new Date(baseEventDate);
-          currentDate.setDate(currentDate.getDate() + (weeksPast + 1) * 7);
-        }
-        
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + (12 * 7)); // 12 weeks from today
-        
-        while (currentDate <= endDate) {
-          const dateStr = currentDate.toLocaleDateString('en-CA', {
-            timeZone: 'America/Denver'
+      // Start from today if base date is in the past, otherwise start from base date
+      let currentDateStr = baseEventDateMountain;
+      
+      // For past events, find the next occurrence
+      if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
+        // Calculate how many weeks to add
+        const [baseYear, baseMonth, baseDay] = baseEventDateMountain.split('-').map(Number);
+        const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
+        const baseDate = new Date(baseYear, baseMonth - 1, baseDay);
+        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
+        const daysDiff = Math.floor((todayDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
+        const weeksPast = Math.floor(daysDiff / 7);
+        currentDateStr = addDaysToDateString(baseEventDateMountain, (weeksPast + 1) * 7);
+      }
+      
+      const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
+      
+      while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
+        // Check if this event occurrence should be shown
+        if (shouldShowEvent(currentDateStr, event.start_time)) {
+          expandedEvents.push({
+            ...event,
+            id: `${event.id}-${currentDateStr}`,
+            event_date: currentDateStr,
           });
-          
-          // Check if this event occurrence should be shown
-          if (shouldShowEvent(dateStr, event.start_time)) {
-            expandedEvents.push({
-              ...event,
-              id: `${event.id}-${dateStr}`,
-              event_date: dateStr,
-            });
-          }
-          currentDate.setDate(currentDate.getDate() + 7);
         }
+        currentDateStr = addDaysToDateString(currentDateStr, 7);
       }
     } else if (event.is_recurring_biweekly) {
       // Bi-weekly recurring - expand for next 12 weeks
-      if (!isNaN(baseEventDate.getTime())) {
-        // Start from today if base date is in the past, otherwise start from base date
-        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
-        
-        // For past events, find the next occurrence
-        if (baseEventDate < todayDate) {
-          const daysDiff = Math.floor((todayDate.getTime() - baseEventDate.getTime()) / (1000 * 60 * 60 * 24));
-          const biweeksPast = Math.floor(daysDiff / 14);
-          currentDate = new Date(baseEventDate);
-          currentDate.setDate(currentDate.getDate() + (biweeksPast + 1) * 14);
-        }
-        
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + (12 * 7)); // 12 weeks from today
-        
-        while (currentDate <= endDate) {
-          const dateStr = currentDate.toLocaleDateString('en-CA', {
-            timeZone: 'America/Denver'
+      // Start from today if base date is in the past, otherwise start from base date
+      let currentDateStr = baseEventDateMountain;
+      
+      // For past events, find the next occurrence
+      if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
+        // Calculate how many biweeks to add
+        const [baseYear, baseMonth, baseDay] = baseEventDateMountain.split('-').map(Number);
+        const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
+        const baseDate = new Date(baseYear, baseMonth - 1, baseDay);
+        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
+        const daysDiff = Math.floor((todayDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
+        const biweeksPast = Math.floor(daysDiff / 14);
+        currentDateStr = addDaysToDateString(baseEventDateMountain, (biweeksPast + 1) * 14);
+      }
+      
+      const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
+      
+      while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
+        // Check if this event occurrence should be shown
+        if (shouldShowEvent(currentDateStr, event.start_time)) {
+          expandedEvents.push({
+            ...event,
+            id: `${event.id}-${currentDateStr}`,
+            event_date: currentDateStr,
           });
-          
-          // Check if this event occurrence should be shown
-          if (shouldShowEvent(dateStr, event.start_time)) {
-            expandedEvents.push({
-              ...event,
-              id: `${event.id}-${dateStr}`,
-              event_date: dateStr,
-            });
-          }
-          currentDate.setDate(currentDate.getDate() + 14);
         }
+        currentDateStr = addDaysToDateString(currentDateStr, 14);
       }
     } else if (event.is_recurring_monthly) {
       // Monthly recurring - expand for next 3 months (12 weeks ≈ 3 months)
-      if (!isNaN(baseEventDate.getTime())) {
-        // Start from today if base date is in the past, otherwise start from base date
-        let currentDate = baseEventDate < todayDate ? new Date(todayDate) : new Date(baseEventDate);
+      // Start from today if base date is in the past, otherwise start from base date
+      let currentDateStr = baseEventDateMountain;
+      
+      // For past events, find the next occurrence
+      if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
+        const [year, month, day] = baseEventDateMountain.split('-').map(Number);
+        let currentDate = new Date(year, month - 1, day);
+        const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
+        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
         
-        // For past events, find the next occurrence
-        if (baseEventDate < todayDate) {
-          currentDate = new Date(baseEventDate);
+        // Keep incrementing months until we're at or past today
+        while (currentDate < todayDate) {
           currentDate.setMonth(currentDate.getMonth() + 1);
-          // Keep incrementing until we're at or past today
-          while (currentDate < todayDate) {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-          }
         }
         
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 3);
+        currentDateStr = currentDate.toLocaleDateString('en-CA', {
+          timeZone: 'America/Denver'
+        });
+      }
+      
+      // Calculate end date (3 months from today)
+      const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
+      const endDate = new Date(todayYear, todayMonth - 1, todayDay);
+      endDate.setMonth(endDate.getMonth() + 3);
+      const endDateStr = endDate.toLocaleDateString('en-CA', {
+        timeZone: 'America/Denver'
+      });
+      
+      // Parse current date string to Date for month arithmetic
+      const [currYear, currMonth, currDay] = currentDateStr.split('-').map(Number);
+      let currentDate = new Date(currYear, currMonth - 1, currDay);
+      const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
+      const endDateObj = new Date(endYear, endMonth - 1, endDay);
+      
+      while (currentDate <= endDateObj) {
+        const dateStr = currentDate.toLocaleDateString('en-CA', {
+          timeZone: 'America/Denver'
+        });
         
-        while (currentDate <= endDate) {
-          const dateStr = currentDate.toLocaleDateString('en-CA', {
-            timeZone: 'America/Denver'
+        // Check if this event occurrence should be shown
+        if (shouldShowEvent(dateStr, event.start_time)) {
+          expandedEvents.push({
+            ...event,
+            id: `${event.id}-${dateStr}`,
+            event_date: dateStr,
           });
-          
-          // Check if this event occurrence should be shown
-          if (shouldShowEvent(dateStr, event.start_time)) {
-            expandedEvents.push({
-              ...event,
-              id: `${event.id}-${dateStr}`,
-              event_date: dateStr,
-            });
-          }
-          currentDate.setMonth(currentDate.getMonth() + 1);
         }
+        currentDate.setMonth(currentDate.getMonth() + 1);
       }
     } else {
       // One-time events - normalize date and check if should be shown
