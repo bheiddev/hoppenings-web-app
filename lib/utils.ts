@@ -209,7 +209,7 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Start from today if base date is in the past, otherwise start from base date
       let currentDateStr = baseEventDateMountain;
       
-      // For past events, find the next occurrence
+      // For past events, find the next occurrence (or today if today is a valid occurrence)
       if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
         // Calculate how many weeks to add
         const [baseYear, baseMonth, baseDay] = baseEventDateMountain.split('-').map(Number);
@@ -218,7 +218,18 @@ export function expandRecurringEvents(events: Event[]): Event[] {
         const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
         const daysDiff = Math.floor((todayDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
         const weeksPast = Math.floor(daysDiff / 7);
-        currentDateStr = addDaysToDateString(baseEventDateMountain, (weeksPast + 1) * 7);
+        const daysRemainder = daysDiff % 7;
+        
+        // If today is exactly a multiple of 7 days from base date, start from today
+        // Otherwise, start from the next occurrence
+        if (daysRemainder === 0) {
+          currentDateStr = todayMountain;
+        } else {
+          currentDateStr = addDaysToDateString(baseEventDateMountain, (weeksPast + 1) * 7);
+        }
+      } else if (compareDateStrings(baseEventDateMountain, todayMountain) === 0) {
+        // Base date is today, start from today
+        currentDateStr = todayMountain;
       }
       
       const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
@@ -239,7 +250,7 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Start from today if base date is in the past, otherwise start from base date
       let currentDateStr = baseEventDateMountain;
       
-      // For past events, find the next occurrence
+      // For past events, find the next occurrence (or today if today is a valid occurrence)
       if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
         // Calculate how many biweeks to add
         const [baseYear, baseMonth, baseDay] = baseEventDateMountain.split('-').map(Number);
@@ -248,7 +259,18 @@ export function expandRecurringEvents(events: Event[]): Event[] {
         const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
         const daysDiff = Math.floor((todayDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
         const biweeksPast = Math.floor(daysDiff / 14);
-        currentDateStr = addDaysToDateString(baseEventDateMountain, (biweeksPast + 1) * 14);
+        const daysRemainder = daysDiff % 14;
+        
+        // If today is exactly a multiple of 14 days from base date, start from today
+        // Otherwise, start from the next occurrence
+        if (daysRemainder === 0) {
+          currentDateStr = todayMountain;
+        } else {
+          currentDateStr = addDaysToDateString(baseEventDateMountain, (biweeksPast + 1) * 14);
+        }
+      } else if (compareDateStrings(baseEventDateMountain, todayMountain) === 0) {
+        // Base date is today, start from today
+        currentDateStr = todayMountain;
       }
       
       const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
@@ -269,7 +291,7 @@ export function expandRecurringEvents(events: Event[]): Event[] {
       // Start from today if base date is in the past, otherwise start from base date
       let currentDateStr = baseEventDateMountain;
       
-      // For past events, find the next occurrence
+      // For past events, find the next occurrence (or today if today is a valid occurrence)
       if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
         const [year, month, day] = baseEventDateMountain.split('-').map(Number);
         let currentDate = new Date(year, month - 1, day);
@@ -281,9 +303,18 @@ export function expandRecurringEvents(events: Event[]): Event[] {
           currentDate.setMonth(currentDate.getMonth() + 1);
         }
         
-        currentDateStr = currentDate.toLocaleDateString('en-CA', {
+        // If the calculated date matches today exactly (same day of month), use today
+        const calculatedDateStr = currentDate.toLocaleDateString('en-CA', {
           timeZone: 'America/Denver'
         });
+        if (calculatedDateStr === todayMountain) {
+          currentDateStr = todayMountain;
+        } else {
+          currentDateStr = calculatedDateStr;
+        }
+      } else if (compareDateStrings(baseEventDateMountain, todayMountain) === 0) {
+        // Base date is today, start from today
+        currentDateStr = todayMountain;
       }
       
       // Calculate end date (3 months from today)
@@ -316,10 +347,9 @@ export function expandRecurringEvents(events: Event[]): Event[] {
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
     } else {
-      // One-time events - normalize date and check if should be shown
-      if (shouldShowEvent(event.event_date, event.start_time)) {
-        // Normalize the event date to Mountain Time format for consistency
-        const normalizedDate = normalizeEventDateToMountainTime(event.event_date);
+      // One-time events - normalize date first, then check if should be shown
+      const normalizedDate = normalizeEventDateToMountainTime(event.event_date);
+      if (shouldShowEvent(normalizedDate, event.start_time)) {
         expandedEvents.push({
           ...event,
           event_date: normalizedDate,
@@ -328,11 +358,19 @@ export function expandRecurringEvents(events: Event[]): Event[] {
     }
   });
   
+  // Final filter: Remove any events from yesterday or earlier
+  // This is a safety net to catch any events that might have slipped through
+  const filteredEvents = expandedEvents.filter((event) => {
+    const eventDateMountain = normalizeEventDateToMountainTime(event.event_date);
+    // Only include events from today forward (using compareDateStrings for reliable comparison)
+    return compareDateStrings(eventDateMountain, todayMountain) >= 0;
+  });
+  
   // Sort by date
-  expandedEvents.sort((a, b) => 
+  filteredEvents.sort((a, b) => 
     new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
   );
   
-  return expandedEvents;
+  return filteredEvents;
 }
 
