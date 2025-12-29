@@ -67,8 +67,9 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
       }
     })) as Event[]
 
-    // Expand recurring events
-    const expandedEvents = expandRecurringEvents(events)
+    // Expand recurring events - include past events for detail page generation
+    // This allows past events to still be accessible via their URLs (good for SEO)
+    const expandedEvents = expandRecurringEvents(events, false)
 
     // Generate slugs for each event
     const eventsWithSlugs: EventWithSlug[] = expandedEvents.map((event) => {

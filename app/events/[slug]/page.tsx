@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getEventBySlug, getAllEventsWithSlugs } from '@/lib/events'
-import { formatEventDate, formatTime12Hour } from '@/lib/utils'
+import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import { generateBrewerySlug } from '@/lib/slug'
@@ -68,9 +68,37 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     console.error('Error fetching brewery:', error)
   }
 
+  const isPastEvent = isEventInPast(event.event_date)
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Previous Event Banner */}
+        {isPastEvent && (
+          <div 
+            className="mb-6 p-4 rounded-lg border-2"
+            style={{ 
+              backgroundColor: Colors.background,
+              borderColor: Colors.textSecondary,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: Colors.textSecondary }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+              </svg>
+              <p 
+                className="text-sm font-medium"
+                style={{ 
+                  color: Colors.textSecondary,
+                  fontFamily: 'var(--font-be-vietnam-pro)'
+                }}
+              >
+                This is a previous event that has already occurred.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <Link 
