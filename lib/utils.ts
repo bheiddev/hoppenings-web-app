@@ -246,14 +246,27 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
       
       const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
       
+      // Ensure we start from today or later when filtering (safety check)
+      if (filterPastEvents) {
+        while (compareDateStrings(currentDateStr, todayMountain) < 0) {
+          // If calculated date is still in the past, advance to next occurrence
+          currentDateStr = addDaysToDateString(currentDateStr, 7);
+        }
+      }
+      
       while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
-        // Check if this event occurrence should be shown (or include all if not filtering)
-        if (!filterPastEvents || shouldShowEvent(currentDateStr, event.start_time)) {
+        // For filtering: only include events from today forward using compareDateStrings
+        // For non-filtering: include all events
+        const shouldInclude = !filterPastEvents || compareDateStrings(currentDateStr, todayMountain) >= 0;
+        
+        if (shouldInclude) {
           expandedEvents.push({
             ...event,
             id: `${event.id}-${currentDateStr}`,
             event_date: currentDateStr,
           });
+        } else {
+          console.log(`🔴 Filtering out past recurring event occurrence: "${event.title}" on ${currentDateStr} (today is ${todayMountain})`);
         }
         currentDateStr = addDaysToDateString(currentDateStr, 7);
       }
@@ -287,14 +300,27 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
       
       const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
       
+      // Ensure we start from today or later when filtering (safety check)
+      if (filterPastEvents) {
+        while (compareDateStrings(currentDateStr, todayMountain) < 0) {
+          // If calculated date is still in the past, advance to next occurrence
+          currentDateStr = addDaysToDateString(currentDateStr, 14);
+        }
+      }
+      
       while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
-        // Check if this event occurrence should be shown (or include all if not filtering)
-        if (!filterPastEvents || shouldShowEvent(currentDateStr, event.start_time)) {
+        // For filtering: only include events from today forward using compareDateStrings
+        // For non-filtering: include all events
+        const shouldInclude = !filterPastEvents || compareDateStrings(currentDateStr, todayMountain) >= 0;
+        
+        if (shouldInclude) {
           expandedEvents.push({
             ...event,
             id: `${event.id}-${currentDateStr}`,
             event_date: currentDateStr,
           });
+        } else {
+          console.log(`🔴 Filtering out past biweekly recurring event occurrence: "${event.title}" on ${currentDateStr} (today is ${todayMountain})`);
         }
         currentDateStr = addDaysToDateString(currentDateStr, 14);
       }
@@ -343,40 +369,85 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
       const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
       const endDateObj = new Date(endYear, endMonth - 1, endDay);
       
+      // Ensure we start from today or later when filtering
+      if (filterPastEvents) {
+        const currentDateStrCheck = currentDate.toLocaleDateString('en-CA', {
+          timeZone: 'America/Denver'
+        });
+        if (compareDateStrings(currentDateStrCheck, todayMountain) < 0) {
+          // Reset to today's date components
+          const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
+          currentDate = new Date(todayYear, todayMonth - 1, todayDay);
+        }
+      }
+      
       while (currentDate <= endDateObj) {
         const dateStr = currentDate.toLocaleDateString('en-CA', {
           timeZone: 'America/Denver'
         });
         
-        // Check if this event occurrence should be shown (or include all if not filtering)
-        if (!filterPastEvents || shouldShowEvent(dateStr, event.start_time)) {
+        // For filtering: only include events from today forward using compareDateStrings
+        // For non-filtering: include all events
+        const shouldInclude = !filterPastEvents || compareDateStrings(dateStr, todayMountain) >= 0;
+        
+        if (shouldInclude) {
           expandedEvents.push({
             ...event,
             id: `${event.id}-${dateStr}`,
             event_date: dateStr,
           });
+        } else {
+          console.log(`🔴 Filtering out past monthly recurring event occurrence: "${event.title}" on ${dateStr} (today is ${todayMountain})`);
         }
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
     } else {
       // One-time events - normalize date first, then check if should be shown
       const normalizedDate = normalizeEventDateToMountainTime(event.event_date);
-      if (!filterPastEvents || shouldShowEvent(normalizedDate, event.start_time)) {
+      
+      // For one-time events, use the same comparison logic as the final filter
+      if (!filterPastEvents) {
+        // Include all events if not filtering
         expandedEvents.push({
           ...event,
           event_date: normalizedDate,
         });
+      } else {
+        // Filter past events using compareDateStrings for consistency
+        const comparison = compareDateStrings(normalizedDate, todayMountain);
+        if (comparison >= 0) {
+          // Event is today or in the future
+          expandedEvents.push({
+            ...event,
+            event_date: normalizedDate,
+          });
+        } else {
+          // Event is in the past - log for debugging
+          console.log(`🔴 Filtering out past one-time event: "${event.title}" on ${normalizedDate} (today is ${todayMountain})`);
+        }
       }
     }
   });
   
   // Final filter: Remove any events from yesterday or earlier (only if filtering is enabled)
   // This is a safety net to catch any events that might have slipped through
+  // We normalize both dates to ensure consistent comparison
   const filteredEvents = filterPastEvents 
     ? expandedEvents.filter((event) => {
+        // Normalize the event date to ensure consistent format
         const eventDateMountain = normalizeEventDateToMountainTime(event.event_date);
-        // Only include events from today forward (using compareDateStrings for reliable comparison)
-        return compareDateStrings(eventDateMountain, todayMountain) >= 0;
+        
+        // Compare using compareDateStrings for reliable date comparison
+        // Only include events from today (>= 0 means today or future)
+        const comparison = compareDateStrings(eventDateMountain, todayMountain);
+        const isTodayOrFuture = comparison >= 0;
+        
+        // Log filtered events for debugging
+        if (!isTodayOrFuture) {
+          console.log(`🔴 Filtering out past event: "${event.title}" on ${eventDateMountain} (today is ${todayMountain}, comparison: ${comparison})`);
+        }
+        
+        return isTodayOrFuture;
       })
     : expandedEvents;
   
