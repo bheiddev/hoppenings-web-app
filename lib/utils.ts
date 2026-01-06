@@ -124,13 +124,19 @@ function getCurrentMountainTime(): { date: string; hours: number; minutes: numbe
  */
 function normalizeEventDateToMountainTime(eventDate: string): string {
   // If it's already a date-only string in YYYY-MM-DD format, return it as-is
-  // (assuming it's already in Mountain Time)
+  // (assuming dates from database are stored in Mountain Time or as date-only)
   if (/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
     return eventDate;
   }
   
   // If it has a time component, parse it and convert to Mountain Time date
   const date = new Date(eventDate);
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.error(`⚠️ Invalid date format: ${eventDate}`);
+    return eventDate; // Return as-is if invalid
+  }
   
   // Convert to Mountain Time date string (YYYY-MM-DD)
   return date.toLocaleDateString('en-CA', {
@@ -209,6 +215,11 @@ export function isEventInPast(eventDate: string): boolean {
 export function expandRecurringEvents(events: Event[], filterPastEvents: boolean = true): Event[] {
   const mountainTime = getCurrentMountainTime();
   const todayMountain = mountainTime.date;
+  
+  // Log current date for debugging
+  if (filterPastEvents) {
+    console.log(`📅 Filtering events - Today in Mountain Time: ${todayMountain} (${new Date().toISOString()} UTC)`);
+  }
   
   const expandedEvents: Event[] = [];
   
@@ -439,6 +450,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         
         // Compare using compareDateStrings for reliable date comparison
         // Only include events from today (>= 0 means today or future)
+        // comparison < 0 means event is in the past (yesterday or earlier)
         const comparison = compareDateStrings(eventDateMountain, todayMountain);
         const isTodayOrFuture = comparison >= 0;
         
@@ -450,6 +462,11 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         return isTodayOrFuture;
       })
     : expandedEvents;
+  
+  // Log summary after filtering
+  if (filterPastEvents) {
+    console.log(`✅ Filtered events: ${expandedEvents.length} total, ${filteredEvents.length} after filtering (removed ${expandedEvents.length - filteredEvents.length} past events)`);
+  }
   
   // Sort by date
   filteredEvents.sort((a, b) => 

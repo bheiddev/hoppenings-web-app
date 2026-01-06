@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   },
 }
 
+// Force dynamic rendering to ensure dates are calculated at request time, not build time
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 async function getEvents(): Promise<Event[]> {
   try {
     // Check if Supabase is configured
