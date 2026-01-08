@@ -31,12 +31,7 @@ export default function EventSignUpPage() {
           <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             SPEED DATING & MIXER @ OCC
           </h1>
-          <p className="text-xl" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-            February 11th - Sign Up Now!
-          </p>
         </div>
-
-        <div style={{ height: '1px', backgroundColor: Colors.textPrimary, marginBottom: '2rem' }} />
 
         {/* Google Form Embed */}
         <div className="mb-8">
@@ -62,45 +57,6 @@ export default function EventSignUpPage() {
             >
               Loading…
             </iframe>
-          </div>
-        </div>
-
-        {/* Additional Info Section */}
-        <div 
-          className="p-6 rounded-lg"
-          style={{ 
-            backgroundColor: Colors.background,
-            border: `1px solid ${Colors.dividerLight}`,
-          }}
-        >
-          <h2 
-            className="text-2xl font-bold mb-4"
-            style={{ 
-              color: Colors.textDark,
-              fontFamily: 'var(--font-fjalla-one)'
-            }}
-          >
-            EVENT DETAILS
-          </h2>
-          <div className="space-y-3">
-            <p 
-              className="text-base"
-              style={{ 
-                color: Colors.textDark,
-                fontFamily: 'var(--font-be-vietnam-pro)'
-              }}
-            >
-              Join us for our Speed Dating & Mixer event at OCC on February 11th! Please fill out the form above to secure your spot.
-            </p>
-            <p 
-              className="text-sm"
-              style={{ 
-                color: Colors.textSecondary,
-                fontFamily: 'var(--font-be-vietnam-pro)'
-              }}
-            >
-              If you have any questions, please contact us through our website or social media channels.
-            </p>
           </div>
         </div>
       </div>
