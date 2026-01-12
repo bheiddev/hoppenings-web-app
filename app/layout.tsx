@@ -21,6 +21,15 @@ export const metadata: Metadata = {
   title: "Hoppenings - Discover Brewery Events, Beer Releases & Breweries",
   description: "Your source for the latest brewery events, beer releases, and brewery information. Discover craft beer events, new releases, and local breweries.",
   keywords: "brewery events, beer releases, breweries, craft beer, beer events, brewery directory",
+  icons: {
+    icon: [
+      { url: '/assets/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' },
+    ],
+    apple: [
+      { url: '/assets/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
   openGraph: {
     title: "Hoppenings - Discover Brewery Events, Beer Releases & Breweries",
     description: "Your source for the latest brewery events, beer releases, and brewery information.",
