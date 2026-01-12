@@ -23,11 +23,11 @@ export const metadata: Metadata = {
   keywords: "brewery events, beer releases, breweries, craft beer, beer events, brewery directory",
   icons: {
     icon: [
-      { url: '/assets/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico' },
     ],
     apple: [
-      { url: '/assets/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
     ],
   },
   openGraph: {
