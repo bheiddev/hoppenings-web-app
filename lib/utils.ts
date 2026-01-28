@@ -476,3 +476,44 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
   return filteredEvents;
 }
 
+/**
+ * Convert URLs in text to clickable links
+ * Returns an array of text segments and link elements
+ */
+export function convertUrlsToLinks(text: string): Array<string | { url: string; text: string }> {
+  // URL regex pattern - matches http, https, and www URLs
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+  const parts: Array<string | { url: string; text: string }> = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    // Add text before the URL
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+
+    // Add the URL as a link object
+    let url = match[0];
+    // Add https:// if it starts with www.
+    if (url.toLowerCase().startsWith('www.')) {
+      url = 'https://' + url;
+    }
+    parts.push({ url, text: match[0] });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after the last URL
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  // If no URLs were found, return the original text as a single string
+  if (parts.length === 0) {
+    parts.push(text);
+  }
+
+  return parts;
+}
+

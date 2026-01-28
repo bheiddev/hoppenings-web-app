@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { supabase } from '@/lib/supabase'
+import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { BeerRelease } from '@/types/supabase'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
 import { Colors } from '@/lib/colors'
@@ -13,79 +13,6 @@ export const metadata: Metadata = {
     description: 'Stay updated on the latest beer releases from your favorite breweries.',
     type: 'website',
   },
-}
-
-async function getReleases(): Promise<BeerRelease[]> {
-  try {
-    const { data, error } = await supabase
-      .from('beer_releases_base')
-      .select(`
-        id,
-        created_at,
-        beer_name,
-        "ABV",
-        "Type",
-        description,
-        brewery_id,
-        brewery_id2,
-        brewery_id3,
-        release_date,
-        breweries!beer_releases_brewery_id_fkey (
-          id,
-          name,
-          location
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (error) {
-      console.error('Error fetching releases:', error)
-      return []
-    }
-
-    if (!data) return []
-
-    const releases = data.map((release: any) => ({
-      id: release.id,
-      created_at: release.created_at,
-      beer_name: release.beer_name,
-      ABV: release.ABV,
-      Type: release.Type,
-      description: release.description,
-      brewery_id: release.brewery_id,
-      brewery_id2: release.brewery_id2,
-      brewery_id3: release.brewery_id3,
-      release_date: release.release_date,
-      breweries: {
-        id: release.breweries?.id || '',
-        name: release.breweries?.name || '',
-        location: release.breweries?.location || null
-      }
-    })) as BeerRelease[]
-
-    // Filter out releases older than 2 weeks, but keep future releases
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-    const twoWeeksAgoStr = twoWeeksAgo.toLocaleDateString('en-CA', {
-      timeZone: 'America/Denver'
-    })
-
-    const filteredReleases = releases.filter((release) => {
-      if (!release.release_date) return true // Keep releases without dates
-      const releaseDate = new Date(release.release_date)
-      const releaseDateStr = releaseDate.toLocaleDateString('en-CA', {
-        timeZone: 'America/Denver'
-      })
-      // Keep if release date is within the last 2 weeks or in the future
-      return releaseDateStr >= twoWeeksAgoStr
-    })
-
-    return filteredReleases
-  } catch (error) {
-    console.error('Error fetching releases:', error)
-    return []
-  }
 }
 
 function groupReleasesByType(releases: BeerRelease[]): Record<string, BeerRelease[]> {
@@ -103,7 +30,7 @@ function groupReleasesByType(releases: BeerRelease[]): Record<string, BeerReleas
 }
 
 export default async function ReleasesPage() {
-  const releases = await getReleases()
+  const releases = await getAllReleasesWithSlugs()
   const groupedReleases = groupReleasesByType(releases)
 
   return (

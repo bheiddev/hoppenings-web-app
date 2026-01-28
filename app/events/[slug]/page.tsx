@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { generateBrewerySlug } from '@/lib/slug'
 import Image from 'next/image'
 import Link from 'next/link'
+import { TextWithLinks } from '@/components/TextWithLinks'
 
 export async function generateStaticParams() {
   const events = await getAllEventsWithSlugs()
@@ -127,7 +128,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             {event.description && (
               <div className="flex-1">
                 <p className="text-base leading-relaxed" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                  {event.description}
+                  <TextWithLinks text={event.description} />
                 </p>
               </div>
             )}
