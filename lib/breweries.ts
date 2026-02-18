@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Brewery, BreweryHours, Event, BeerRelease } from '@/types/supabase'
+import { Brewery, BreweryHours, Event, BeerRelease, ProposedEvent } from '@/types/supabase'
 import { generateBrewerySlug } from './slug'
 import { expandRecurringEvents } from './utils'
 
@@ -218,6 +218,38 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
     return filteredReleases
   } catch (error) {
     console.error('Error fetching brewery releases:', error)
+    return []
+  }
+}
+
+/**
+ * Get proposed events for a brewery from proposed_events table
+ */
+export async function getProposedEventsByBreweryId(breweryId: string): Promise<ProposedEvent[]> {
+  try {
+    const { data, error } = await supabase
+      .from('proposed_events')
+      .select('id, created_at, brewery_id, title, event_date, description')
+      .eq('brewery_id', breweryId)
+      .order('event_date', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching proposed events:', error)
+      return []
+    }
+
+    if (!data) return []
+
+    return data.map((row: any) => ({
+      id: row.id,
+      created_at: row.created_at,
+      brewery_id: row.brewery_id,
+      title: row.title ?? null,
+      event_date: row.event_date ?? null,
+      description: row.description ?? null
+    })) as ProposedEvent[]
+  } catch (error) {
+    console.error('Error fetching proposed events:', error)
     return []
   }
 }

@@ -76,3 +76,12 @@ export interface BeerRelease {
   };
 }
 
+export interface ProposedEvent {
+  id: string;
+  created_at: string;
+  brewery_id: string;
+  title: string | null;
+  event_date: string | null;
+  description: string | null;
+}
+
