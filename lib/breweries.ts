@@ -229,7 +229,7 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
   try {
     const { data, error } = await supabase
       .from('proposed_events')
-      .select('id, created_at, brewery_id, title, event_date, description')
+      .select('id, created_at, brewery_id, title, event_date, start_time, is_recurring, description')
       .eq('brewery_id', breweryId)
       .order('event_date', { ascending: true })
 
@@ -246,6 +246,8 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
       brewery_id: row.brewery_id,
       title: row.title ?? null,
       event_date: row.event_date ?? null,
+      start_time: row.start_time ?? null,
+      is_recurring: row.is_recurring ?? false,
       description: row.description ?? null
     })) as ProposedEvent[]
   } catch (error) {

@@ -82,6 +82,8 @@ export interface ProposedEvent {
   brewery_id: string;
   title: string | null;
   event_date: string | null;
+  start_time: string | null;
+  is_recurring: boolean;
   description: string | null;
 }
 

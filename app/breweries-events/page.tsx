@@ -8,6 +8,9 @@ import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { Event } from '@/types/supabase'
 import { ProposedEvent } from '@/types/supabase'
+import { ProposedEventsTable } from '@/components/ProposedEventsTable'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Breweries & Events | Hoppenings',
@@ -66,38 +69,6 @@ function EventsTable({ events, title }: { events: Event[]; title: string }) {
   )
 }
 
-function ProposedTable({ proposed, title }: { proposed: ProposedEvent[]; title: string }) {
-  return (
-    <div className="flex flex-col h-64 border rounded-lg overflow-hidden" style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}>
-      <div className="flex-shrink-0 px-3 py-2 font-semibold text-sm" style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}>
-        {title}
-      </div>
-      <div className="flex-1 overflow-auto min-h-0">
-        {proposed.length === 0 ? (
-          <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>No proposed events</p>
-        ) : (
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="sticky top-0 z-10" style={{ backgroundColor: Colors.backgroundLight }}>
-              <tr>
-                <th className="p-2 font-medium" style={{ color: Colors.textDark }}>Title</th>
-                <th className="p-2 font-medium" style={{ color: Colors.textDark }}>Date</th>
-              </tr>
-            </thead>
-            <tbody style={{ color: Colors.textDark }}>
-              {proposed.map((p) => (
-                <tr key={p.id} className="border-t" style={{ borderColor: Colors.dividerLight }}>
-                  <td className="p-2">{p.title || '—'}</td>
-                  <td className="p-2">{p.event_date ? formatEventDate(p.event_date) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export default async function BreweriesEventsPage() {
   const breweriesWithData = await getBreweriesWithEvents()
 
@@ -116,7 +87,7 @@ export default async function BreweriesEventsPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <EventsTable events={events} title="Events" />
-                <ProposedTable proposed={proposed} title="Proposed events" />
+                <ProposedEventsTable proposed={proposed} title="Proposed events" />
               </div>
             </section>
           ))}
