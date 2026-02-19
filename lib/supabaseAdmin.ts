@@ -1,8 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-// Vercel / deployment: set env var named "service_role" to the Supabase service_role key value
-const serviceRoleKey = process.env.service_role ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+// Try multiple names: Vercel and others may use different casing
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??
+  process.env.service_role ??
+  process.env.SERVICE_ROLE
 
 /**
  * Server-only Supabase client that bypasses RLS.

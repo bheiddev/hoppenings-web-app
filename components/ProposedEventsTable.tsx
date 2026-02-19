@@ -25,19 +25,29 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
   async function handleReject(id: string) {
     setActionError(null)
     setLoadingId(id)
-    const result = await rejectProposedEvent(id)
-    setLoadingId(null)
-    if (result.ok) router.refresh()
-    else setActionError(result.error ?? 'Failed to reject')
+    try {
+      const result = await rejectProposedEvent(id)
+      setLoadingId(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to reject')
+    } catch (err) {
+      setLoadingId(null)
+      setActionError(err instanceof Error ? err.message : 'Reject failed')
+    }
   }
 
   async function handleAccept(p: ProposedEvent) {
     setActionError(null)
     setLoadingId(p.id)
-    const result = await acceptProposedEvent(p)
-    setLoadingId(null)
-    if (result.ok) router.refresh()
-    else setActionError(result.error ?? 'Failed to accept')
+    try {
+      const result = await acceptProposedEvent(p)
+      setLoadingId(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to accept')
+    } catch (err) {
+      setLoadingId(null)
+      setActionError(err instanceof Error ? err.message : 'Accept failed')
+    }
   }
 
   function openEdit(p: ProposedEvent) {
@@ -214,14 +224,19 @@ function EditProposedEventModal({
     e.preventDefault()
     setError(null)
     setSaving(true)
-    const result = await onSave({
-      title: title.trim() || null,
-      event_date: eventDate.trim() || null,
-      start_time: startTime.trim() || null,
-      description: description.trim() || null,
-    })
-    setSaving(false)
-    if (!result.ok) setError(result.error ?? 'Failed to save')
+    try {
+      const result = await onSave({
+        title: title.trim() || null,
+        event_date: eventDate.trim() || null,
+        start_time: startTime.trim() || null,
+        description: description.trim() || null,
+      })
+      if (!result?.ok) setError(result?.error ?? 'Failed to save')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
