@@ -92,3 +92,19 @@ export async function updateProposedEvent(
   revalidatePath(BREWERIES_EVENTS_PATH)
   return { ok: true }
 }
+
+export async function deleteEventFromEventsBase(eventId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('events_base')
+    .delete()
+    .eq('id', eventId)
+
+  if (error) {
+    console.error('Error deleting event:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  return { ok: true }
+}
