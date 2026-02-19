@@ -20,22 +20,28 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
   const router = useRouter()
   const [editing, setEditing] = useState<ProposedEvent | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleReject(id: string) {
+    setActionError(null)
     setLoadingId(id)
     const result = await rejectProposedEvent(id)
     setLoadingId(null)
     if (result.ok) router.refresh()
+    else setActionError(result.error ?? 'Failed to reject')
   }
 
   async function handleAccept(p: ProposedEvent) {
+    setActionError(null)
     setLoadingId(p.id)
     const result = await acceptProposedEvent(p)
     setLoadingId(null)
     if (result.ok) router.refresh()
+    else setActionError(result.error ?? 'Failed to accept')
   }
 
   function openEdit(p: ProposedEvent) {
+    setActionError(null)
     setEditing({ ...p })
   }
 
@@ -45,6 +51,21 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
 
   return (
     <>
+      {actionError && (
+        <div
+          className="mb-2 px-3 py-2 rounded text-sm"
+          style={{ backgroundColor: '#FEE2E2', color: Colors.error }}
+        >
+          {actionError}
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="ml-2 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div
         className="flex flex-col h-64 border rounded-lg overflow-hidden"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
