@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { ProposedEvent } from '@/types/supabase'
+import { ProposedEvent, TaplistItem } from '@/types/supabase'
 
 const BREWERIES_EVENTS_PATH = '/breweries-events'
 
@@ -103,6 +103,30 @@ export async function deleteEventFromEventsBase(eventId: string) {
 
   if (error) {
     console.error('Error deleting event:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  return { ok: true }
+}
+
+export async function addTaplistItemToReleases(item: TaplistItem) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('beer_releases_base')
+    .insert({
+      beer_name: item.beer_name,
+      ABV: item.abv,
+      Type: item.type,
+      description: item.description,
+      brewery_id: item.brewery_id,
+      brewery_id2: null,
+      brewery_id3: null,
+      release_date: null,
+    })
+
+  if (error) {
+    console.error('Error adding taplist item to releases:', error)
     return { ok: false, error: error.message }
   }
   revalidatePath(BREWERIES_EVENTS_PATH)
