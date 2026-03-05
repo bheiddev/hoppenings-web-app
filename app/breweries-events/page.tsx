@@ -92,15 +92,15 @@ function TaplistTable({ taplist, title }: { taplist: TaplistItem[]; title: strin
               <tr>
                 <th className="p-2 font-medium" style={{ color: Colors.textDark }}>Beer</th>
                 <th className="p-2 font-medium" style={{ color: Colors.textDark }}>ABV</th>
-                <th className="p-2 font-medium" style={{ color: Colors.textDark }}>Style</th>
+                <th className="p-2 font-medium" style={{ color: Colors.textDark }}>Type</th>
               </tr>
             </thead>
             <tbody style={{ color: Colors.textDark }}>
               {taplist.map((t) => (
-                <tr key={t.id} className="border-t" style={{ borderColor: Colors.dividerLight }}>
+                <tr key={`${t.brewery_id}-${t.beer_name}`} className="border-t" style={{ borderColor: Colors.dividerLight }}>
                   <td className="p-2">{t.beer_name || '—'}</td>
                   <td className="p-2">{t.abv ?? '—'}</td>
-                  <td className="p-2">{t.style || '—'}</td>
+                  <td className="p-2">{t.type || '—'}</td>
                 </tr>
               ))}
             </tbody>

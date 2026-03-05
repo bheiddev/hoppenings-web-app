@@ -223,32 +223,33 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
 }
 
 /**
- * Get taplist for a brewery from taplist table
+ * Get taplist for a brewery from tap_list table
  */
 export async function getBreweryTaplist(breweryId: string): Promise<TaplistItem[]> {
   try {
     const { data, error } = await supabase
-      .from('taplist')
-      .select('id, brewery_id, beer_name, abv, style')
+      .from('tap_list')
+      .select('brewery_id, beer_name, description, abv, type, is_active')
       .eq('brewery_id', breweryId)
       .order('beer_name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching taplist:', error)
+      console.error('Error fetching tap_list:', error)
       return []
     }
 
     if (!data) return []
 
     return data.map((row: any) => ({
-      id: row.id,
       brewery_id: row.brewery_id,
-      beer_name: row.beer_name ?? null,
+      beer_name: row.beer_name ?? '',
+      description: row.description ?? null,
       abv: row.abv ?? null,
-      style: row.style ?? null
+      type: row.type ?? null,
+      is_active: row.is_active ?? true
     })) as TaplistItem[]
   } catch (error) {
-    console.error('Error fetching taplist:', error)
+    console.error('Error fetching tap_list:', error)
     return []
   }
 }
