@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { getReleaseBySlug, getAllReleasesWithSlugs, getReleaseBreweries } from '@/lib/releases'
+import { notFound, permanentRedirect } from 'next/navigation'
+import { getReleaseBySlug, getReleaseBySlugIncludingExpired, getAllReleasesWithSlugs, getReleaseBreweries } from '@/lib/releases'
 import { formatReleaseDate } from '@/lib/utils'
 import { generateBrewerySlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
@@ -52,6 +52,10 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   const release = await getReleaseBySlug(slug)
 
   if (!release) {
+    const expiredRelease = await getReleaseBySlugIncludingExpired(slug)
+    if (expiredRelease) {
+      permanentRedirect('/releases')
+    }
     notFound()
   }
 

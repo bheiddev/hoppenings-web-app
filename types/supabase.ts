@@ -87,3 +87,11 @@ export interface ProposedEvent {
   description: string | null;
 }
 
+export interface TaplistItem {
+  id: string;
+  brewery_id: string;
+  beer_name: string | null;
+  abv: string | null;
+  style: string | null;
+}
+

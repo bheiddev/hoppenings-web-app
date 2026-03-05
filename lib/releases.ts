@@ -101,10 +101,86 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
 }
 
 /**
- * Get a single release by slug
+ * Get a single release by slug (only within current 2-week window)
  */
 export async function getReleaseBySlug(slug: string): Promise<BeerReleaseWithSlug | null> {
   const allReleases = await getAllReleasesWithSlugs()
+  return allReleases.find(release => release.slug === slug) || null
+}
+
+/**
+ * Fetch all releases with slugs, no date filter. Used to detect expired (formerly indexed) URLs.
+ */
+async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[]> {
+  try {
+    const { data, error } = await supabase
+      .from('beer_releases_base')
+      .select(`
+        id,
+        created_at,
+        beer_name,
+        "ABV",
+        "Type",
+        description,
+        brewery_id,
+        brewery_id2,
+        brewery_id3,
+        release_date,
+        breweries!beer_releases_brewery_id_fkey (
+          id,
+          name,
+          location
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    if (error) {
+      console.error('Error fetching releases (unfiltered):', error)
+      return []
+    }
+
+    if (!data) return []
+
+    const releases = data.map((release: any) => ({
+      id: release.id,
+      created_at: release.created_at,
+      beer_name: release.beer_name,
+      ABV: release.ABV,
+      Type: release.Type,
+      description: release.description,
+      brewery_id: release.brewery_id,
+      brewery_id2: release.brewery_id2,
+      brewery_id3: release.brewery_id3,
+      release_date: release.release_date,
+      breweries: {
+        id: release.breweries?.id || '',
+        name: release.breweries?.name || 'Unknown Brewery',
+        location: release.breweries?.location || null
+      }
+    })) as BeerRelease[]
+
+    return releases.map((release) => {
+      const slug = generateReleaseSlug(
+        release.beer_name,
+        release.Type,
+        release.breweries.name,
+        release.breweries.location || null,
+        release.id
+      )
+      return { ...release, slug }
+    })
+  } catch (error) {
+    console.error('Error fetching releases (unfiltered):', error)
+    return []
+  }
+}
+
+/**
+ * Get a release by slug even if it's past the 2-week window (for redirecting expired URLs).
+ */
+export async function getReleaseBySlugIncludingExpired(slug: string): Promise<BeerReleaseWithSlug | null> {
+  const allReleases = await getAllReleasesWithSlugsUnfiltered()
   return allReleases.find(release => release.slug === slug) || null
 }
 

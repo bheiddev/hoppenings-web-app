@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Brewery, BreweryHours, Event, BeerRelease, ProposedEvent } from '@/types/supabase'
+import { Brewery, BreweryHours, Event, BeerRelease, ProposedEvent, TaplistItem } from '@/types/supabase'
 import { generateBrewerySlug } from './slug'
 import { expandRecurringEvents } from './utils'
 
@@ -218,6 +218,37 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
     return filteredReleases
   } catch (error) {
     console.error('Error fetching brewery releases:', error)
+    return []
+  }
+}
+
+/**
+ * Get taplist for a brewery from taplist table
+ */
+export async function getBreweryTaplist(breweryId: string): Promise<TaplistItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('taplist')
+      .select('id, brewery_id, beer_name, abv, style')
+      .eq('brewery_id', breweryId)
+      .order('beer_name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching taplist:', error)
+      return []
+    }
+
+    if (!data) return []
+
+    return data.map((row: any) => ({
+      id: row.id,
+      brewery_id: row.brewery_id,
+      beer_name: row.beer_name ?? null,
+      abv: row.abv ?? null,
+      style: row.style ?? null
+    })) as TaplistItem[]
+  } catch (error) {
+    console.error('Error fetching taplist:', error)
     return []
   }
 }
