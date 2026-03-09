@@ -20,6 +20,19 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
     return `${t.brewery_id}-${t.beer_name}`
   }
 
+  function formatTimestamp(iso: string | null): string {
+    if (!iso) return '—'
+    try {
+      const d = new Date(iso)
+      return d.toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      })
+    } catch {
+      return iso
+    }
+  }
+
   async function handleAddToReleases(t: TaplistItem) {
     setActionError(null)
     setLoadingKey(rowKey(t))
@@ -79,6 +92,12 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
                     Type
                   </th>
                   <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                    First seen
+                  </th>
+                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                    Last seen
+                  </th>
+                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
                     Actions
                   </th>
                 </tr>
@@ -93,6 +112,8 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
                     <td className="p-2">{t.beer_name || '—'}</td>
                     <td className="p-2">{t.abv ?? '—'}</td>
                     <td className="p-2">{t.type || '—'}</td>
+                    <td className="p-2 whitespace-nowrap">{formatTimestamp(t.first_seen)}</td>
+                    <td className="p-2 whitespace-nowrap">{formatTimestamp(t.last_seen)}</td>
                     <td className="p-2">
                       <button
                         type="button"

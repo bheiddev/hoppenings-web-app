@@ -21,18 +21,38 @@ export const metadata: Metadata = {
 }
 
 type BreweryWithData = {
-  brewery: { id: string; name: string }
+  brewery: { id: string; name: string; region: string | null }
   events: Event[]
   proposed: ProposedEvent[]
   releases: BeerRelease[]
   taplist: TaplistItem[]
 }
 
+const REGION_SECTIONS: { key: string; title: string }[] = [
+  { key: 'Colorado Springs', title: 'Colorado Springs Breweries' },
+  { key: 'Fort Collins', title: 'Fort Collins Breweries' },
+]
+
+function groupByRegion(breweriesWithData: BreweryWithData[]): Map<string, BreweryWithData[]> {
+  const map = new Map<string, BreweryWithData[]>()
+  for (const { key } of REGION_SECTIONS) {
+    map.set(key, [])
+  }
+  for (const row of breweriesWithData) {
+    const region = row.brewery.region?.trim().toLowerCase() ?? ''
+    const section = REGION_SECTIONS.find((s) => s.key.toLowerCase() === region)
+    if (section) {
+      map.get(section.key)!.push(row)
+    }
+  }
+  return map
+}
+
 async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
   const breweries = await getAllBreweriesWithSlugs()
   const results = await Promise.all(
     breweries.map(async (brewery) => ({
-      brewery: { id: brewery.id, name: brewery.name },
+      brewery: { id: brewery.id, name: brewery.name, region: brewery.region ?? null },
       events: await getBreweryEvents(brewery.id),
       proposed: await getProposedEventsByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),
@@ -80,6 +100,7 @@ function BeerReleasesTable({ releases, title }: { releases: BeerRelease[]; title
 
 export default async function BreweriesEventsPage() {
   const breweriesWithData = await getBreweriesWithEvents()
+  const byRegion = groupByRegion(breweriesWithData)
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
@@ -88,22 +109,35 @@ export default async function BreweriesEventsPage() {
           Breweries & Events
         </h1>
 
-        <div className="space-y-10">
-          {breweriesWithData.map(({ brewery, events, proposed, releases, taplist }) => (
-            <section key={brewery.id}>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-                {brewery.name}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <EventsTableWithDelete events={events} title="Events" />
-                <ProposedEventsTable proposed={proposed} title="Proposed events" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <BeerReleasesTable releases={releases} title="Beer releases" />
-                <TaplistTableWithAddButton taplist={taplist} title="Taplist" />
-              </div>
-            </section>
-          ))}
+        <div className="space-y-12">
+          {REGION_SECTIONS.map(({ key, title }) => {
+            const regionBreweries = byRegion.get(key) ?? []
+            if (regionBreweries.length === 0) return null
+            return (
+              <section key={key}>
+                <h2 className="text-2xl font-bold mb-6" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+                  {title}
+                </h2>
+                <div className="space-y-10">
+                  {regionBreweries.map(({ brewery, events, proposed, releases, taplist }) => (
+                    <div key={brewery.id}>
+                      <h3 className="text-xl font-semibold mb-4" style={{ color: Colors.textDark }}>
+                        {brewery.name}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <EventsTableWithDelete events={events} title="Events" />
+                        <ProposedEventsTable proposed={proposed} title="Proposed events" />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <BeerReleasesTable releases={releases} title="Beer releases" />
+                        <TaplistTableWithAddButton taplist={taplist} title="Taplist" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ export interface Brewery {
   latitude: number;
   longitude: number;
   location: string | null;
+  region: string | null;
   phone: string;
   description: string;
   is_pet_friendly: boolean;
@@ -94,5 +95,7 @@ export interface TaplistItem {
   abv: string | null;
   type: string | null;
   is_active: boolean;
+  first_seen: string | null;
+  last_seen: string | null;
 }
 

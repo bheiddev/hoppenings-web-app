@@ -122,7 +122,7 @@ export async function addTaplistItemToReleases(item: TaplistItem) {
       brewery_id: item.brewery_id,
       brewery_id2: null,
       brewery_id3: null,
-      release_date: null,
+      release_date: item.first_seen ?? null,
     })
 
   if (error) {
