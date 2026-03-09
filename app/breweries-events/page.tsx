@@ -31,6 +31,7 @@ type BreweryWithData = {
 const REGION_SECTIONS: { key: string; title: string }[] = [
   { key: 'Colorado Springs', title: 'Colorado Springs Breweries' },
   { key: 'Fort Collins', title: 'Fort Collins Breweries' },
+  { key: '__other__', title: 'Other Breweries' },
 ]
 
 function groupByRegion(breweriesWithData: BreweryWithData[]): Map<string, BreweryWithData[]> {
@@ -40,9 +41,13 @@ function groupByRegion(breweriesWithData: BreweryWithData[]): Map<string, Brewer
   }
   for (const row of breweriesWithData) {
     const region = row.brewery.region?.trim().toLowerCase() ?? ''
-    const section = REGION_SECTIONS.find((s) => s.key.toLowerCase() === region)
+    const section = REGION_SECTIONS.find(
+      (s) => s.key !== '__other__' && s.key.toLowerCase() === region
+    )
     if (section) {
       map.get(section.key)!.push(row)
+    } else {
+      map.get('__other__')!.push(row)
     }
   }
   return map
@@ -52,7 +57,7 @@ async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
   const breweries = await getAllBreweriesWithSlugs()
   const results = await Promise.all(
     breweries.map(async (brewery) => ({
-      brewery: { id: brewery.id, name: brewery.name, region: brewery.region ?? null },
+      brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
       events: await getBreweryEvents(brewery.id),
       proposed: await getProposedEventsByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),

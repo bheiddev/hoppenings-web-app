@@ -4,10 +4,6 @@ export interface Brewery {
   created_at: string;
   name: string;
   address: string;
-  latitude: number;
-  longitude: number;
-  location: string | null;
-  region: string | null;
   phone: string;
   description: string;
   is_pet_friendly: boolean;
@@ -16,6 +12,11 @@ export interface Brewery {
   has_wifi: boolean;
   has_na_beer: boolean;
   image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location: string | null;
+  Region: string | null;
+  tap_image: string | null;
 }
 
 export interface BreweryHours {
