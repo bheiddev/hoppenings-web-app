@@ -7,6 +7,10 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export const revalidate = 3600
 
+/**
+ * Sitemap only lists indexable URLs (see lib/contentExpiry.ts).
+ * Expired release/event URLs are not included; visits to those URLs get a 301 to the listing page.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [releases, events, breweries] = await Promise.all([
     getAllReleasesWithSlugs(),

@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { BeerRelease } from '@/types/supabase'
 import { generateReleaseSlug } from './slug'
+import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BeerReleaseWithSlug extends BeerRelease {
   slug: string
@@ -76,22 +77,10 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
       }
     })
 
-    // Filter out releases older than 2 weeks, but keep future releases
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-    const twoWeeksAgoStr = twoWeeksAgo.toLocaleDateString('en-CA', {
-      timeZone: 'America/Denver'
-    })
-
-    const filteredReleases = releasesWithSlugs.filter((release) => {
-      if (!release.release_date) return true // Keep releases without dates
-      const releaseDate = new Date(release.release_date)
-      const releaseDateStr = releaseDate.toLocaleDateString('en-CA', {
-        timeZone: 'America/Denver'
-      })
-      // Keep if release date is within the last 2 weeks or in the future
-      return releaseDateStr >= twoWeeksAgoStr
-    })
+    // Only include releases in the indexable window (sitemap + listing). Expired URLs 301 from the detail page.
+    const filteredReleases = releasesWithSlugs.filter((release) =>
+      isReleaseInIndexableWindow(release.release_date)
+    )
 
     return filteredReleases
   } catch (error) {

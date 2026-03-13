@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, ProposedEvent, TaplistItem } from '@/types/supabase'
 import { generateBrewerySlug } from './slug'
 import { expandRecurringEvents } from './utils'
+import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BreweryWithSlug extends Brewery {
   slug: string
@@ -201,19 +202,10 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
       }
     })) as BeerRelease[]
 
-    // Filter out releases older than 2 weeks, but keep future releases
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-    const twoWeeksAgoStr = twoWeeksAgo.toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
-
-    const filteredReleases = releases.filter((release) => {
-      if (!release.release_date) return true // Keep releases without dates
-      const releaseDate = new Date(release.release_date)
-      const releaseDateStr = releaseDate.toLocaleDateString('en-CA', { timeZone: 'America/Denver' })
-      // Keep if release date is within the last 2 weeks or in the future
-      return releaseDateStr >= twoWeeksAgoStr
-    })
+    // Same indexable window as sitemap and release detail (lib/contentExpiry)
+    const filteredReleases = releases.filter((release) =>
+      isReleaseInIndexableWindow(release.release_date)
+    )
 
     return filteredReleases
   } catch (error) {
@@ -229,7 +221,7 @@ export async function getBreweryTaplist(breweryId: string): Promise<TaplistItem[
   try {
     const { data, error } = await supabase
       .from('tap_list')
-      .select('brewery_id, beer_name, description, abv, type, is_active, first_seen, last_seen')
+      .select('brewery_id, beer_name, description, abv, type, is_active, first_seen_at, last_seen_at')
       .eq('brewery_id', breweryId)
       .order('beer_name', { ascending: true })
 
@@ -247,8 +239,8 @@ export async function getBreweryTaplist(breweryId: string): Promise<TaplistItem[
       abv: row.abv ?? null,
       type: row.type ?? null,
       is_active: row.is_active ?? true,
-      first_seen: row.first_seen ?? null,
-      last_seen: row.last_seen ?? null
+      first_seen: row.first_seen_at ?? null,
+      last_seen: row.last_seen_at ?? null
     })) as TaplistItem[]
   } catch (error) {
     console.error('Error fetching tap_list:', error)

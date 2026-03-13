@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { getEventBySlug, getAllEventsWithSlugs } from '@/lib/events'
+import { notFound, permanentRedirect } from 'next/navigation'
+import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs } from '@/lib/events'
+import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
 import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
@@ -53,6 +54,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const event = await getEventBySlug(slug)
 
   if (!event) {
+    const expiredEvent = await getEventBySlugIncludingExpired(slug)
+    if (expiredEvent) {
+      permanentRedirect(EXPIRED_EVENT_REDIRECT)
+    }
     notFound()
   }
 
