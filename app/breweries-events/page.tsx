@@ -126,7 +126,7 @@ export default async function BreweriesEventsPage() {
                 <div className="space-y-10">
                   {regionBreweries.map(({ brewery, events, proposed, releases, taplist }) => (
                     <div key={brewery.id}>
-                      <h3 className="text-xl font-semibold mb-4" style={{ color: Colors.textDark }}>
+                      <h3 className="text-xl font-semibold mb-4" style={{ color: Colors.textPrimary }}>
                         {brewery.name}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
