@@ -12,7 +12,9 @@ const REDIRECT_URI = 'https://hoppeningsco.com/connect-instagram/callback'
 const SCOPE = 'instagram_basic,instagram_manage_insights,pages_read_engagement'
 
 export default function ConnectInstagramPage() {
-  const clientId = process.env.NEXT_PUBLIC_META_APP_ID
+  // Next.js server components can read both NEXT_PUBLIC_* and VITE_* env vars.
+  // This keeps the route resilient if the env naming differs between environments.
+  const clientId = process.env.NEXT_PUBLIC_META_APP_ID ?? process.env.VITE_META_APP_ID
 
   const oauthUrl = clientId
     ? `${OAUTH_BASE_URL}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(
@@ -79,9 +81,11 @@ export default function ConnectInstagramPage() {
             )}
           </div>
 
-          <p className="mt-4 text-xs" style={{ color: Colors.textSecondary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-            You’ll be redirected to Meta to authorize access.
-          </p>
+          {oauthUrl && (
+            <p className="mt-4 text-xs" style={{ color: Colors.textSecondary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
+              You’ll be redirected to Meta to authorize access.
+            </p>
+          )}
         </div>
       </div>
     </div>
