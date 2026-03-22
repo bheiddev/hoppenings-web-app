@@ -40,3 +40,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Instagram OAuth (Meta)
 
 - `NEXT_PUBLIC_META_APP_ID` - Meta App ID used to start the OAuth flow on `/connect-instagram`.
+- `NEXT_PUBLIC_SITE_URL` - Canonical site origin (no trailing slash), e.g. `https://hoppeningsco.com` or `https://www.hoppeningsco.com`. Used as the base for the OAuth `redirect_uri` (`/connect-instagram/callback`). Must match what you add in Meta **App Domains** and **Valid OAuth Redirect URIs**.

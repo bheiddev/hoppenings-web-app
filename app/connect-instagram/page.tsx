@@ -8,7 +8,6 @@ export const metadata: Metadata = {
 }
 
 const OAUTH_BASE_URL = 'https://www.facebook.com/v19.0/dialog/oauth'
-const REDIRECT_URI = 'https://hoppeningsco.com/connect-instagram/callback'
 const SCOPE = 'instagram_basic,instagram_manage_insights,pages_read_engagement'
 
 export default function ConnectInstagramPage() {
@@ -16,9 +15,14 @@ export default function ConnectInstagramPage() {
   // This keeps the route resilient if the env naming differs between environments.
   const clientId = process.env.NEXT_PUBLIC_META_APP_ID ?? process.env.VITE_META_APP_ID
 
+  // Must match the site’s canonical host (www vs non-www). Meta rejects redirects whose
+  // domain isn’t in App Domains / OAuth redirect list — mismatches here cause “Can’t load URL”.
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com').replace(/\/$/, '')
+  const redirectUri = `${siteUrl}/connect-instagram/callback`
+
   const oauthUrl = clientId
     ? `${OAUTH_BASE_URL}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(
-        REDIRECT_URI
+        redirectUri
       )}&scope=${encodeURIComponent(SCOPE)}&response_type=code`
     : null
 
