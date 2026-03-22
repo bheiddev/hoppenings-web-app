@@ -6,18 +6,55 @@ import { Colors } from '@/lib/colors'
 
 type Status = 'loading' | 'success' | 'error'
 
+function metaErrorFromParams(searchParams: URLSearchParams): string | null {
+  // Meta may return ?error=...&error_description=... or ?error_code=...&error_message=...
+  const err = searchParams.get('error')
+  const errDesc = searchParams.get('error_description')
+  const errCode = searchParams.get('error_code')
+  const errMsg = searchParams.get('error_message')
+
+  if (err) {
+    return errDesc ? decodeURIComponent(errDesc.replace(/\+/g, ' ')) : err
+  }
+  if (errMsg) {
+    try {
+      return decodeURIComponent(errMsg.replace(/\+/g, ' '))
+    } catch {
+      return errMsg
+    }
+  }
+  if (errCode) {
+    return `Meta returned error code ${errCode}. Check App Domains and Valid OAuth Redirect URIs in your Meta app settings.`
+  }
+  return null
+}
+
 export default function CallbackClient() {
   const searchParams = useSearchParams()
   const code = searchParams.get('code')
+  const metaError = metaErrorFromParams(searchParams)
 
-  const [status, setStatus] = useState<Status>('loading')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [status, setStatus] = useState<Status>(() => {
+    if (metaError) return 'error'
+    if (!code) return 'error'
+    return 'loading'
+  })
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    if (metaError) return metaError
+    if (!code) return 'Meta did not return an authorization code. Check App Domains and OAuth redirect settings, then try again.'
+    return null
+  })
 
   useEffect(() => {
     async function run() {
+      if (metaError) {
+        return
+      }
       if (!code) {
         setStatus('error')
-        setErrorMessage('Missing authorization code. Please try again.')
+        setErrorMessage(
+          'Meta did not return an authorization code. Check App Domains and OAuth redirect settings, then try again.'
+        )
         return
       }
 
@@ -47,7 +84,7 @@ export default function CallbackClient() {
 
     run()
     // Meta may re-render without changing `code`; we only want to run when it changes.
-  }, [code])
+  }, [code, metaError])
 
   if (status === 'loading') {
     return (
