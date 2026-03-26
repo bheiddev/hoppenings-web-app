@@ -41,3 +41,10 @@ Instagram OAuth (Meta)
 
 - `NEXT_PUBLIC_META_APP_ID` - Meta App ID used to start the OAuth flow on `/connect-instagram`.
 - `NEXT_PUBLIC_SITE_URL` - Canonical site origin (no trailing slash), e.g. `https://hoppeningsco.com` or `https://www.hoppeningsco.com`. Used as the base for the OAuth `redirect_uri` (`/connect-instagram/callback`). Must match what you add in Meta **App Domains** and **Valid OAuth Redirect URIs**.
+
+Instagram API (server)
+
+- `META_APP_ID` - Meta App ID (server-side). For this app: `1693509758007914`.
+- `META_APP_SECRET` - Meta App secret (server-side).
+- `META_REDIRECT_URI` - Must exactly match the OAuth redirect used by Meta, e.g. `https://hoppeningsco.com/connect-instagram/callback`.
+- `INSTAGRAM_REFRESH_API_KEY` - Shared secret used to authenticate `POST /api/instagram/refresh-tokens` via `x-api-key`.
