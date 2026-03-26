@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 
 export const metadata: Metadata = {
-  title: 'Connect Instagram | Hoppenings',
-  description: 'Connect your Instagram Business account to Hoppenings.',
+  title: 'Connect Facebook & Instagram | Hoppenings',
+  description: 'Connect your Facebook Page and Instagram Business account to Hoppenings.',
 }
 
 const OAUTH_BASE_URL = 'https://www.facebook.com/v19.0/dialog/oauth'
@@ -41,12 +41,15 @@ export default function ConnectInstagramPage() {
             Back to Breweries
           </Link>
 
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            Connect Instagram
+          <h1
+            className="text-4xl font-bold mb-2"
+            style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+          >
+            Connect Facebook &amp; Instagram
           </h1>
 
           <p className="text-base leading-relaxed" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-            Let Hoppenings display your latest Instagram posts to craft beer fans in your area
+            Gives Hoppenings access to crawl your public facebook and instagram posts
           </p>
         </div>
 
@@ -54,16 +57,57 @@ export default function ConnectInstagramPage() {
           className="rounded-lg p-6"
           style={{ backgroundColor: Colors.background, borderColor: Colors.dividerLight, borderWidth: 1 }}
         >
-          <h2 className="text-lg font-bold mb-3" style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}>
-            What we’ll access
+          <h2
+            className="text-lg font-bold mb-3"
+            style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+          >
+            What providing this token to Hoppenings does
           </h2>
 
-          <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-            <li>Read your posts so your latest updates can be shown on Hoppenings.</li>
-            <li>Read your profile info so we can verify you connected the right Instagram Business account.</li>
-            <li>Read insights so we can improve what we display (we never post or message on your behalf).</li>
-            <li>We never post on your behalf — you’re always in control of your Instagram.</li>
-          </ul>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              className="rounded-lg p-4 border"
+              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.backgroundLight }}
+            >
+              <div
+                className="text-sm font-bold mb-3"
+                style={{ color: Colors.error, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                ❌ Cannot:
+              </div>
+              <ul
+                className="list-disc pl-5 space-y-2 text-sm"
+                style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
+              >
+                <li>Post, edit, or delete anything on their Instagram</li>
+                <li>Log into their Instagram account</li>
+                <li>Access their Instagram DMs</li>
+                <li>See their personal Facebook profile (only the business Page)</li>
+                <li>Access any account that hasn't explicitly authorized you</li>
+              </ul>
+            </div>
+
+            <div
+              className="rounded-lg p-4 border"
+              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.backgroundLight }}
+            >
+              <div
+                className="text-sm font-bold mb-3"
+                style={{ color: Colors.success, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                ✅ Can only:
+              </div>
+              <ul
+                className="list-disc pl-5 space-y-2 text-sm"
+                style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
+              >
+                <li>Read their posts and captions</li>
+                <li>Read their profile info (username, follower count, etc.)</li>
+                <li>Read their post insights/metrics</li>
+                <li>Read their Facebook Page posts and events</li>
+              </ul>
+            </div>
+          </div>
 
           <div className="mt-8 flex justify-center">
             {oauthUrl ? (
@@ -76,7 +120,7 @@ export default function ConnectInstagramPage() {
                   fontFamily: 'var(--font-fjalla-one)',
                 }}
               >
-                Connect Instagram
+                Connect Facebook &amp; Instagram
               </a>
             ) : (
               <div className="text-sm" style={{ color: Colors.textSecondary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
