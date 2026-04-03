@@ -49,7 +49,7 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
         </div>
       )}
       <div
-        className="flex flex-col h-64 border rounded-lg overflow-hidden"
+        className="flex flex-col min-h-[18rem] max-h-[32rem] border rounded-lg overflow-hidden w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
@@ -70,16 +70,25 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
                 style={{ backgroundColor: Colors.backgroundLight }}
               >
                 <tr>
-                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                  <th className="p-2 font-medium min-w-[10rem]" style={{ color: Colors.textDark }}>
                     Title
                   </th>
-                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                  <th className="p-2 font-medium min-w-[16rem]" style={{ color: Colors.textDark }}>
+                    Description
+                  </th>
+                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
                     Date
                   </th>
-                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                    Time
+                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
+                    Start
                   </th>
-                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
+                    End
+                  </th>
+                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
+                    Cost
+                  </th>
+                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
                     Actions
                   </th>
                 </tr>
@@ -88,15 +97,24 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
                 {events.map((e) => (
                   <tr
                     key={e.id}
-                    className="border-t"
+                    className="border-t align-top"
                     style={{ borderColor: Colors.dividerLight }}
                   >
-                    <td className="p-2">{e.title || '—'}</td>
-                    <td className="p-2">
+                    <td className="p-2 break-words">{e.title || '—'}</td>
+                    <td className="p-2 text-xs break-words whitespace-pre-wrap">
+                      {e.description?.trim() ? e.description : '—'}
+                    </td>
+                    <td className="p-2 whitespace-nowrap">
                       {e.event_date ? formatEventDate(e.event_date) : '—'}
                     </td>
-                    <td className="p-2">
+                    <td className="p-2 whitespace-nowrap">
                       {e.start_time ? formatTime12Hour(e.start_time) : '—'}
+                    </td>
+                    <td className="p-2 whitespace-nowrap">
+                      {e.end_time ? formatTime12Hour(e.end_time) : '—'}
+                    </td>
+                    <td className="p-2 whitespace-nowrap">
+                      {e.cost != null ? String(e.cost) : '—'}
                     </td>
                     <td className="p-2">
                       <button

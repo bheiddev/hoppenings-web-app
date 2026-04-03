@@ -77,7 +77,7 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
         </div>
       )}
       <div
-        className="flex flex-col h-64 border rounded-lg overflow-hidden"
+        className="flex flex-col min-h-[18rem] max-h-[32rem] border rounded-lg overflow-hidden w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
