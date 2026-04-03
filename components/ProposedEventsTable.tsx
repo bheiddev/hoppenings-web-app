@@ -77,7 +77,7 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
         </div>
       )}
       <div
-        className="flex flex-col min-h-[18rem] max-h-[32rem] border rounded-lg overflow-hidden w-full"
+        className="flex flex-col border rounded-lg overflow-hidden w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
@@ -86,20 +86,25 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
         >
           {title}
         </div>
-        <div className="flex-1 overflow-auto min-h-0">
+        <div
+          className="min-h-[12rem] max-h-[min(32rem,70vh)] overflow-y-auto overflow-x-auto overscroll-y-contain [scrollbar-gutter:stable]"
+        >
           {proposed.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No proposed events
             </p>
           ) : (
-            <table className="w-full text-left text-sm border-collapse">
+            <table className="w-full text-left text-sm border-collapse min-w-[52rem]">
               <thead
                 className="sticky top-0 z-10"
                 style={{ backgroundColor: Colors.backgroundLight }}
               >
                 <tr>
-                  <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                  <th className="p-2 font-medium min-w-[10rem]" style={{ color: Colors.textDark }}>
                     Title
+                  </th>
+                  <th className="p-2 font-medium min-w-[16rem]" style={{ color: Colors.textDark }}>
+                    Description
                   </th>
                   <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
                     Date
@@ -119,10 +124,13 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
                 {proposed.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-t"
+                    className="border-t align-top"
                     style={{ borderColor: Colors.dividerLight }}
                   >
-                    <td className="p-2">{p.title || '—'}</td>
+                    <td className="p-2 break-words">{p.title || '—'}</td>
+                    <td className="p-2 text-xs break-words whitespace-pre-wrap">
+                      {p.description?.trim() ? p.description : '—'}
+                    </td>
                     <td className="p-2">
                       {p.event_date ? formatEventDate(p.event_date) : '—'}
                     </td>

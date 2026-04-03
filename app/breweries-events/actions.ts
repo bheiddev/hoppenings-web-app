@@ -93,6 +93,46 @@ export async function updateProposedEvent(
   return { ok: true }
 }
 
+export type UpdateEventPayload = {
+  title: string
+  description: string | null
+  event_date: string
+  start_time: string | null
+  end_time: string | null
+  cost: number | null
+  featured: boolean
+  is_recurring: boolean
+  is_recurring_biweekly: boolean
+  is_recurring_monthly: boolean
+}
+
+export async function updateEventInEventsBase(eventId: string, data: UpdateEventPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('events_base')
+    .update({
+      title: data.title,
+      description: data.description,
+      event_date: data.event_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      cost: data.cost,
+      featured: data.featured,
+      is_recurring: data.is_recurring,
+      is_recurring_biweekly: data.is_recurring_biweekly,
+      is_recurring_monthly: data.is_recurring_monthly,
+    })
+    .eq('id', eventId)
+
+  if (error) {
+    console.error('Error updating event:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  return { ok: true }
+}
+
 export async function deleteEventFromEventsBase(eventId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
