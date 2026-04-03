@@ -25,32 +25,68 @@ type BreweryWithData = {
   releases: BeerRelease[]
 }
 
-const REGION_SECTIONS: { key: string; title: string }[] = [
-  { key: 'Colorado Springs', title: 'Colorado Springs Breweries' },
-  { key: 'Fort Collins', title: 'Fort Collins Breweries' },
-  { key: '__other__', title: 'Other Breweries' },
-]
+/** Normalized key for breweries with no Region set (displayed as "Other") */
+const UNASSIGNED_REGION_KEY = '__unassigned__'
 
-function regionSectionId(key: string) {
-  if (key === '__other__') return 'region-other'
-  return `region-${key.toLowerCase().replace(/\s+/g, '-')}`
+function bucketForRegion(region: string | null): { normKey: string; displayLabel: string } {
+  const trimmed = region?.trim()
+  if (!trimmed) {
+    return { normKey: UNASSIGNED_REGION_KEY, displayLabel: 'Other' }
+  }
+  return { normKey: trimmed.toLowerCase(), displayLabel: trimmed }
+}
+
+function regionAnchorId(normKey: string, displayLabel: string): string {
+  if (normKey === UNASSIGNED_REGION_KEY) return 'region-other'
+  const slug = displayLabel
+    .trim()
+    .toLowerCase()
+    .replace(/[/\s]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  if (slug) return `region-${slug}`
+  return `region-${normKey.replace(/[^a-z0-9]+/gi, '-')}`
+}
+
+type RegionBucket = {
+  normKey: string
+  displayLabel: string
+  sectionHeading: string
+  anchorId: string
+}
+
+/** One section per distinct Region value in the DB (case-insensitive merge); null/empty → Other */
+function buildRegionBuckets(breweriesWithData: BreweryWithData[]): RegionBucket[] {
+  const labelByNorm = new Map<string, string>()
+  for (const row of breweriesWithData) {
+    const { normKey, displayLabel } = bucketForRegion(row.brewery.region)
+    if (!labelByNorm.has(normKey)) labelByNorm.set(normKey, displayLabel)
+  }
+  const keys = [...labelByNorm.keys()].sort((a, b) => {
+    if (a === UNASSIGNED_REGION_KEY) return 1
+    if (b === UNASSIGNED_REGION_KEY) return -1
+    return (labelByNorm.get(a) || '').localeCompare(labelByNorm.get(b) || '', undefined, {
+      sensitivity: 'base',
+    })
+  })
+  return keys.map((normKey) => {
+    const displayLabel = labelByNorm.get(normKey) || 'Other'
+    return {
+      normKey,
+      displayLabel,
+      sectionHeading: `${displayLabel} Breweries`,
+      anchorId: regionAnchorId(normKey, displayLabel),
+    }
+  })
 }
 
 function groupByRegion(breweriesWithData: BreweryWithData[]): Map<string, BreweryWithData[]> {
   const map = new Map<string, BreweryWithData[]>()
-  for (const { key } of REGION_SECTIONS) {
-    map.set(key, [])
-  }
   for (const row of breweriesWithData) {
-    const region = row.brewery.region?.trim().toLowerCase() ?? ''
-    const section = REGION_SECTIONS.find(
-      (s) => s.key !== '__other__' && s.key.toLowerCase() === region
-    )
-    if (section) {
-      map.get(section.key)!.push(row)
-    } else {
-      map.get('__other__')!.push(row)
-    }
+    const { normKey } = bucketForRegion(row.brewery.region)
+    if (!map.has(normKey)) map.set(normKey, [])
+    map.get(normKey)!.push(row)
   }
   return map
 }
@@ -169,13 +205,22 @@ function BeerReleasesTable({ releases, title }: { releases: BeerRelease[]; title
 export default async function BreweriesEventsPage() {
   const breweriesWithData = await getBreweriesWithEvents()
   const byRegion = groupByRegion(breweriesWithData)
+  const regionBuckets = buildRegionBuckets(breweriesWithData)
 
-  const regionMetrics = REGION_SECTIONS.map(({ key, title }) => {
-    const rows = byRegion.get(key) ?? []
+  const regionMetrics = regionBuckets.map((b) => {
+    const rows = byRegion.get(b.normKey) ?? []
     const breweryCount = rows.length
     const eventCount = rows.reduce((sum, r) => sum + r.events.length, 0)
     const releaseCount = rows.reduce((sum, r) => sum + r.releases.length, 0)
-    return { key, title, breweryCount, eventCount, releaseCount, anchorId: regionSectionId(key) }
+    return {
+      normKey: b.normKey,
+      sectionHeading: b.sectionHeading,
+      displayLabel: b.displayLabel,
+      breweryCount,
+      eventCount,
+      releaseCount,
+      anchorId: b.anchorId,
+    }
   })
 
   const breweryBreakdown: {
@@ -185,14 +230,14 @@ export default async function BreweriesEventsPage() {
     events: number
     releases: number
   }[] = []
-  for (const { key, title } of REGION_SECTIONS) {
-    const rows = [...(byRegion.get(key) ?? [])].sort((a, b) =>
-      a.brewery.name.localeCompare(b.brewery.name)
+  for (const b of regionBuckets) {
+    const rows = [...(byRegion.get(b.normKey) ?? [])].sort((a, bRow) =>
+      a.brewery.name.localeCompare(bRow.brewery.name)
     )
     for (const row of rows) {
       breweryBreakdown.push({
-        regionTitle: title,
-        regionKey: key,
+        regionTitle: b.sectionHeading,
+        regionKey: b.normKey,
         breweryName: row.brewery.name,
         events: row.events.length,
         releases: row.releases.length,
@@ -228,13 +273,13 @@ export default async function BreweriesEventsPage() {
               </p>
               <ul className="space-y-2">
                 {regionMetrics.map((r) => (
-                  <li key={r.key}>
+                  <li key={r.normKey}>
                     <a
                       href={`#${r.anchorId}`}
                       className="text-sm underline hover:opacity-80"
                       style={{ color: Colors.primary }}
                     >
-                      {r.title.replace(' Breweries', '')}
+                      {r.displayLabel}
                     </a>
                   </li>
                 ))}
@@ -261,8 +306,8 @@ export default async function BreweriesEventsPage() {
                 </thead>
                 <tbody style={{ color: Colors.textDark }}>
                   {regionMetrics.map((r) => (
-                    <tr key={r.key} className="border-t" style={{ borderColor: Colors.dividerLight }}>
-                      <td className="p-2">{r.title.replace(' Breweries', '')}</td>
+                    <tr key={r.normKey} className="border-t" style={{ borderColor: Colors.dividerLight }}>
+                      <td className="p-2">{r.displayLabel}</td>
                       <td className="p-2 text-right tabular-nums">{r.breweryCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.eventCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.releaseCount}</td>
@@ -319,16 +364,16 @@ export default async function BreweriesEventsPage() {
         </section>
 
         <div className="space-y-12">
-          {REGION_SECTIONS.map(({ key, title }) => {
-            const regionBreweries = byRegion.get(key) ?? []
+          {regionBuckets.map((b) => {
+            const regionBreweries = byRegion.get(b.normKey) ?? []
             if (regionBreweries.length === 0) return null
             return (
-              <section key={key} id={regionSectionId(key)} className="scroll-mt-24">
+              <section key={b.normKey} id={b.anchorId} className="scroll-mt-24">
                 <h2
                   className="text-2xl font-bold mb-6"
                   style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
                 >
-                  {title}
+                  {b.sectionHeading}
                 </h2>
                 <div className="space-y-10">
                   {regionBreweries.map(({ brewery, events, proposed, releases }) => (
