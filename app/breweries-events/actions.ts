@@ -149,6 +149,57 @@ export async function deleteEventFromEventsBase(eventId: string) {
   return { ok: true }
 }
 
+export type UpdateBeerReleasePayload = {
+  beer_name: string
+  ABV: string | null
+  Type: string | null
+  description: string | null
+  brewery_id: string
+  brewery_id2: string | null
+  brewery_id3: string | null
+  release_date: string | null
+}
+
+export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBeerReleasePayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('beer_releases_base')
+    .update({
+      beer_name: data.beer_name,
+      ABV: data.ABV,
+      Type: data.Type,
+      description: data.description,
+      brewery_id: data.brewery_id,
+      brewery_id2: data.brewery_id2,
+      brewery_id3: data.brewery_id3,
+      release_date: data.release_date,
+    })
+    .eq('id', releaseId)
+
+  if (error) {
+    console.error('Error updating beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidatePath('/releases')
+  return { ok: true }
+}
+
+export async function deleteBeerReleaseFromBase(releaseId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!.from('beer_releases_base').delete().eq('id', releaseId)
+
+  if (error) {
+    console.error('Error deleting beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidatePath('/releases')
+  return { ok: true }
+}
+
 export async function addTaplistItemToReleases(item: TaplistItem) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }

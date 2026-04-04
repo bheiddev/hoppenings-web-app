@@ -5,11 +5,11 @@ import {
   getProposedEventsByBreweryId,
   getBreweryReleases,
 } from '@/lib/breweries'
-import { formatReleaseDate } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { Event, BeerRelease, ProposedEvent } from '@/types/supabase'
 import { ProposedEventsTable } from '@/components/ProposedEventsTable'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
+import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,104 +102,6 @@ async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
     }))
   )
   return results
-}
-
-function formatCreatedAt(iso: string) {
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      timeZone: 'America/Denver',
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-  } catch {
-    return iso
-  }
-}
-
-function BeerReleasesTable({ releases, title }: { releases: BeerRelease[]; title: string }) {
-  return (
-    <div
-      className="flex flex-col min-h-[18rem] max-h-[36rem] border rounded-lg overflow-hidden w-full"
-      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
-    >
-      <div
-        className="flex-shrink-0 px-3 py-2 font-semibold text-sm"
-        style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
-      >
-        {title}
-      </div>
-      <div className="flex-1 overflow-auto min-h-0">
-        {releases.length === 0 ? (
-          <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-            No beer releases
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse min-w-[72rem]">
-              <thead className="sticky top-0 z-10" style={{ backgroundColor: Colors.backgroundLight }}>
-                <tr>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    ID
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Created
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Beer
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Type
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    ABV
-                  </th>
-                  <th className="p-2 font-medium min-w-[12rem]" style={{ color: Colors.textDark }}>
-                    Description
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Brewery (join)
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id2
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id3
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Release date
-                  </th>
-                </tr>
-              </thead>
-              <tbody style={{ color: Colors.textDark }}>
-                {releases.map((r) => (
-                  <tr key={r.id} className="border-t align-top" style={{ borderColor: Colors.dividerLight }}>
-                    <td className="p-2 font-mono text-xs whitespace-nowrap">{r.id}</td>
-                    <td className="p-2 whitespace-nowrap">{formatCreatedAt(r.created_at)}</td>
-                    <td className="p-2">{r.beer_name || '—'}</td>
-                    <td className="p-2">{r.Type || '—'}</td>
-                    <td className="p-2">{r.ABV ?? '—'}</td>
-                    <td className="p-2 text-xs break-words whitespace-pre-wrap max-w-md">
-                      {r.description?.trim() ? r.description : '—'}
-                    </td>
-                    <td className="p-2">{r.breweries?.name || '—'}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id2 ?? '—'}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id3 ?? '—'}</td>
-                    <td className="p-2 whitespace-nowrap">
-                      {r.release_date ? formatReleaseDate(r.release_date) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 export default async function BreweriesEventsPage() {
@@ -383,7 +285,7 @@ export default async function BreweriesEventsPage() {
                       </h3>
                       <EventsTableWithDelete events={events} title="Events" />
                       <ProposedEventsTable proposed={proposed} title="Proposed events" />
-                      <BeerReleasesTable releases={releases} title="Beer releases" />
+                      <BeerReleasesTableWithActions releases={releases} title="Beer releases" />
                     </div>
                   ))}
                 </div>
