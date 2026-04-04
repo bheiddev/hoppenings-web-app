@@ -280,8 +280,18 @@ export default async function BreweriesEventsPage() {
                 <div className="space-y-10">
                   {regionBreweries.map(({ brewery, events, proposed, releases }) => (
                     <div key={brewery.id} className="space-y-6">
-                      <h3 className="text-xl font-semibold" style={{ color: Colors.textPrimary }}>
-                        {brewery.name}
+                      <h3
+                        className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+                        style={{ color: Colors.textPrimary }}
+                      >
+                        <span>{brewery.name}</span>
+                        <span
+                          className="text-xs font-mono font-normal shrink-0"
+                          style={{ color: Colors.textSecondary }}
+                          title="Brewery UUID"
+                        >
+                          {brewery.id}
+                        </span>
                       </h3>
                       <EventsTableWithDelete events={events} title="Events" />
                       <ProposedEventsTable proposed={proposed} title="Proposed events" />
