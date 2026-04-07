@@ -47,7 +47,8 @@ async function getEvents(): Promise<Event[]> {
         breweries (
           id,
           name,
-          location
+          location,
+          Region
         )
       `)
       .order('event_date', { ascending: true })
@@ -84,7 +85,8 @@ async function getEvents(): Promise<Event[]> {
       breweries: {
         id: event.breweries?.id || '',
         name: event.breweries?.name || '',
-        location: event.breweries?.location || null
+        location: event.breweries?.location || null,
+        Region: event.breweries?.Region || null
       }
     })) as Event[]
 
@@ -100,6 +102,33 @@ async function getEvents(): Promise<Event[]> {
     }
     return []
   }
+}
+
+function bucketRegion(region: string | null | undefined): string {
+  const trimmed = region?.trim()
+  return trimmed ? trimmed : 'Other'
+}
+
+function groupEventsByRegion(events: Event[]): Record<string, Event[]> {
+  const grouped: Record<string, Event[]> = {}
+
+  events.forEach((event) => {
+    const key = bucketRegion(event.breweries?.Region)
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(event)
+  })
+
+  const sortedKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === 'Other') return 1
+    if (b === 'Other') return -1
+    return a.localeCompare(b, undefined, { sensitivity: 'base' })
+  })
+
+  const sorted: Record<string, Event[]> = {}
+  sortedKeys.forEach((key) => {
+    sorted[key] = grouped[key]
+  })
+  return sorted
 }
 
 export default async function EventsPage() {
@@ -140,13 +169,25 @@ export default async function EventsPage() {
                     {date}
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {dateEvents.map((event) => (
-                    <EventCard 
-                      key={event.id} 
-                      event={event} 
-                      isFeatured={event.featured}
-                    />
+                <div className="space-y-6">
+                  {Object.entries(groupEventsByRegion(dateEvents)).map(([region, regionEvents]) => (
+                    <section key={`${date}-${region}`} className="space-y-3">
+                      <h3
+                        className="text-lg font-bold"
+                        style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+                      >
+                        {region}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {regionEvents.map((event) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            isFeatured={event.featured}
+                          />
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </div>

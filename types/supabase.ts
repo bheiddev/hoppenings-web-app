@@ -57,6 +57,7 @@ export interface Event {
     id: string;
     name: string;
     location?: string | null;
+    Region?: string | null;
   };
 }
 
@@ -75,6 +76,7 @@ export interface BeerRelease {
     id: string;
     name: string;
     location?: string | null;
+    Region?: string | null;
   };
 }
 

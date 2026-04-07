@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 
 export default function AppBanner() {
+  const pathname = usePathname()
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function AppBanner() {
     localStorage.setItem('appBannerDismissed', 'true')
   }
 
+  if (pathname === '/collab-fest-ad') return null
   if (!isVisible) return null
 
   return (

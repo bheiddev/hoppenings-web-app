@@ -37,6 +37,23 @@ async function getBreweries(): Promise<Brewery[]> {
   }
 }
 
+function regionForBrewery(brewery: Brewery): string {
+  const region = brewery.Region?.trim()
+  return region || 'Other'
+}
+
+function groupBreweriesByRegion(breweries: Brewery[]): Record<string, Brewery[]> {
+  const grouped: Record<string, Brewery[]> = {}
+
+  breweries.forEach((brewery) => {
+    const region = regionForBrewery(brewery)
+    if (!grouped[region]) grouped[region] = []
+    grouped[region].push(brewery)
+  })
+
+  return grouped
+}
+
 export default async function BreweriesPage() {
   const breweries = await getBreweries()
 
@@ -54,12 +71,29 @@ export default async function BreweriesPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {breweries.map((brewery) => (
-              <BreweryCard 
-                key={brewery.id} 
-                brewery={brewery}
-              />
+          <div className="space-y-8">
+            {Object.entries(groupBreweriesByRegion(breweries))
+              .sort(([regionA], [regionB]) => {
+                if (regionA === 'Other') return 1
+                if (regionB === 'Other') return -1
+                return regionA.localeCompare(regionB, undefined, { sensitivity: 'base' })
+              })
+              .map(([region, regionBreweries]) => (
+              <section key={region} className="space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b-2" style={{ borderColor: Colors.dividerLight }}>
+                  <h2 className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                    {region}
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {regionBreweries.map((brewery) => (
+                    <BreweryCard
+                      key={brewery.id}
+                      brewery={brewery}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

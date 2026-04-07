@@ -7,6 +7,10 @@ import { Colors } from '@/lib/colors'
 export default function Navigation() {
   const pathname = usePathname()
 
+  if (pathname === '/collab-fest-ad') {
+    return null
+  }
+
   const navItems = [
     { href: '/events', label: 'EVENTS' },
     { href: '/releases', label: 'RELEASES' },

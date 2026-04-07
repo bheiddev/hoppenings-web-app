@@ -113,6 +113,7 @@ export default async function BreweriesEventsPage() {
     const rows = byRegion.get(b.normKey) ?? []
     const breweryCount = rows.length
     const eventCount = rows.reduce((sum, r) => sum + r.events.length, 0)
+    const proposedCount = rows.reduce((sum, r) => sum + r.proposed.length, 0)
     const releaseCount = rows.reduce((sum, r) => sum + r.releases.length, 0)
     return {
       normKey: b.normKey,
@@ -120,6 +121,7 @@ export default async function BreweriesEventsPage() {
       displayLabel: b.displayLabel,
       breweryCount,
       eventCount,
+      proposedCount,
       releaseCount,
       anchorId: b.anchorId,
     }
@@ -130,6 +132,7 @@ export default async function BreweriesEventsPage() {
     regionKey: string
     breweryName: string
     events: number
+    proposed: number
     releases: number
   }[] = []
   for (const b of regionBuckets) {
@@ -142,6 +145,7 @@ export default async function BreweriesEventsPage() {
         regionKey: b.normKey,
         breweryName: row.brewery.name,
         events: row.events.length,
+        proposed: row.proposed.length,
         releases: row.releases.length,
       })
     }
@@ -202,6 +206,9 @@ export default async function BreweriesEventsPage() {
                       Events
                     </th>
                     <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
+                      Proposed events
+                    </th>
+                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
                       Beer releases
                     </th>
                   </tr>
@@ -212,6 +219,7 @@ export default async function BreweriesEventsPage() {
                       <td className="p-2">{r.displayLabel}</td>
                       <td className="p-2 text-right tabular-nums">{r.breweryCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.eventCount}</td>
+                      <td className="p-2 text-right tabular-nums">{r.proposedCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.releaseCount}</td>
                     </tr>
                   ))}
@@ -222,7 +230,7 @@ export default async function BreweriesEventsPage() {
 
           <div className="mt-8 pt-8 border-t" style={{ borderColor: Colors.dividerLight }}>
             <p className="text-sm font-semibold mb-3" style={{ color: Colors.textDark }}>
-              Events &amp; releases by brewery
+              Events, proposed events &amp; releases by brewery
             </p>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-sm border-collapse min-w-[36rem]">
@@ -238,6 +246,9 @@ export default async function BreweriesEventsPage() {
                       Events
                     </th>
                     <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
+                      Proposed events
+                    </th>
+                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
                       Beer releases
                     </th>
                   </tr>
@@ -245,7 +256,7 @@ export default async function BreweriesEventsPage() {
                 <tbody style={{ color: Colors.textDark }}>
                   {breweryBreakdown.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                      <td colSpan={5} className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No breweries loaded.
                       </td>
                     </tr>
@@ -255,6 +266,7 @@ export default async function BreweriesEventsPage() {
                         <td className="p-2 whitespace-nowrap">{row.regionTitle.replace(' Breweries', '')}</td>
                         <td className="p-2">{row.breweryName}</td>
                         <td className="p-2 text-right tabular-nums">{row.events}</td>
+                        <td className="p-2 text-right tabular-nums">{row.proposed}</td>
                         <td className="p-2 text-right tabular-nums">{row.releases}</td>
                       </tr>
                     ))

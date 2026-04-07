@@ -29,7 +29,8 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
         breweries!beer_releases_brewery_id_fkey (
           id,
           name,
-          location
+          location,
+          Region
         )
       `)
       .order('created_at', { ascending: false })
@@ -57,7 +58,8 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
       breweries: {
         id: release.breweries?.id || '',
         name: release.breweries?.name || 'Unknown Brewery',
-        location: release.breweries?.location || null
+        location: release.breweries?.location || null,
+        Region: release.breweries?.Region || null
       }
     })) as BeerRelease[]
 
@@ -118,7 +120,8 @@ async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[
         breweries!beer_releases_brewery_id_fkey (
           id,
           name,
-          location
+          location,
+          Region
         )
       `)
       .order('created_at', { ascending: false })
@@ -145,7 +148,8 @@ async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[
       breweries: {
         id: release.breweries?.id || '',
         name: release.breweries?.name || 'Unknown Brewery',
-        location: release.breweries?.location || null
+        location: release.breweries?.location || null,
+        Region: release.breweries?.Region || null
       }
     })) as BeerRelease[]
 
