@@ -278,6 +278,13 @@ export default async function BreweriesEventsPage() {
                           >
                             {row.breweryName}
                           </a>
+                          <div
+                            className="text-xs font-mono mt-1"
+                            style={{ color: Colors.textSecondary }}
+                            title="Brewery UUID"
+                          >
+                            {row.breweryId}
+                          </div>
                         </td>
                         <td className="p-2 text-right tabular-nums">{row.events}</td>
                         <td className="p-2 text-right tabular-nums">{row.proposed}</td>
