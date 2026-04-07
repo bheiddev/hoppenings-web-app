@@ -56,6 +56,10 @@ type RegionBucket = {
   anchorId: string
 }
 
+function breweryAnchorId(breweryId: string): string {
+  return `brewery-${breweryId}`
+}
+
 /** One section per distinct Region value in the DB (case-insensitive merge); null/empty → Other */
 function buildRegionBuckets(breweriesWithData: BreweryWithData[]): RegionBucket[] {
   const labelByNorm = new Map<string, string>()
@@ -130,6 +134,7 @@ export default async function BreweriesEventsPage() {
   const breweryBreakdown: {
     regionTitle: string
     regionKey: string
+    breweryId: string
     breweryName: string
     events: number
     proposed: number
@@ -143,6 +148,7 @@ export default async function BreweriesEventsPage() {
       breweryBreakdown.push({
         regionTitle: b.sectionHeading,
         regionKey: b.normKey,
+        breweryId: row.brewery.id,
         breweryName: row.brewery.name,
         events: row.events.length,
         proposed: row.proposed.length,
@@ -264,7 +270,15 @@ export default async function BreweriesEventsPage() {
                     breweryBreakdown.map((row, i) => (
                       <tr key={`${row.regionKey}-${row.breweryName}-${i}`} className="border-t" style={{ borderColor: Colors.dividerLight }}>
                         <td className="p-2 whitespace-nowrap">{row.regionTitle.replace(' Breweries', '')}</td>
-                        <td className="p-2">{row.breweryName}</td>
+                        <td className="p-2">
+                          <a
+                            href={`#${breweryAnchorId(row.breweryId)}`}
+                            className="underline hover:opacity-80"
+                            style={{ color: Colors.primary }}
+                          >
+                            {row.breweryName}
+                          </a>
+                        </td>
                         <td className="p-2 text-right tabular-nums">{row.events}</td>
                         <td className="p-2 text-right tabular-nums">{row.proposed}</td>
                         <td className="p-2 text-right tabular-nums">{row.releases}</td>
@@ -291,7 +305,7 @@ export default async function BreweriesEventsPage() {
                 </h2>
                 <div className="space-y-10">
                   {regionBreweries.map(({ brewery, events, proposed, releases }) => (
-                    <div key={brewery.id} className="space-y-6">
+                    <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-6 scroll-mt-24">
                       <h3
                         className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
                         style={{ color: Colors.textPrimary }}
