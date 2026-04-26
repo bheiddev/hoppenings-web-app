@@ -88,6 +88,35 @@ export function groupEventsByDate(events: Event[]): Record<string, Event[]> {
   return grouped;
 }
 
+/** Region label for grouping; empty/null becomes "Other". */
+export function bucketRegion(region: string | null | undefined): string {
+  const trimmed = region?.trim();
+  return trimmed ? trimmed : 'Other';
+}
+
+/** Group events by brewery region; keys sorted alphabetically with "Other" last. */
+export function groupEventsByRegion(events: Event[]): Record<string, Event[]> {
+  const grouped: Record<string, Event[]> = {};
+
+  events.forEach((event) => {
+    const key = bucketRegion(event.breweries?.Region);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(event);
+  });
+
+  const sortedKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === 'Other') return 1;
+    if (b === 'Other') return -1;
+    return a.localeCompare(b, undefined, { sensitivity: 'base' });
+  });
+
+  const sorted: Record<string, Event[]> = {};
+  sortedKeys.forEach((key) => {
+    sorted[key] = grouped[key];
+  });
+  return sorted;
+}
+
 /**
  * Get current date/time components in Mountain Time
  */

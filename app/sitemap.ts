@@ -35,6 +35,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }))
 
+  const cityCategoryPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) => ([
+    {
+      url: `${BASE_URL}/${city}/breweries`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/${city}/releases`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
+  ]))
+
   const cityActivityPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) =>
     Object.keys(ACTIVITY_CONFIG).map((activity) => ({
       url: `${BASE_URL}/${city}/${activity}`,
@@ -65,5 +80,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  return [...staticPages, ...cityPages, ...cityActivityPages, ...releasePages, ...eventPages, ...breweryPages]
+  return [
+    ...staticPages,
+    ...cityPages,
+    ...cityCategoryPages,
+    ...cityActivityPages,
+    ...releasePages,
+    ...eventPages,
+    ...breweryPages,
+  ]
 }

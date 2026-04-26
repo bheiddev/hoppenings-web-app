@@ -20,7 +20,8 @@ function cityFromLocation(location?: string | null): string {
 
 function cityPagePath(city: string): string {
   const slug = city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  const allowed = new Set(['colorado-springs', 'fort-collins', 'boulder', 'longmont'])
+  if (slug === 'boulder' || slug === 'longmont') return '/boulder-longmont'
+  const allowed = new Set(['colorado-springs', 'fort-collins', 'boulder-longmont'])
   return allowed.has(slug) ? `/${slug}` : '/events'
 }
 

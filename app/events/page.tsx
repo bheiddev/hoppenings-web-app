@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { supabase } from '@/lib/supabase'
 import { Event } from '@/types/supabase'
-import { expandRecurringEvents, groupEventsByDate, formatEventDate } from '@/lib/utils'
+import { expandRecurringEvents, groupEventsByDate, groupEventsByRegion } from '@/lib/utils'
 import { EventCard } from '@/components/EventCard'
 import { Colors } from '@/lib/colors'
 
@@ -102,33 +102,6 @@ async function getEvents(): Promise<Event[]> {
     }
     return []
   }
-}
-
-function bucketRegion(region: string | null | undefined): string {
-  const trimmed = region?.trim()
-  return trimmed ? trimmed : 'Other'
-}
-
-function groupEventsByRegion(events: Event[]): Record<string, Event[]> {
-  const grouped: Record<string, Event[]> = {}
-
-  events.forEach((event) => {
-    const key = bucketRegion(event.breweries?.Region)
-    if (!grouped[key]) grouped[key] = []
-    grouped[key].push(event)
-  })
-
-  const sortedKeys = Object.keys(grouped).sort((a, b) => {
-    if (a === 'Other') return 1
-    if (b === 'Other') return -1
-    return a.localeCompare(b, undefined, { sensitivity: 'base' })
-  })
-
-  const sorted: Record<string, Event[]> = {}
-  sortedKeys.forEach((key) => {
-    sorted[key] = grouped[key]
-  })
-  return sorted
 }
 
 export default async function EventsPage() {

@@ -2,7 +2,7 @@ import { BeerRelease } from '@/types/supabase'
 import { EventWithSlug } from '@/lib/events'
 import { BreweryWithSlug } from '@/lib/breweries'
 
-export type CitySlug = 'colorado-springs' | 'fort-collins' | 'boulder' | 'longmont'
+export type CitySlug = 'colorado-springs' | 'fort-collins' | 'boulder-longmont'
 export type ActivitySlug = 'trivia-nights' | 'run-clubs' | 'bingo' | 'live-music'
 
 export const CITY_CONFIG: Record<
@@ -37,15 +37,10 @@ export const CITY_CONFIG: Record<
     regionMatchers: ['fort collins'],
     locationMatchers: ['fort collins'],
   },
-  boulder: {
-    name: 'Boulder',
-    regionMatchers: ['boulder'],
-    locationMatchers: ['boulder'],
-  },
-  longmont: {
-    name: 'Longmont',
-    regionMatchers: ['longmont', 'boulder / longmont'],
-    locationMatchers: ['longmont'],
+  'boulder-longmont': {
+    name: 'Boulder & Longmont',
+    regionMatchers: ['boulder / longmont', 'boulder', 'longmont'],
+    locationMatchers: ['boulder', 'longmont'],
   },
 }
 
@@ -82,10 +77,12 @@ function inferCityFromRegionOrLocation(
   // Region is source of truth; fallback to location only when Region is missing/ambiguous.
   if (region.includes('colorado springs')) return 'colorado-springs'
   if (region.includes('fort collins')) return 'fort-collins'
-  if (region.includes('longmont')) return 'longmont'
-  if (region.includes('boulder')) {
-    if (location.includes('longmont')) return 'longmont'
-    return 'boulder'
+  if (
+    region.includes('boulder / longmont') ||
+    region.includes('longmont') ||
+    region.includes('boulder')
+  ) {
+    return 'boulder-longmont'
   }
 
   if (location) {
