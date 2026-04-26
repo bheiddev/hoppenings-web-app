@@ -42,7 +42,9 @@ export function extractCitySlug(location: string | null): string {
 
 /**
  * Generate event slug
- * Format: [title]-[brewery-name]-[location]-[date-if-recurring]-[uuid-suffix]
+ * New canonical format:
+ * - Recurring: [title]-[brewery-name]-[city]
+ * - One-off:   [title]-[brewery-name]-[city]-[yyyy-mm-dd]
  */
 export function generateEventSlug(
   title: string,
@@ -55,10 +57,7 @@ export function generateEventSlug(
   const titleSlug = generateSlug(title, 40);
   const brewerySlug = generateSlug(breweryName, 30);
   const locationSlug = extractCitySlug(location);
-  const dateSlug = isRecurring ? formatDateForSlug(eventDate) : '';
-  // Ensure eventId is a string before calling split
-  const idString = String(eventId || '');
-  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
+  const dateSlug = !isRecurring && eventDate ? eventDate.slice(0, 10) : '';
 
   // Build slug parts
   const parts = [titleSlug, brewerySlug];
@@ -70,7 +69,32 @@ export function generateEventSlug(
   if (dateSlug) {
     parts.push(dateSlug);
   }
-  
+
+  return parts.filter(Boolean).join('-');
+}
+
+/**
+ * Legacy event slug format retained for backwards-compat matching:
+ * [title]-[brewery-name]-[location]-[date-if-recurring]-[uuid-suffix]
+ */
+export function generateLegacyEventSlug(
+  title: string,
+  breweryName: string,
+  location: string | null,
+  eventDate: string,
+  eventId: string,
+  isRecurring: boolean = false
+): string {
+  const titleSlug = generateSlug(title, 40);
+  const brewerySlug = generateSlug(breweryName, 30);
+  const locationSlug = extractCitySlug(location);
+  const dateSlug = isRecurring ? formatDateForSlug(eventDate) : '';
+  const idString = String(eventId || '');
+  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
+
+  const parts = [titleSlug, brewerySlug];
+  if (locationSlug) parts.push(locationSlug);
+  if (dateSlug) parts.push(dateSlug);
   parts.push(uuidSuffix);
 
   return parts.filter(Boolean).join('-');
@@ -78,7 +102,8 @@ export function generateEventSlug(
 
 /**
  * Generate release slug
- * Format: [beer-name]-[type]-[brewery-name]-[location]-[uuid-suffix]
+ * New canonical format:
+ * [beer-name]-[type]-[brewery-name]-[city]
  */
 export function generateReleaseSlug(
   beerName: string,
@@ -91,9 +116,6 @@ export function generateReleaseSlug(
   const typeSlug = beerType ? generateSlug(beerType, 20) : '';
   const brewerySlug = generateSlug(breweryName, 30);
   const locationSlug = extractCitySlug(location);
-  // Ensure releaseId is a string before calling split
-  const idString = String(releaseId || '');
-  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
 
   const parts = [beerSlug];
   
@@ -106,7 +128,28 @@ export function generateReleaseSlug(
   if (locationSlug) {
     parts.push(locationSlug);
   }
-  
+
+  return parts.filter(Boolean).join('-');
+}
+
+export function generateLegacyReleaseSlug(
+  beerName: string,
+  beerType: string | null,
+  breweryName: string,
+  location: string | null,
+  releaseId: string
+): string {
+  const beerSlug = generateSlug(beerName, 30);
+  const typeSlug = beerType ? generateSlug(beerType, 20) : '';
+  const brewerySlug = generateSlug(breweryName, 30);
+  const locationSlug = extractCitySlug(location);
+  const idString = String(releaseId || '');
+  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
+
+  const parts = [beerSlug];
+  if (typeSlug) parts.push(typeSlug);
+  parts.push(brewerySlug);
+  if (locationSlug) parts.push(locationSlug);
   parts.push(uuidSuffix);
 
   return parts.filter(Boolean).join('-');
@@ -114,7 +157,8 @@ export function generateReleaseSlug(
 
 /**
  * Generate brewery slug
- * Format: [name]-[location]-[uuid-suffix]
+ * New canonical format:
+ * [name]-[city]
  */
 export function generateBrewerySlug(
   name: string,
@@ -123,18 +167,29 @@ export function generateBrewerySlug(
 ): string {
   const nameSlug = generateSlug(name, 40);
   const locationSlug = extractCitySlug(location);
-  // Ensure breweryId is a string before calling split
-  const idString = String(breweryId || '');
-  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
 
   const parts = [nameSlug];
   
   if (locationSlug) {
     parts.push(locationSlug);
   }
-  
-  parts.push(uuidSuffix);
 
+  return parts.filter(Boolean).join('-');
+}
+
+export function generateLegacyBrewerySlug(
+  name: string,
+  location: string | null,
+  breweryId: string
+): string {
+  const nameSlug = generateSlug(name, 40);
+  const locationSlug = extractCitySlug(location);
+  const idString = String(breweryId || '');
+  const uuidSuffix = idString.split('-').pop()?.substring(0, 8) || '';
+
+  const parts = [nameSlug];
+  if (locationSlug) parts.push(locationSlug);
+  parts.push(uuidSuffix);
   return parts.filter(Boolean).join('-');
 }
 

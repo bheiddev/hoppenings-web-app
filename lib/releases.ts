@@ -1,10 +1,20 @@
 import { supabase } from './supabase'
 import { BeerRelease } from '@/types/supabase'
-import { generateReleaseSlug } from './slug'
+import { generateReleaseSlug, generateLegacyReleaseSlug } from './slug'
 import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BeerReleaseWithSlug extends BeerRelease {
   slug: string
+  legacySlug: string
+}
+
+function buildReleaseSlugMap(releases: BeerReleaseWithSlug[]): Map<string, BeerReleaseWithSlug> {
+  const map = new Map<string, BeerReleaseWithSlug>()
+  for (const release of releases) {
+    map.set(release.slug, release)
+    map.set(release.legacySlug, release)
+  }
+  return map
 }
 
 /**
@@ -72,10 +82,18 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
         release.breweries.location || null,
         release.id
       )
+      const legacySlug = generateLegacyReleaseSlug(
+        release.beer_name,
+        release.Type,
+        release.breweries.name,
+        release.breweries.location || null,
+        release.id
+      )
 
       return {
         ...release,
-        slug
+        slug,
+        legacySlug,
       }
     })
 
@@ -96,7 +114,7 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
  */
 export async function getReleaseBySlug(slug: string): Promise<BeerReleaseWithSlug | null> {
   const allReleases = await getAllReleasesWithSlugs()
-  return allReleases.find(release => release.slug === slug) || null
+  return buildReleaseSlugMap(allReleases).get(slug) || null
 }
 
 /**
@@ -161,7 +179,14 @@ async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[
         release.breweries.location || null,
         release.id
       )
-      return { ...release, slug }
+      const legacySlug = generateLegacyReleaseSlug(
+        release.beer_name,
+        release.Type,
+        release.breweries.name,
+        release.breweries.location || null,
+        release.id
+      )
+      return { ...release, slug, legacySlug }
     })
   } catch (error) {
     console.error('Error fetching releases (unfiltered):', error)
@@ -174,7 +199,7 @@ async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[
  */
 export async function getReleaseBySlugIncludingExpired(slug: string): Promise<BeerReleaseWithSlug | null> {
   const allReleases = await getAllReleasesWithSlugsUnfiltered()
-  return allReleases.find(release => release.slug === slug) || null
+  return buildReleaseSlugMap(allReleases).get(slug) || null
 }
 
 /**

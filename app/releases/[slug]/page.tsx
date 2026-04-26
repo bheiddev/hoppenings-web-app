@@ -8,6 +8,7 @@ import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
   const releases = await getAllReleasesWithSlugs()
@@ -31,19 +32,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const breweryName = release.breweries.name
   const location = release.breweries.location || ''
+  const city = location ? location.split(',')[0].trim() : 'Colorado'
   const releaseDate = release.release_date ? formatReleaseDate(release.release_date) : ''
   const description = release.description 
     ? `${release.description.substring(0, 155)}...` 
     : `New ${release.beer_name}${release.Type ? ` ${release.Type}` : ''} release${releaseDate ? ` on ${releaseDate}` : ''} at ${breweryName}.`
 
   return {
-    title: `${release.beer_name}${release.Type ? ` - ${release.Type}` : ''} | Hoppenings`,
+    title: `${release.beer_name}${release.Type ? ` ${release.Type}` : ''} | ${city} Beer Release | Hoppenings`,
     description: description,
     keywords: `${release.beer_name}, ${release.Type || 'beer'}, ${breweryName}, ${location}, beer release, craft beer${releaseDate ? `, ${releaseDate}` : ''}`,
+    alternates: {
+      canonical: `${BASE_URL}/releases/${release.slug}`,
+    },
     openGraph: {
       title: `${release.beer_name}${release.Type ? ` - ${release.Type}` : ''} at ${breweryName}`,
       description: description,
       type: 'article',
+      url: `${BASE_URL}/releases/${release.slug}`,
     },
   }
 }
@@ -59,12 +65,32 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
     }
     notFound()
   }
+  if (slug !== release.slug) {
+    permanentRedirect(`/releases/${release.slug}`)
+  }
 
   // Fetch all associated breweries (can have up to 3)
   const associatedBreweries = await getReleaseBreweries(release)
+  const releaseJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: release.beer_name,
+    description: release.description || undefined,
+    brand: release.breweries.name,
+    category: release.Type || 'Beer',
+    releaseDate: release.release_date || undefined,
+    offers: {
+      '@type': 'Offer',
+      availability: 'https://schema.org/InStock',
+      priceCurrency: 'USD',
+      price: '0',
+      url: `${BASE_URL}/releases/${release.slug}`,
+    },
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(releaseJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

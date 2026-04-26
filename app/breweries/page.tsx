@@ -5,9 +5,9 @@ import { BreweryCard } from '@/components/BreweryCard'
 import { Colors } from '@/lib/colors'
 
 export const metadata: Metadata = {
-  title: 'Breweries | Hoppenings',
-  description: 'Explore local breweries, craft beer makers, and brewery information. Find brewery locations, hours, and featured beers.',
-  keywords: 'breweries, craft breweries, local breweries, brewery directory, brewery locations, craft beer',
+  title: 'Breweries in Colorado Springs, Fort Collins, Boulder & Longmont | Hoppenings',
+  description: 'Explore Colorado breweries by city, with brewery details, events, and recent beer releases in Colorado Springs, Fort Collins, Boulder, and Longmont.',
+  keywords: 'breweries in colorado springs, fort collins breweries, boulder breweries, longmont breweries, colorado brewery directory',
   openGraph: {
     title: 'Breweries | Hoppenings',
     description: 'Explore local breweries, craft beer makers, and brewery information.',

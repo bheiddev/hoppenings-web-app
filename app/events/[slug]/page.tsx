@@ -5,10 +5,65 @@ import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
 import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
-import { generateBrewerySlug } from '@/lib/slug'
+import { generateBrewerySlug, generateEventSlug } from '@/lib/slug'
+import { getBreweryEvents } from '@/lib/breweries'
 import Image from 'next/image'
 import Link from 'next/link'
 import { TextWithLinks } from '@/components/TextWithLinks'
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
+
+function cityFromLocation(location?: string | null): string {
+  if (!location) return 'Colorado'
+  return location.split(',')[0].trim() || 'Colorado'
+}
+
+function cityPagePath(city: string): string {
+  const slug = city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const allowed = new Set(['colorado-springs', 'fort-collins', 'boulder', 'longmont'])
+  return allowed.has(slug) ? `/${slug}` : '/events'
+}
+
+function buildEventDateTime(date: string, time: string | null | undefined): string | undefined {
+  if (!time) return undefined
+  return `${date}T${time}`
+}
+
+function buildEventEndDateTime(
+  date: string,
+  startTime: string | null | undefined,
+  endTime: string | null | undefined
+): string | undefined {
+  if (!startTime || !endTime) return undefined
+  const start = new Date(`${date}T${startTime}`)
+  const end = new Date(`${date}T${endTime}`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return undefined
+  if (end < start) {
+    end.setDate(end.getDate() + 1)
+  }
+  return end.toISOString()
+}
+
+function eventCanonicalPath(event: {
+  title: string
+  breweries: { name: string; location?: string | null }
+  event_date: string
+  id: string
+  is_recurring: boolean
+  is_recurring_biweekly: boolean
+  is_recurring_monthly: boolean
+}): string {
+  const isRecurring = event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly
+  const slug = generateEventSlug(
+    event.title,
+    event.breweries.name,
+    event.breweries.location || null,
+    event.event_date,
+    event.id,
+    isRecurring
+  )
+  return `/events/${slug}`
+}
 
 export async function generateStaticParams() {
   const events = await getAllEventsWithSlugs()
@@ -29,19 +84,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const breweryName = event.breweries.name
   const location = event.breweries.location || ''
+  const city = cityFromLocation(location)
   const eventDate = formatEventDate(event.event_date)
-  const description = event.description 
-    ? `${event.description.substring(0, 155)}...` 
-    : `Join us for ${event.title} at ${breweryName} on ${eventDate}.`
+  const timeLabel = event.start_time ? formatTime12Hour(event.start_time) : null
+  const recurrenceText = event.is_recurring ? 'Weekly' : eventDate
+  const description =
+    event.description && event.description.trim().length >= 60
+      ? `${event.description.substring(0, 155)}...`
+      : `${event.title} at ${breweryName} in ${city}. ${recurrenceText}${timeLabel ? ` at ${timeLabel}` : ''}.`
 
   return {
-    title: `${event.title} at ${breweryName} | Hoppenings`,
+    title: `${event.title} at ${breweryName} | ${recurrenceText}${timeLabel ? ` ${timeLabel}` : ''} in ${city} | Hoppenings`,
     description: description,
     keywords: `${event.title}, ${breweryName}, ${location}, brewery event, craft beer, ${eventDate}`,
+    alternates: {
+      canonical: `${BASE_URL}${eventCanonicalPath(event)}`,
+    },
     openGraph: {
-      title: `${event.title} at ${breweryName}`,
+      title: `${event.title} at ${breweryName} in ${city}`,
       description: description,
       type: 'website',
+      url: `${BASE_URL}${eventCanonicalPath(event)}`,
     },
   }
 }
@@ -60,6 +123,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     }
     notFound()
   }
+  const canonicalPath = eventCanonicalPath(event)
+  const canonicalSlug = canonicalPath.split('/').pop()
+  if (slug !== canonicalSlug) {
+    permanentRedirect(canonicalPath)
+  }
 
   // Fetch full brewery data for the detail page
   let brewery = null
@@ -75,9 +143,45 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   }
 
   const isPastEvent = isEventInPast(event.event_date)
+  const city = cityFromLocation(event.breweries.location)
+  const relatedFromBrewery = (await getBreweryEvents(event.brewery_id))
+    .filter((e) => e.id !== event.id)
+    .slice(0, 3)
+  const eventJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.title,
+    description: event.description || undefined,
+    startDate: buildEventDateTime(event.event_date, event.start_time) || event.event_date,
+    endDate: buildEventEndDateTime(event.event_date, event.start_time, event.end_time),
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    location: {
+      '@type': 'Place',
+      name: event.breweries.name,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: city,
+        addressRegion: 'CO',
+        addressCountry: 'US',
+      },
+    },
+    organizer: {
+      '@type': 'Organization',
+      name: event.breweries.name,
+    },
+    offers: {
+      '@type': 'Offer',
+      price: event.cost != null ? String(event.cost) : '0',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+      url: `${BASE_URL}${eventCanonicalPath(event)}`,
+    },
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Previous Event Banner */}
         {isPastEvent && (
@@ -222,6 +326,35 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               </Link>
             )
           })()}
+
+          <div className="mt-8 pt-6 border-t" style={{ borderColor: Colors.dividerLight }}>
+            <h3 className="text-lg font-bold mb-3" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+              Explore More
+            </h3>
+            <div className="flex flex-col gap-2 text-sm" style={{ color: Colors.textPrimary }}>
+              <Link href={cityPagePath(city)} className="underline" style={{ color: Colors.primary }}>
+                More events in {city}
+              </Link>
+              <Link href={cityPagePath(city)} className="underline" style={{ color: Colors.primary }}>
+                More breweries in {city}
+              </Link>
+              {relatedFromBrewery.map((rel) => {
+                const relSlug = generateEventSlug(
+                  rel.title,
+                  rel.breweries.name,
+                  rel.breweries.location || null,
+                  rel.event_date,
+                  rel.id,
+                  rel.is_recurring || rel.is_recurring_biweekly || rel.is_recurring_monthly
+                )
+                return (
+                  <Link key={rel.id} href={`/events/${relSlug}`} className="underline" style={{ color: Colors.primary }}>
+                    {rel.title} ({formatEventDate(rel.event_date)})
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

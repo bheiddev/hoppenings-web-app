@@ -5,9 +5,9 @@ import { BeerReleaseCard } from '@/components/BeerReleaseCard'
 import { Colors } from '@/lib/colors'
 
 export const metadata: Metadata = {
-  title: 'Beer Releases | Hoppenings',
-  description: 'Stay updated on the latest beer releases from your favorite breweries. Discover new craft beers, limited editions, and seasonal releases.',
-  keywords: 'beer releases, new beers, craft beer releases, limited edition beers, seasonal beers, brewery releases',
+  title: 'New Beer Releases in Colorado | Hoppenings',
+  description: 'Track new beer releases from Colorado breweries in Colorado Springs, Fort Collins, Boulder, and Longmont.',
+  keywords: 'new beer releases colorado, colorado springs beer releases, fort collins beer releases, boulder craft beer releases',
   openGraph: {
     title: 'Beer Releases | Hoppenings',
     description: 'Stay updated on the latest beer releases from your favorite breweries.',

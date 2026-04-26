@@ -6,9 +6,9 @@ import { EventCard } from '@/components/EventCard'
 import { Colors } from '@/lib/colors'
 
 export const metadata: Metadata = {
-  title: 'Brewery Events | Hoppenings',
-  description: 'Discover the latest brewery events, tastings, and happenings near you. Find craft beer events, brewery tours, and beer festivals.',
-  keywords: 'brewery events, beer events, craft beer, brewery tours, beer festivals, beer tastings',
+  title: 'Brewery Events in Colorado Springs, Fort Collins, Boulder | Hoppenings',
+  description: 'Find upcoming brewery events in Colorado Springs, Fort Collins, Boulder, and Longmont including trivia nights, run clubs, live music, and more.',
+  keywords: 'brewery events colorado, trivia nights colorado springs, fort collins brewery events, boulder brewery events, live music breweries',
   openGraph: {
     title: 'Brewery Events | Hoppenings',
     description: 'Discover the latest brewery events, tastings, and happenings near you.',

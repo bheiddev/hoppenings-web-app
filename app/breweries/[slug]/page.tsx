@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { getBreweryBySlug, getAllBreweriesWithSlugs, getBreweryHours, getBreweryEvents, getBreweryReleases } from '@/lib/breweries'
 import { formatEventDate } from '@/lib/utils'
 import { formatTime, groupHours, formatDays, getBreweryAmenities } from '@/lib/breweryUtils'
@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { EventCard } from '@/components/EventCard'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
   const breweries = await getAllBreweriesWithSlugs()
@@ -30,18 +31,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   const location = brewery.location || ''
+  const city = location ? location.split(',')[0].trim() : 'Colorado'
   const description = brewery.description 
     ? `${brewery.description.substring(0, 155)}...` 
     : `${brewery.name}${location ? ` in ${location}` : ''} - Craft brewery with events, beer releases, and more.`
+  const canonical = `${BASE_URL}/breweries/${brewery.slug}`
 
   return {
-    title: `${brewery.name}${location ? ` - ${location}` : ''} | Hoppenings`,
+    title: `${brewery.name} | ${city}, CO | Events & Beer | Hoppenings`,
     description: description,
     keywords: `${brewery.name}, ${location}, brewery, craft beer, brewery events, beer releases`,
+    alternates: {
+      canonical,
+    },
     openGraph: {
-      title: `${brewery.name}${location ? ` - ${location}` : ''}`,
+      title: `${brewery.name} | ${city}, CO`,
       description: description,
       type: 'website',
+      url: canonical,
       images: brewery.image_url ? [brewery.image_url] : [],
     },
   }
@@ -53,6 +60,9 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
 
   if (!brewery) {
     notFound()
+  }
+  if (slug !== brewery.slug) {
+    permanentRedirect(`/breweries/${brewery.slug}`)
   }
 
   // Fetch related data
@@ -82,9 +92,35 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     amenity.key !== 'has_wifi'
   )
   const hoursGroups = hours ? groupHours(hours) : []
+  const city = brewery.location ? brewery.location.split(',')[0].trim() : 'Colorado'
+  const breweryJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BarOrPub',
+    name: brewery.name,
+    description: brewery.description || undefined,
+    image: brewery.image_url || undefined,
+    telephone: brewery.phone || undefined,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: brewery.address || undefined,
+      addressLocality: city,
+      addressRegion: 'CO',
+      addressCountry: 'US',
+    },
+    geo:
+      brewery.latitude != null && brewery.longitude != null
+        ? {
+            '@type': 'GeoCoordinates',
+            latitude: brewery.latitude,
+            longitude: brewery.longitude,
+          }
+        : undefined,
+    url: `${BASE_URL}/breweries/${brewery.slug}`,
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breweryJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

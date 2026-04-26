@@ -1,11 +1,21 @@
 import { supabase } from './supabase'
 import { Event } from '@/types/supabase'
 import { expandRecurringEvents } from './utils'
-import { generateEventSlug } from './slug'
+import { generateEventSlug, generateLegacyEventSlug } from './slug'
 import { isEventInIndexableWindow } from './contentExpiry'
 
 export interface EventWithSlug extends Event {
   slug: string
+  legacySlug: string
+}
+
+function buildEventSlugMap(events: EventWithSlug[]): Map<string, EventWithSlug> {
+  const map = new Map<string, EventWithSlug>()
+  for (const event of events) {
+    map.set(event.slug, event)
+    map.set(event.legacySlug, event)
+  }
+  return map
 }
 
 /**
@@ -33,7 +43,8 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
         breweries (
           id,
           name,
-          location
+          location,
+          Region
         )
       `)
       .order('event_date', { ascending: true })
@@ -64,7 +75,8 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
       breweries: {
         id: event.breweries?.id || '',
         name: event.breweries?.name || 'Unknown Brewery',
-        location: event.breweries?.location || null
+        location: event.breweries?.location || null,
+        Region: event.breweries?.Region || null
       }
     })) as Event[]
 
@@ -83,10 +95,19 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
         event.id,
         isRecurring
       )
+      const legacySlug = generateLegacyEventSlug(
+        event.title,
+        event.breweries.name,
+        event.breweries.location || null,
+        event.event_date,
+        event.id,
+        isRecurring
+      )
 
       return {
         ...event,
-        slug
+        slug,
+        legacySlug,
       }
     })
 
@@ -119,7 +140,8 @@ async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
       breweries (
         id,
         name,
-        location
+        location,
+        Region
       )
     `)
     .order('event_date', { ascending: true })
@@ -144,7 +166,8 @@ async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
     breweries: {
       id: event.breweries?.id || '',
       name: event.breweries?.name || 'Unknown Brewery',
-      location: event.breweries?.location || null
+      location: event.breweries?.location || null,
+      Region: event.breweries?.Region || null
     }
   })) as Event[]
 
@@ -159,7 +182,15 @@ async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
       event.id,
       isRecurring
     )
-    return { ...event, slug }
+    const legacySlug = generateLegacyEventSlug(
+      event.title,
+      event.breweries.name,
+      event.breweries.location || null,
+      event.event_date,
+      event.id,
+      isRecurring
+    )
+    return { ...event, slug, legacySlug }
   })
 }
 
@@ -168,7 +199,7 @@ async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
  */
 export async function getEventBySlug(slug: string): Promise<EventWithSlug | null> {
   const allEvents = await getAllEventsWithSlugs()
-  return allEvents.find(event => event.slug === slug) || null
+  return buildEventSlugMap(allEvents).get(slug) || null
 }
 
 /**
@@ -176,6 +207,6 @@ export async function getEventBySlug(slug: string): Promise<EventWithSlug | null
  */
 export async function getEventBySlugIncludingExpired(slug: string): Promise<EventWithSlug | null> {
   const allEvents = await getAllEventsWithSlugsUnfiltered()
-  return allEvents.find(event => event.slug === slug) || null
+  return buildEventSlugMap(allEvents).get(slug) || null
 }
 

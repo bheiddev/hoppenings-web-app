@@ -43,7 +43,7 @@ export async function acceptProposedEvent(proposed: ProposedEvent) {
       start_time: proposed.start_time,
       end_time: null,
       cost: null,
-      is_recurring: false,
+      is_recurring: proposed.is_recurring ?? false,
       is_recurring_biweekly: false,
       is_recurring_monthly: false,
       description: proposed.description,

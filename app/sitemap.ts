@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { ACTIVITY_CONFIG, CITY_CONFIG } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -27,6 +28,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/breweries`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
   ]
 
+  const cityPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).map((city) => ({
+    url: `${BASE_URL}/${city}`,
+    lastModified: now,
+    changeFrequency: 'daily' as const,
+    priority: 0.85,
+  }))
+
+  const cityActivityPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) =>
+    Object.keys(ACTIVITY_CONFIG).map((activity) => ({
+      url: `${BASE_URL}/${city}/${activity}`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.75,
+    }))
+  )
+
   const releasePages: MetadataRoute.Sitemap = releases.map((r) => ({
     url: `${BASE_URL}/releases/${r.slug}`,
     lastModified: new Date(r.created_at),
@@ -48,5 +65,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  return [...staticPages, ...releasePages, ...eventPages, ...breweryPages]
+  return [...staticPages, ...cityPages, ...cityActivityPages, ...releasePages, ...eventPages, ...breweryPages]
 }

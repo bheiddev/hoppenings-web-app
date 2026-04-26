@@ -1,11 +1,12 @@
 import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, ProposedEvent, TaplistItem } from '@/types/supabase'
-import { generateBrewerySlug } from './slug'
+import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BreweryWithSlug extends Brewery {
   slug: string
+  legacySlug: string
 }
 
 /**
@@ -33,10 +34,16 @@ export async function getAllBreweriesWithSlugs(): Promise<BreweryWithSlug[]> {
         brewery.location,
         brewery.id
       )
+      const legacySlug = generateLegacyBrewerySlug(
+        brewery.name,
+        brewery.location,
+        brewery.id
+      )
 
       return {
         ...brewery,
-        slug
+        slug,
+        legacySlug,
       }
     })
 
@@ -52,7 +59,12 @@ export async function getAllBreweriesWithSlugs(): Promise<BreweryWithSlug[]> {
  */
 export async function getBreweryBySlug(slug: string): Promise<BreweryWithSlug | null> {
   const allBreweries = await getAllBreweriesWithSlugs()
-  return allBreweries.find(brewery => brewery.slug === slug) || null
+  const index = new Map<string, BreweryWithSlug>()
+  for (const brewery of allBreweries) {
+    index.set(brewery.slug, brewery)
+    index.set(brewery.legacySlug, brewery)
+  }
+  return index.get(slug) || null
 }
 
 /**
