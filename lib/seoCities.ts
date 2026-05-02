@@ -102,7 +102,12 @@ export function filterBreweriesForCity(breweries: BreweryWithSlug[], city: CityS
   return breweries.filter((brewery) => breweryBelongsToCity(brewery, city))
 }
 
-export function filterEventsForCity(events: EventWithSlug[], city: CitySlug): EventWithSlug[] {
+/** Minimal event shape for city filtering (works with `Event` and `EventWithSlug`). */
+export type EventLikeForCity = {
+  breweries: { Region?: string | null; location?: string | null }
+}
+
+export function filterEventsForCity<T extends EventLikeForCity>(events: T[], city: CitySlug): T[] {
   return events.filter(
     (event) => inferCityFromRegionOrLocation(event.breweries.Region, event.breweries.location) === city
   )

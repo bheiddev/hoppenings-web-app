@@ -37,6 +37,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const cityCategoryPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) => ([
     {
+      url: `${BASE_URL}/${city}/events`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.85,
+    },
+    {
       url: `${BASE_URL}/${city}/breweries`,
       lastModified: now,
       changeFrequency: 'daily' as const,

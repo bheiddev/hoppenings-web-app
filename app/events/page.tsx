@@ -1,9 +1,11 @@
 import { Metadata } from 'next'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Event } from '@/types/supabase'
 import { expandRecurringEvents, groupEventsByDate, groupEventsByRegion } from '@/lib/utils'
 import { EventCard } from '@/components/EventCard'
 import { Colors } from '@/lib/colors'
+import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
 
 export const metadata: Metadata = {
   title: 'Brewery Events in Colorado Springs, Fort Collins, Boulder | Hoppenings',
@@ -111,13 +113,36 @@ export default async function EventsPage() {
   const events = await getEvents()
   const groupedEvents = groupEventsByDate(events)
 
+  const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])
+    .map(([citySlug, cityConfig]) => ({
+      citySlug,
+      cityName: cityConfig.name,
+      cityEvents: filterEventsForCity(events, citySlug),
+    }))
+    .filter(({ cityEvents }) => cityEvents.length > 0)
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-4xl font-bold mb-8" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
           EVENTS
         </h1>
-        
+
+        {hasEnvVars && cityEntries.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-10">
+            {cityEntries.map(({ citySlug, cityName }) => (
+              <Link
+                key={citySlug}
+                href={`/${citySlug}/events`}
+                className="px-4 py-2 rounded-full text-sm font-semibold"
+                style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+              >
+                {cityName}
+              </Link>
+            ))}
+          </div>
+        )}
+
         {!hasEnvVars ? (
           <div className="text-center py-12">
             <p className="text-lg mb-4" style={{ color: Colors.error, fontFamily: 'var(--font-be-vietnam-pro)' }}>

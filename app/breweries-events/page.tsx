@@ -2,12 +2,10 @@ import { Metadata } from 'next'
 import {
   getAllBreweriesWithSlugs,
   getBreweryEvents,
-  getProposedEventsByBreweryId,
   getBreweryReleases,
 } from '@/lib/breweries'
 import { Colors } from '@/lib/colors'
-import { Event, BeerRelease, ProposedEvent } from '@/types/supabase'
-import { ProposedEventsTable } from '@/components/ProposedEventsTable'
+import { Event, BeerRelease } from '@/types/supabase'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
 import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
 
@@ -15,13 +13,12 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Breweries & Events | Hoppenings',
-  description: 'View events and proposed events by brewery.',
+  description: 'View events and beer releases by brewery.',
 }
 
 type BreweryWithData = {
   brewery: { id: string; name: string; region: string | null }
   events: Event[]
-  proposed: ProposedEvent[]
   releases: BeerRelease[]
 }
 
@@ -101,7 +98,6 @@ async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
     breweries.map(async (brewery) => ({
       brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
       events: await getBreweryEvents(brewery.id),
-      proposed: await getProposedEventsByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),
     }))
   )
@@ -117,7 +113,6 @@ export default async function BreweriesEventsPage() {
     const rows = byRegion.get(b.normKey) ?? []
     const breweryCount = rows.length
     const eventCount = rows.reduce((sum, r) => sum + r.events.length, 0)
-    const proposedCount = rows.reduce((sum, r) => sum + r.proposed.length, 0)
     const releaseCount = rows.reduce((sum, r) => sum + r.releases.length, 0)
     return {
       normKey: b.normKey,
@@ -125,7 +120,6 @@ export default async function BreweriesEventsPage() {
       displayLabel: b.displayLabel,
       breweryCount,
       eventCount,
-      proposedCount,
       releaseCount,
       anchorId: b.anchorId,
     }
@@ -137,7 +131,6 @@ export default async function BreweriesEventsPage() {
     breweryId: string
     breweryName: string
     events: number
-    proposed: number
     releases: number
   }[] = []
   for (const b of regionBuckets) {
@@ -151,7 +144,6 @@ export default async function BreweriesEventsPage() {
         breweryId: row.brewery.id,
         breweryName: row.brewery.name,
         events: row.events.length,
-        proposed: row.proposed.length,
         releases: row.releases.length,
       })
     }
@@ -212,9 +204,6 @@ export default async function BreweriesEventsPage() {
                       Events
                     </th>
                     <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
-                      Proposed events
-                    </th>
-                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
                       Beer releases
                     </th>
                   </tr>
@@ -225,7 +214,6 @@ export default async function BreweriesEventsPage() {
                       <td className="p-2">{r.displayLabel}</td>
                       <td className="p-2 text-right tabular-nums">{r.breweryCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.eventCount}</td>
-                      <td className="p-2 text-right tabular-nums">{r.proposedCount}</td>
                       <td className="p-2 text-right tabular-nums">{r.releaseCount}</td>
                     </tr>
                   ))}
@@ -236,7 +224,7 @@ export default async function BreweriesEventsPage() {
 
           <div className="mt-8 pt-8 border-t" style={{ borderColor: Colors.dividerLight }}>
             <p className="text-sm font-semibold mb-3" style={{ color: Colors.textDark }}>
-              Events, proposed events &amp; releases by brewery
+              Events &amp; releases by brewery
             </p>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-sm border-collapse min-w-[36rem]">
@@ -252,9 +240,6 @@ export default async function BreweriesEventsPage() {
                       Events
                     </th>
                     <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
-                      Proposed events
-                    </th>
-                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
                       Beer releases
                     </th>
                   </tr>
@@ -262,7 +247,7 @@ export default async function BreweriesEventsPage() {
                 <tbody style={{ color: Colors.textDark }}>
                   {breweryBreakdown.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                      <td colSpan={4} className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No breweries loaded.
                       </td>
                     </tr>
@@ -287,7 +272,6 @@ export default async function BreweriesEventsPage() {
                           </div>
                         </td>
                         <td className="p-2 text-right tabular-nums">{row.events}</td>
-                        <td className="p-2 text-right tabular-nums">{row.proposed}</td>
                         <td className="p-2 text-right tabular-nums">{row.releases}</td>
                       </tr>
                     ))
@@ -311,7 +295,7 @@ export default async function BreweriesEventsPage() {
                   {b.sectionHeading}
                 </h2>
                 <div className="space-y-10">
-                  {regionBreweries.map(({ brewery, events, proposed, releases }) => (
+                  {regionBreweries.map(({ brewery, events, releases }) => (
                     <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-6 scroll-mt-24">
                       <h3
                         className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
@@ -327,7 +311,6 @@ export default async function BreweriesEventsPage() {
                         </span>
                       </h3>
                       <EventsTableWithDelete events={events} title="Events" />
-                      <ProposedEventsTable proposed={proposed} title="Proposed events" />
                       <BeerReleasesTableWithActions releases={releases} title="Beer releases" />
                     </div>
                   ))}
