@@ -6,6 +6,19 @@ import { ProposedEvent, TaplistItem } from '@/types/supabase'
 
 const BREWERIES_EVENTS_PATH = '/breweries-events'
 
+/** Expanded recurring rows use synthetic ids `{uuid}-{YYYY-MM-DD}`; DB expects the base UUID. */
+function normalizeEventsBaseId(raw: string): string {
+  const trimmed = raw.trim()
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return trimmed
+  }
+  const m = trimmed.match(
+    /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-\d{4}-\d{2}-\d{2}$/i
+  )
+  if (m) return m[1]
+  return trimmed
+}
+
 function getAdmin() {
   const admin = getSupabaseAdmin()
   if (!admin) {
@@ -109,6 +122,7 @@ export type UpdateEventPayload = {
 export async function updateEventInEventsBase(eventId: string, data: UpdateEventPayload) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
+  const id = normalizeEventsBaseId(eventId)
   const { error } = await admin!
     .from('events_base')
     .update({
@@ -123,7 +137,7 @@ export async function updateEventInEventsBase(eventId: string, data: UpdateEvent
       is_recurring_biweekly: data.is_recurring_biweekly,
       is_recurring_monthly: data.is_recurring_monthly,
     })
-    .eq('id', eventId)
+    .eq('id', id)
 
   if (error) {
     console.error('Error updating event:', error)
@@ -136,10 +150,11 @@ export async function updateEventInEventsBase(eventId: string, data: UpdateEvent
 export async function deleteEventFromEventsBase(eventId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
+  const id = normalizeEventsBaseId(eventId)
   const { error } = await admin!
     .from('events_base')
     .delete()
-    .eq('id', eventId)
+    .eq('id', id)
 
   if (error) {
     console.error('Error deleting event:', error)
