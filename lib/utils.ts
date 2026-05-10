@@ -236,6 +236,16 @@ export function isEventInPast(eventDate: string): boolean {
   return compareDateStrings(eventDateMountain, todayMountain) < 0;
 }
 
+/** Calendar date (YYYY-MM-DD) for "today" in America/Denver. */
+export function getTodayMountainDateString(): string {
+  return getCurrentMountainTime().date;
+}
+
+/** True when the event falls on the given calendar day in Mountain Time. */
+export function isEventToday(eventDate: string): boolean {
+  return normalizeEventDateToMountainTime(eventDate) === getTodayMountainDateString();
+}
+
 /**
  * Expand recurring events to 12 weeks (for detail page generation)
  * @param events - Array of events to expand
