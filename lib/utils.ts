@@ -151,7 +151,7 @@ function getCurrentMountainTime(): { date: string; hours: number; minutes: numbe
  * Normalize an event date to Mountain Time format (YYYY-MM-DD)
  * Treats date-only strings as dates in Mountain Time (not UTC)
  */
-function normalizeEventDateToMountainTime(eventDate: string): string {
+export function normalizeEventDateToMountainTime(eventDate: string): string {
   // If it's already a date-only string in YYYY-MM-DD format, return it as-is
   // (assuming dates from database are stored in Mountain Time or as date-only)
   if (/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
@@ -171,6 +171,56 @@ function normalizeEventDateToMountainTime(eventDate: string): string {
   return date.toLocaleDateString('en-CA', {
     timeZone: 'America/Denver'
   });
+}
+
+/** Consecutive YYYY-MM-DD dates starting at today in Mountain Time (length days). */
+export function getMountainDateRangeFromToday(dayCount: number): string[] {
+  const start = getTodayMountainDateString();
+  return Array.from({ length: dayCount }, (_, i) => addDaysToDateString(start, i));
+}
+
+/** Subheading for a day column on weekly schedules (Mountain calendar dates). */
+export function formatMountainWeekDayHeading(ymd: string, indexInWeek: number): string {
+  const formatted = formatEventDate(ymd);
+  if (indexInWeek === 0) return `Today — ${formatted}`;
+  if (indexInWeek === 1) return `Tomorrow — ${formatted}`;
+  return formatted;
+}
+
+export type EventLikeForMountainWeek = {
+  event_date: string;
+  start_time?: string | null;
+  title: string;
+};
+
+/** Groups events into the next `dayCount` Mountain calendar days; sorts each day by start time then title. */
+export function bucketEventsByMountainWeekDays<T extends EventLikeForMountainWeek>(
+  events: T[],
+  dayCount: number = 7
+): { weekDates: string[]; eventsInWeek: T[]; eventsByMountainDay: Map<string, T[]> } {
+  const weekDates = getMountainDateRangeFromToday(dayCount);
+  const weekStart = weekDates[0];
+  const weekEnd = weekDates[weekDates.length - 1];
+  const eventsInWeek = events.filter((event) => {
+    const d = normalizeEventDateToMountainTime(event.event_date);
+    return d >= weekStart && d <= weekEnd;
+  });
+  const eventsByMountainDay = new Map<string, T[]>();
+  for (const event of eventsInWeek) {
+    const d = normalizeEventDateToMountainTime(event.event_date);
+    const list = eventsByMountainDay.get(d) ?? [];
+    list.push(event);
+    eventsByMountainDay.set(d, list);
+  }
+  for (const list of eventsByMountainDay.values()) {
+    list.sort((a, b) => {
+      const tA = a.start_time ?? '';
+      const tB = b.start_time ?? '';
+      if (tA !== tB) return tA.localeCompare(tB);
+      return a.title.localeCompare(b.title);
+    });
+  }
+  return { weekDates, eventsInWeek, eventsByMountainDay };
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   filterEventsForCity,
   filterReleasesForCity,
 } from '@/lib/seoCities'
+import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -60,6 +61,9 @@ export default async function CityLandingPage({
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
   const cityEvents = filterEventsForCity(events, citySlug)
   const cityReleases = filterReleasesForCity(releases, citySlug)
+
+  const { weekDates, eventsInWeek: cityEventsThisWeek, eventsByMountainDay } =
+    bucketEventsByMountainWeekDays(cityEvents, 7)
 
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -131,11 +135,51 @@ export default async function CityLandingPage({
           <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.textPrimary }}>
             This Week&apos;s Events
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {cityEvents.slice(0, 18).map((event) => (
-              <EventCard key={event.id} event={event} isFeatured={event.featured} />
-            ))}
-          </div>
+          {cityEventsThisWeek.length === 0 ? (
+            <p className="text-sm" style={{ color: Colors.textPrimary }}>
+              No events scheduled in {cityConfig.name} over the next seven days. See the full{' '}
+              <Link href="/events" className="underline font-semibold" style={{ color: Colors.primary }}>
+                events calendar
+              </Link>{' '}
+              for more.
+            </p>
+          ) : (
+            <div className="space-y-8">
+              {weekDates.map((ymd, index) => {
+                const dayEvents = eventsByMountainDay.get(ymd) ?? []
+                return (
+                  <div key={ymd} className="space-y-4">
+                    <div
+                      className="flex items-center justify-between pb-2 border-b-2"
+                      style={{ borderColor: Colors.dividerLight }}
+                    >
+                      <h3
+                        className="text-xl font-bold"
+                        style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+                      >
+                        {formatMountainWeekDayHeading(ymd, index)}
+                      </h3>
+                    </div>
+                    {dayEvents.length === 0 ? (
+                      <p className="text-sm" style={{ color: Colors.textPrimary }}>
+                        No events scheduled.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {dayEvents.map((event) => (
+                          <EventCard
+                            key={`${event.id}-${event.event_date}`}
+                            event={event}
+                            isFeatured={event.featured}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         <section>
