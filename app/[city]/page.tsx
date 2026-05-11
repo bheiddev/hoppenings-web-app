@@ -42,6 +42,10 @@ export async function generateMetadata({
   }
 }
 
+// Weekly columns label "Today" from Mountain calendar date at request time, not build time
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function CityLandingPage({
   params,
 }: {

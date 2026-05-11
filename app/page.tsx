@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   },
 }
 
+// Today's Hoppenings must use the request date in Mountain Time, not the time of the last static build
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function Home() {
   const [events, releases] = await Promise.all([getAllEventsWithSlugs(), getAllReleasesWithSlugs()])
   const todayLabel = formatEventDate(getTodayMountainDateString())
