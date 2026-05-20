@@ -6,6 +6,7 @@ import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { Event } from '@/types/supabase'
 import {
+  createEventInEventsBase,
   deleteEventFromEventsBase,
   updateEventInEventsBase,
   type UpdateEventPayload,
@@ -14,6 +15,7 @@ import {
 interface EventsTableWithDeleteProps {
   events: Event[]
   title: string
+  breweryId: string
 }
 
 function eventDateForInput(eventDate: string): string {
@@ -27,10 +29,11 @@ function eventDateForInput(eventDate: string): string {
   }
 }
 
-export function EventsTableWithDelete({ events, title }: EventsTableWithDeleteProps) {
+export function EventsTableWithDelete({ events, title, breweryId }: EventsTableWithDeleteProps) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [editing, setEditing] = useState<Event | null>(null)
+  const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(eventId: string) {
@@ -56,6 +59,15 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
     setEditing(null)
   }
 
+  function openAdd() {
+    setActionError(null)
+    setAdding(true)
+  }
+
+  function closeAdd() {
+    setAdding(false)
+  }
+
   return (
     <>
       {actionError && (
@@ -78,10 +90,22 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
-          className="flex-shrink-0 px-3 py-2 font-semibold text-sm"
+          className="flex-shrink-0 px-3 py-2 font-semibold text-sm flex items-center justify-between gap-2"
           style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
         >
-          {title}
+          <span>{title}</span>
+          <button
+            type="button"
+            onClick={openAdd}
+            disabled={!!loadingId}
+            className="px-2 py-1 text-xs rounded font-medium shrink-0"
+            style={{
+              backgroundColor: Colors.primary,
+              color: Colors.primaryDark,
+            }}
+          >
+            Add
+          </button>
         </div>
         <div
           className="min-h-[12rem] max-h-[min(32rem,70vh)] overflow-y-auto overflow-x-auto overscroll-y-contain [scrollbar-gutter:stable]"
@@ -181,8 +205,25 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
         </div>
       </div>
 
+      {adding && (
+        <EventFormModal
+          modalTitle="Add event"
+          event={null}
+          onSave={async (data: UpdateEventPayload) => {
+            const result = await createEventInEventsBase(breweryId, data)
+            if (result.ok) {
+              closeAdd()
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={closeAdd}
+        />
+      )}
+
       {editing && (
-        <EditEventModal
+        <EventFormModal
+          modalTitle="Edit event"
           event={editing}
           onSave={async (data: UpdateEventPayload) => {
             const result = await updateEventInEventsBase(editing.id, data)
@@ -199,27 +240,29 @@ export function EventsTableWithDelete({ events, title }: EventsTableWithDeletePr
   )
 }
 
-function EditEventModal({
+function EventFormModal({
+  modalTitle,
   event,
   onSave,
   onClose,
 }: {
-  event: Event
+  modalTitle: string
+  event: Event | null
   onSave: (data: UpdateEventPayload) => Promise<{ ok: boolean; error?: string }>
   onClose: () => void
 }) {
-  const [title, setTitle] = useState(event.title ?? '')
-  const [eventDate, setEventDate] = useState(eventDateForInput(event.event_date))
-  const [startTime, setStartTime] = useState(event.start_time ?? '')
-  const [endTime, setEndTime] = useState(event.end_time ?? '')
+  const [title, setTitle] = useState(event?.title ?? '')
+  const [eventDate, setEventDate] = useState(event ? eventDateForInput(event.event_date) : '')
+  const [startTime, setStartTime] = useState(event?.start_time ?? '')
+  const [endTime, setEndTime] = useState(event?.end_time ?? '')
   const [costRaw, setCostRaw] = useState(
-    event.cost != null && !Number.isNaN(event.cost) ? String(event.cost) : ''
+    event?.cost != null && !Number.isNaN(event.cost) ? String(event.cost) : ''
   )
-  const [description, setDescription] = useState(event.description ?? '')
-  const [featured, setFeatured] = useState(event.featured)
-  const [isRecurring, setIsRecurring] = useState(event.is_recurring)
-  const [isRecurringBiweekly, setIsRecurringBiweekly] = useState(event.is_recurring_biweekly)
-  const [isRecurringMonthly, setIsRecurringMonthly] = useState(event.is_recurring_monthly)
+  const [description, setDescription] = useState(event?.description ?? '')
+  const [featured, setFeatured] = useState(event?.featured ?? false)
+  const [isRecurring, setIsRecurring] = useState(event?.is_recurring ?? false)
+  const [isRecurringBiweekly, setIsRecurringBiweekly] = useState(event?.is_recurring_biweekly ?? false)
+  const [isRecurringMonthly, setIsRecurringMonthly] = useState(event?.is_recurring_monthly ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -278,7 +321,7 @@ function EditEventModal({
           className="text-xl font-bold mb-4"
           style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
-          Edit event
+          {modalTitle}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

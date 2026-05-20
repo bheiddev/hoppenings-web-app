@@ -6,6 +6,7 @@ import { formatReleaseDate } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { BeerRelease } from '@/types/supabase'
 import {
+  createBeerReleaseInBase,
   deleteBeerReleaseFromBase,
   updateBeerReleaseInBase,
   type UpdateBeerReleasePayload,
@@ -14,6 +15,7 @@ import {
 interface BeerReleasesTableWithActionsProps {
   releases: BeerRelease[]
   title: string
+  breweryId: string
 }
 
 function formatCreatedAt(iso: string) {
@@ -44,10 +46,15 @@ function emptyToNull(s: string): string | null {
   return t ? t : null
 }
 
-export function BeerReleasesTableWithActions({ releases, title }: BeerReleasesTableWithActionsProps) {
+export function BeerReleasesTableWithActions({
+  releases,
+  title,
+  breweryId,
+}: BeerReleasesTableWithActionsProps) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [editing, setEditing] = useState<BeerRelease | null>(null)
+  const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(releaseId: string) {
@@ -73,6 +80,15 @@ export function BeerReleasesTableWithActions({ releases, title }: BeerReleasesTa
     setEditing(null)
   }
 
+  function openAdd() {
+    setActionError(null)
+    setAdding(true)
+  }
+
+  function closeAdd() {
+    setAdding(false)
+  }
+
   return (
     <>
       {actionError && (
@@ -95,10 +111,22 @@ export function BeerReleasesTableWithActions({ releases, title }: BeerReleasesTa
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
-          className="flex-shrink-0 px-3 py-2 font-semibold text-sm"
+          className="flex-shrink-0 px-3 py-2 font-semibold text-sm flex items-center justify-between gap-2"
           style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
         >
-          {title}
+          <span>{title}</span>
+          <button
+            type="button"
+            onClick={openAdd}
+            disabled={!!loadingId}
+            className="px-2 py-1 text-xs rounded font-medium shrink-0"
+            style={{
+              backgroundColor: Colors.primary,
+              color: Colors.primaryDark,
+            }}
+          >
+            Add
+          </button>
         </div>
         <div className="min-h-[12rem] max-h-[min(36rem,70vh)] overflow-y-auto overflow-x-auto overscroll-y-contain [scrollbar-gutter:stable]">
           {releases.length === 0 ? (
@@ -219,9 +247,28 @@ export function BeerReleasesTableWithActions({ releases, title }: BeerReleasesTa
         </div>
       </div>
 
+      {adding && (
+        <BeerReleaseFormModal
+          modalTitle="Add beer release"
+          release={null}
+          defaultBreweryId={breweryId}
+          onSave={async (data: UpdateBeerReleasePayload) => {
+            const result = await createBeerReleaseInBase(data)
+            if (result.ok) {
+              closeAdd()
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={closeAdd}
+        />
+      )}
+
       {editing && (
-        <EditBeerReleaseModal
+        <BeerReleaseFormModal
+          modalTitle="Edit beer release"
           release={editing}
+          defaultBreweryId={breweryId}
           onSave={async (data: UpdateBeerReleasePayload) => {
             const result = await updateBeerReleaseInBase(editing.id, data)
             if (result.ok) {
@@ -237,23 +284,29 @@ export function BeerReleasesTableWithActions({ releases, title }: BeerReleasesTa
   )
 }
 
-function EditBeerReleaseModal({
+function BeerReleaseFormModal({
+  modalTitle,
   release,
+  defaultBreweryId,
   onSave,
   onClose,
 }: {
-  release: BeerRelease
+  modalTitle: string
+  release: BeerRelease | null
+  defaultBreweryId: string
   onSave: (data: UpdateBeerReleasePayload) => Promise<{ ok: boolean; error?: string }>
   onClose: () => void
 }) {
-  const [beerName, setBeerName] = useState(release.beer_name ?? '')
-  const [type, setType] = useState(release.Type ?? '')
-  const [abv, setAbv] = useState(release.ABV ?? '')
-  const [description, setDescription] = useState(release.description ?? '')
-  const [breweryId, setBreweryId] = useState(release.brewery_id ?? '')
-  const [breweryId2, setBreweryId2] = useState(release.brewery_id2 ?? '')
-  const [breweryId3, setBreweryId3] = useState(release.brewery_id3 ?? '')
-  const [releaseDate, setReleaseDate] = useState(releaseDateForInput(release.release_date))
+  const [beerName, setBeerName] = useState(release?.beer_name ?? '')
+  const [type, setType] = useState(release?.Type ?? '')
+  const [abv, setAbv] = useState(release?.ABV ?? '')
+  const [description, setDescription] = useState(release?.description ?? '')
+  const [breweryIdField, setBreweryIdField] = useState(release?.brewery_id ?? defaultBreweryId)
+  const [breweryId2, setBreweryId2] = useState(release?.brewery_id2 ?? '')
+  const [breweryId3, setBreweryId3] = useState(release?.brewery_id3 ?? '')
+  const [releaseDate, setReleaseDate] = useState(
+    release ? releaseDateForInput(release.release_date) : ''
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -261,7 +314,7 @@ function EditBeerReleaseModal({
     e.preventDefault()
     setError(null)
     const name = beerName.trim()
-    const primary = breweryId.trim()
+    const primary = breweryIdField.trim()
     if (!name) {
       setError('Beer name is required')
       return
@@ -306,13 +359,15 @@ function EditBeerReleaseModal({
           className="text-xl font-bold mb-4"
           style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
-          Edit beer release
+          {modalTitle}
         </h3>
-        <p className="text-xs mb-4" style={{ color: Colors.textSecondary }}>
-          ID: <span className="font-mono">{release.id}</span>
-          {' · '}
-          Created: {formatCreatedAt(release.created_at)}
-        </p>
+        {release && (
+          <p className="text-xs mb-4" style={{ color: Colors.textSecondary }}>
+            ID: <span className="font-mono">{release.id}</span>
+            {' · '}
+            Created: {formatCreatedAt(release.created_at)}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
@@ -402,8 +457,9 @@ function EditBeerReleaseModal({
             </label>
             <input
               type="text"
-              value={breweryId}
-              onChange={(ev) => setBreweryId(ev.target.value)}
+              value={breweryIdField}
+              onChange={(ev) => setBreweryIdField(ev.target.value)}
+              readOnly={!release}
               className="w-full px-3 py-2 border rounded font-mono text-sm"
               style={{
                 borderColor: Colors.dividerLight,

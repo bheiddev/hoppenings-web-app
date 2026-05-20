@@ -119,6 +119,34 @@ export type UpdateEventPayload = {
   is_recurring_monthly: boolean
 }
 
+export async function createEventInEventsBase(breweryId: string, data: UpdateEventPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('events_base')
+    .insert({
+      title: data.title,
+      brewery_id: breweryId,
+      event_date: data.event_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      cost: data.cost,
+      is_recurring: data.is_recurring,
+      is_recurring_biweekly: data.is_recurring_biweekly,
+      is_recurring_monthly: data.is_recurring_monthly,
+      description: data.description,
+      featured: data.featured,
+    })
+
+  if (error) {
+    console.error('Error creating event:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidatePath('/events')
+  return { ok: true }
+}
+
 export async function updateEventInEventsBase(eventId: string, data: UpdateEventPayload) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
@@ -173,6 +201,31 @@ export type UpdateBeerReleasePayload = {
   brewery_id2: string | null
   brewery_id3: string | null
   release_date: string | null
+}
+
+export async function createBeerReleaseInBase(data: UpdateBeerReleasePayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('beer_releases_base')
+    .insert({
+      beer_name: data.beer_name,
+      ABV: data.ABV,
+      Type: data.Type,
+      description: data.description,
+      brewery_id: data.brewery_id,
+      brewery_id2: data.brewery_id2,
+      brewery_id3: data.brewery_id3,
+      release_date: data.release_date,
+    })
+
+  if (error) {
+    console.error('Error creating beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidatePath('/releases')
+  return { ok: true }
 }
 
 export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBeerReleasePayload) {

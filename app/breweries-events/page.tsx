@@ -310,8 +310,12 @@ export default async function BreweriesEventsPage() {
                           {brewery.id}
                         </span>
                       </h3>
-                      <EventsTableWithDelete events={events} title="Events" />
-                      <BeerReleasesTableWithActions releases={releases} title="Beer releases" />
+                      <EventsTableWithDelete events={events} title="Events" breweryId={brewery.id} />
+                      <BeerReleasesTableWithActions
+                        releases={releases}
+                        title="Beer releases"
+                        breweryId={brewery.id}
+                      />
                     </div>
                   ))}
                 </div>
