@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
+import { BreweriesEventsBreweryBreakdown } from '@/components/BreweriesEventsBreweryBreakdown'
 import { BreweriesEventsRegionContent } from '@/components/BreweriesEventsRegionContent'
 import {
   buildRegionBuckets,
@@ -66,6 +67,8 @@ export default async function BreweriesEventsRegionPage({
           {regionBreweries.length} {regionBreweries.length === 1 ? 'brewery' : 'breweries'} ·{' '}
           {eventCount} events · {releaseCount} beer releases
         </p>
+
+        <BreweriesEventsBreweryBreakdown regionBreweries={regionBreweries} />
 
         <BreweriesEventsRegionContent
           regionBreweries={regionBreweries}

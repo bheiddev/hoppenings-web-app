@@ -1,12 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
-import {
-  breweryAnchorId,
-  buildRegionBuckets,
-  getBreweriesWithEvents,
-  groupByRegion,
-} from '@/lib/breweriesEventsRegions'
+import { buildRegionBuckets, getBreweriesWithEvents, groupByRegion } from '@/lib/breweriesEventsRegions'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +22,6 @@ export default async function BreweriesEventsPage() {
     const releaseCount = rows.reduce((sum, r) => sum + r.releases.length, 0)
     return {
       normKey: b.normKey,
-      sectionHeading: b.sectionHeading,
       displayLabel: b.displayLabel,
       slug: b.slug,
       breweryCount,
@@ -35,30 +29,6 @@ export default async function BreweriesEventsPage() {
       releaseCount,
     }
   })
-
-  const breweryBreakdown: {
-    regionTitle: string
-    regionSlug: string
-    breweryId: string
-    breweryName: string
-    events: number
-    releases: number
-  }[] = []
-  for (const b of regionBuckets) {
-    const rows = [...(byRegion.get(b.normKey) ?? [])].sort((a, bRow) =>
-      a.brewery.name.localeCompare(bRow.brewery.name)
-    )
-    for (const row of rows) {
-      breweryBreakdown.push({
-        regionTitle: b.sectionHeading,
-        regionSlug: b.slug,
-        breweryId: row.brewery.id,
-        breweryName: row.brewery.name,
-        events: row.events.length,
-        releases: row.releases.length,
-      })
-    }
-  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
@@ -144,77 +114,6 @@ export default async function BreweriesEventsPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 border-t" style={{ borderColor: Colors.dividerLight }}>
-            <p className="text-sm font-semibold mb-3" style={{ color: Colors.textDark }}>
-              Events &amp; releases by brewery
-            </p>
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left text-sm border-collapse min-w-[36rem]">
-                <thead className="sticky top-0 z-10" style={{ backgroundColor: Colors.backgroundLight }}>
-                  <tr>
-                    <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                      Region
-                    </th>
-                    <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                      Brewery
-                    </th>
-                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
-                      Events
-                    </th>
-                    <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
-                      Beer releases
-                    </th>
-                  </tr>
-                </thead>
-                <tbody style={{ color: Colors.textDark }}>
-                  {breweryBreakdown.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                        No breweries loaded.
-                      </td>
-                    </tr>
-                  ) : (
-                    breweryBreakdown.map((row, i) => (
-                      <tr
-                        key={`${row.regionSlug}-${row.breweryName}-${i}`}
-                        className="border-t"
-                        style={{ borderColor: Colors.dividerLight }}
-                      >
-                        <td className="p-2 whitespace-nowrap">
-                          <Link
-                            href={`/breweries-events/${row.regionSlug}`}
-                            className="underline hover:opacity-80"
-                            style={{ color: Colors.primary }}
-                          >
-                            {row.regionTitle.replace(' Breweries', '')}
-                          </Link>
-                        </td>
-                        <td className="p-2">
-                          <Link
-                            href={`/breweries-events/${row.regionSlug}#${breweryAnchorId(row.breweryId)}`}
-                            className="underline hover:opacity-80"
-                            style={{ color: Colors.primary }}
-                          >
-                            {row.breweryName}
-                          </Link>
-                          <div
-                            className="text-xs font-mono mt-1"
-                            style={{ color: Colors.textSecondary }}
-                            title="Brewery UUID"
-                          >
-                            {row.breweryId}
-                          </div>
-                        </td>
-                        <td className="p-2 text-right tabular-nums">{row.events}</td>
-                        <td className="p-2 text-right tabular-nums">{row.releases}</td>
-                      </tr>
-                    ))
-                  )}
                 </tbody>
               </table>
             </div>
