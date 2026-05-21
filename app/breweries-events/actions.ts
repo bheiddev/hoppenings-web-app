@@ -6,6 +6,10 @@ import { ProposedEvent, TaplistItem } from '@/types/supabase'
 
 const BREWERIES_EVENTS_PATH = '/breweries-events'
 
+function revalidateBreweriesEvents() {
+  revalidatePath(BREWERIES_EVENTS_PATH, 'layout')
+}
+
 /** Expanded recurring rows use synthetic ids `{uuid}-{YYYY-MM-DD}`; DB expects the base UUID. */
 function normalizeEventsBaseId(raw: string): string {
   const trimmed = raw.trim()
@@ -39,7 +43,7 @@ export async function rejectProposedEvent(id: string) {
     console.error('Error rejecting proposed event:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
 
@@ -78,7 +82,7 @@ export async function acceptProposedEvent(proposed: ProposedEvent) {
     return { ok: false, error: deleteError.message }
   }
 
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
 
@@ -102,7 +106,7 @@ export async function updateProposedEvent(
     console.error('Error updating proposed event:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
 
@@ -142,7 +146,7 @@ export async function createEventInEventsBase(breweryId: string, data: UpdateEve
     console.error('Error creating event:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   revalidatePath('/events')
   return { ok: true }
 }
@@ -171,7 +175,7 @@ export async function updateEventInEventsBase(eventId: string, data: UpdateEvent
     console.error('Error updating event:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
 
@@ -188,7 +192,7 @@ export async function deleteEventFromEventsBase(eventId: string) {
     console.error('Error deleting event:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
 
@@ -223,7 +227,7 @@ export async function createBeerReleaseInBase(data: UpdateBeerReleasePayload) {
     console.error('Error creating beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   revalidatePath('/releases')
   return { ok: true }
 }
@@ -249,7 +253,7 @@ export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBee
     console.error('Error updating beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   revalidatePath('/releases')
   return { ok: true }
 }
@@ -263,7 +267,7 @@ export async function deleteBeerReleaseFromBase(releaseId: string) {
     console.error('Error deleting beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   revalidatePath('/releases')
   return { ok: true }
 }
@@ -288,6 +292,6 @@ export async function addTaplistItemToReleases(item: TaplistItem) {
     console.error('Error adding taplist item to releases:', error)
     return { ok: false, error: error.message }
   }
-  revalidatePath(BREWERIES_EVENTS_PATH)
+  revalidateBreweriesEvents()
   return { ok: true }
 }
