@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BreweriesEventsBreweryBreakdown } from '@/components/BreweriesEventsBreweryBreakdown'
 import { BreweriesEventsRegionContent } from '@/components/BreweriesEventsRegionContent'
+import { BreweriesEventsUpcomingByDate } from '@/components/BreweriesEventsUpcomingByDate'
 import {
   buildRegionBuckets,
   findRegionBucketBySlug,
@@ -67,6 +68,8 @@ export default async function BreweriesEventsRegionPage({
           {regionBreweries.length} {regionBreweries.length === 1 ? 'brewery' : 'breweries'} ·{' '}
           {eventCount} events · {releaseCount} beer releases
         </p>
+
+        <BreweriesEventsUpcomingByDate regionBreweries={regionBreweries} />
 
         <BreweriesEventsBreweryBreakdown regionBreweries={regionBreweries} />
 
