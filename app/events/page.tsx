@@ -1,8 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
-import { Event } from '@/types/supabase'
-import { expandRecurringEvents, groupEventsByDate, groupEventsByRegion } from '@/lib/utils'
+import { getExpandedEventsForListing } from '@/lib/events'
+import { groupEventsByDate, groupEventsByRegion } from '@/lib/utils'
 import { EventCard } from '@/components/EventCard'
 import { Colors } from '@/lib/colors'
 import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
@@ -22,95 +21,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-async function getEvents(): Promise<Event[]> {
-  try {
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('❌ Supabase environment variables are missing!')
-      return []
-    }
-
-    const { data, error } = await supabase
-      .from('events_base')
-      .select(`
-        id,
-        created_at,
-        title,
-        brewery_id,
-        event_date,
-        start_time,
-        end_time,
-        cost,
-        is_recurring,
-        is_recurring_biweekly,
-        is_recurring_monthly,
-        description,
-        featured,
-        breweries (
-          id,
-          name,
-          location,
-          Region
-        )
-      `)
-      .order('event_date', { ascending: true })
-
-    if (error) {
-      console.error('❌ Error fetching events:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      return []
-    }
-
-    if (!data) {
-      console.warn('⚠️ No data returned from Supabase')
-      return []
-    }
-
-    console.log(`✅ Fetched ${data.length} events from database`)
-
-    // Expand recurring events and filter to show from today forward
-    const events = data.map((event: any) => ({
-      id: event.id,
-      created_at: event.created_at,
-      title: event.title,
-      description: event.description,
-      brewery_id: event.brewery_id,
-      event_date: event.event_date,
-      start_time: event.start_time,
-      end_time: event.end_time,
-      cost: event.cost,
-      is_recurring: event.is_recurring || false,
-      is_recurring_biweekly: event.is_recurring_biweekly || false,
-      is_recurring_monthly: event.is_recurring_monthly || false,
-      recurrence_pattern: null,
-      featured: event.featured || false,
-      breweries: {
-        id: event.breweries?.id || '',
-        name: event.breweries?.name || '',
-        location: event.breweries?.location || null,
-        Region: event.breweries?.Region || null
-      }
-    })) as Event[]
-
-    const expandedEvents = expandRecurringEvents(events)
-    console.log(`✅ Expanded to ${expandedEvents.length} events after filtering`)
-    
-    return expandedEvents
-  } catch (error) {
-    console.error('❌ Exception fetching events:', error)
-    if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
-    }
-    return []
-  }
-}
-
 export default async function EventsPage() {
-  // Check environment variables first
   const hasEnvVars = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  
-  const events = await getEvents()
+
+  const events = hasEnvVars ? await getExpandedEventsForListing() : []
   const groupedEvents = groupEventsByDate(events)
 
   const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])

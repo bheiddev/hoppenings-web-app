@@ -1,4 +1,10 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
+import { EventFormModal } from '@/components/EventFormModal'
+import { updateEventInEventsBase } from '@/app/breweries-events/actions'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
 import {
   formatEventDate,
@@ -87,10 +93,16 @@ export function BreweriesEventsUpcomingByDate({
 }: {
   regionBreweries: BreweryWithData[]
 }) {
-  const { dates, eventsByDay, releasesByDay } = collectUpcomingByDate(regionBreweries)
+  const router = useRouter()
+  const [editing, setEditing] = useState<EventRow | null>(null)
+  const { dates, eventsByDay, releasesByDay } = useMemo(
+    () => collectUpcomingByDate(regionBreweries),
+    [regionBreweries]
+  )
   const rangeEndLabel = formatEventDate(dates[dates.length - 1])
 
   return (
+    <>
     <section
       className="mb-10 border rounded-xl p-6 w-full"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
@@ -102,8 +114,8 @@ export function BreweriesEventsUpcomingByDate({
         Next {UPCOMING_DAY_COUNT} days
       </h2>
       <p className="text-sm mb-6" style={{ color: Colors.textSecondary }}>
-        Mountain Time · today through {rangeEndLabel}. Use brewery links below each day to jump to
-        edit tables.
+        Mountain Time · today through {rangeEndLabel}. Edit events inline or use brewery links to
+        jump to full tables.
       </p>
 
       <div className="space-y-8">
@@ -155,6 +167,9 @@ export function BreweriesEventsUpcomingByDate({
                               </th>
                               <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
                                 Notes
+                              </th>
+                              <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
+                                Actions
                               </th>
                             </tr>
                           </thead>
@@ -210,6 +225,20 @@ export function BreweriesEventsUpcomingByDate({
                                     {e.description?.trim() ? (
                                       <span className="block line-clamp-2">{e.description}</span>
                                     ) : null}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditing({ ...e })}
+                                      className="px-2 py-1 text-xs rounded border"
+                                      style={{
+                                        borderColor: Colors.primary,
+                                        color: Colors.textDark,
+                                        backgroundColor: Colors.background,
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
                                   </td>
                                 </tr>
                               )
@@ -281,5 +310,22 @@ export function BreweriesEventsUpcomingByDate({
         })}
       </div>
     </section>
+
+    {editing && (
+      <EventFormModal
+        modalTitle="Edit event"
+        event={editing}
+        onSave={async (data) => {
+          const result = await updateEventInEventsBase(editing.id, data)
+          if (result.ok) {
+            setEditing(null)
+            router.refresh()
+          }
+          return result
+        }}
+        onClose={() => setEditing(null)}
+      />
+    )}
+    </>
   )
 }

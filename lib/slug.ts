@@ -42,9 +42,8 @@ export function extractCitySlug(location: string | null): string {
 
 /**
  * Generate event slug
- * New canonical format:
- * - Recurring: [title]-[brewery-name]-[city]
- * - One-off:   [title]-[brewery-name]-[city]-[yyyy-mm-dd]
+ * Canonical format: [title]-[brewery-name]-[city]-[yyyy-mm-dd]
+ * Date is included for every instance (recurring and one-off) so each occurrence has a unique URL.
  */
 export function generateEventSlug(
   title: string,
@@ -52,12 +51,12 @@ export function generateEventSlug(
   location: string | null,
   eventDate: string,
   eventId: string,
-  isRecurring: boolean = false
+  _isRecurring: boolean = false
 ): string {
   const titleSlug = generateSlug(title, 40);
   const brewerySlug = generateSlug(breweryName, 30);
   const locationSlug = extractCitySlug(location);
-  const dateSlug = !isRecurring && eventDate ? eventDate.slice(0, 10) : '';
+  const dateSlug = eventDate ? eventDate.slice(0, 10) : '';
 
   // Build slug parts
   const parts = [titleSlug, brewerySlug];
