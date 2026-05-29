@@ -4,16 +4,17 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { EventFormModal } from '@/components/EventFormModal'
-import { updateEventInEventsBase } from '@/app/breweries-events/actions'
-import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
 import {
-  formatEventDate,
+  deleteEventFromEventsBase,
+  updateEventInEventsBase,
+} from '@/app/breweries-events/actions'
+import { BreweryWithData } from '@/lib/breweriesEventsRegions'
+import {
   formatMountainWeekDayHeading,
-  formatTime12Hour,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
-import { Event, BeerRelease } from '@/types/supabase'
+import { BeerRelease, Event } from '@/types/supabase'
 
 const UPCOMING_DAY_COUNT = 3
 
@@ -23,13 +24,6 @@ type ReleaseRow = BeerRelease & { breweryName: string; breweryId: string }
 function normalizeReleaseDate(releaseDate: string | null): string | null {
   if (!releaseDate?.trim()) return null
   return normalizeEventDateToMountainTime(releaseDate)
-}
-
-function recurringLabel(event: Event): string | null {
-  if (event.is_recurring_monthly) return 'Monthly'
-  if (event.is_recurring_biweekly) return 'Biweekly'
-  if (event.is_recurring) return 'Weekly'
-  return null
 }
 
 function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
@@ -69,9 +63,6 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
 
   for (const list of eventsByDay.values()) {
     list.sort((a, b) => {
-      const tA = a.start_time ?? ''
-      const tB = b.start_time ?? ''
-      if (tA !== tB) return tA.localeCompare(tB)
       const breweryCmp = a.breweryName.localeCompare(b.breweryName)
       if (breweryCmp !== 0) return breweryCmp
       return a.title.localeCompare(b.title)
@@ -95,237 +86,212 @@ export function BreweriesEventsUpcomingByDate({
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<EventRow | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const { dates, eventsByDay, releasesByDay } = useMemo(
     () => collectUpcomingByDate(regionBreweries),
     [regionBreweries]
   )
-  const rangeEndLabel = formatEventDate(dates[dates.length - 1])
+
+  async function handleDelete(eventId: string) {
+    setActionError(null)
+    setLoadingId(eventId)
+    try {
+      const result = await deleteEventFromEventsBase(eventId)
+      setLoadingId(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete')
+    } catch (err) {
+      setLoadingId(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
 
   return (
     <>
-    <section
-      className="mb-10 border rounded-xl p-6 w-full"
-      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
-    >
-      <h2
-        className="text-xl font-bold mb-1"
-        style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+      <section
+        className="mb-10 border rounded-xl p-6 w-full"
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
-        Next {UPCOMING_DAY_COUNT} days
-      </h2>
-      <p className="text-sm mb-6" style={{ color: Colors.textSecondary }}>
-        Mountain Time · today through {rangeEndLabel}. Edit events inline or use brewery links to
-        jump to full tables.
-      </p>
+        <h2
+          className="text-xl font-bold mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          Next {UPCOMING_DAY_COUNT} days
+        </h2>
 
-      <div className="space-y-8">
-        {dates.map((ymd, index) => {
-          const dayEvents = eventsByDay.get(ymd) ?? []
-          const dayReleases = releasesByDay.get(ymd) ?? []
-          const isEmpty = dayEvents.length === 0 && dayReleases.length === 0
-
-          return (
-            <div
-              key={ymd}
-              className="border-t pt-6 first:border-t-0 first:pt-0"
-              style={{ borderColor: Colors.dividerLight }}
+        {actionError && (
+          <div
+            className="mb-4 px-3 py-2 rounded text-sm"
+            style={{ backgroundColor: '#FEE2E2', color: Colors.error }}
+          >
+            {actionError}
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="ml-2 underline"
             >
-              <h3
-                className="text-lg font-semibold mb-4"
-                style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
-              >
-                {formatMountainWeekDayHeading(ymd, index)}
-              </h3>
+              Dismiss
+            </button>
+          </div>
+        )}
 
-              {isEmpty ? (
-                <p className="text-sm" style={{ color: Colors.textSecondary }}>
-                  Nothing scheduled in this region.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm font-semibold mb-2" style={{ color: Colors.textDark }}>
-                      Events ({dayEvents.length})
-                    </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {dates.map((ymd, index) => {
+            const dayEvents = eventsByDay.get(ymd) ?? []
+            const dayReleases = releasesByDay.get(ymd) ?? []
+
+            return (
+              <div
+                key={ymd}
+                className="flex flex-col min-w-0 border rounded-lg overflow-hidden"
+                style={{ borderColor: Colors.dividerLight }}
+              >
+                <div
+                  className="px-3 py-2 border-b"
+                  style={{
+                    borderColor: Colors.dividerLight,
+                    backgroundColor: Colors.backgroundLight,
+                  }}
+                >
+                  <h3
+                    className="text-sm font-semibold leading-snug"
+                    style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+                  >
+                    {formatMountainWeekDayHeading(ymd, index)}
+                  </h3>
+                </div>
+
+                <div className="flex-1">
+                  <p
+                    className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-b"
+                    style={{
+                      color: Colors.textSecondary,
+                      borderColor: Colors.dividerLight,
+                      backgroundColor: Colors.background,
+                    }}
+                  >
+                    Events ({dayEvents.length})
+                  </p>
+                  <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayEvents.length === 0 ? (
-                      <p className="text-sm" style={{ color: Colors.textSecondary }}>
+                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No events
                       </p>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm border-collapse min-w-[32rem]">
-                          <thead style={{ backgroundColor: Colors.backgroundLight }}>
-                            <tr>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Time
-                              </th>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Event
-                              </th>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Brewery
-                              </th>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Notes
-                              </th>
-                              <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody style={{ color: Colors.textDark }}>
-                            {dayEvents.map((e) => {
-                              const recur = recurringLabel(e)
-                              return (
-                                <tr
-                                  key={`${e.id}-${e.event_date}`}
-                                  className="border-t align-top"
-                                  style={{ borderColor: Colors.dividerLight }}
-                                >
-                                  <td className="p-2 whitespace-nowrap">
-                                    {e.start_time ? formatTime12Hour(e.start_time) : '—'}
-                                    {e.end_time ? (
-                                      <span className="text-xs block" style={{ color: Colors.textSecondary }}>
-                                        to {formatTime12Hour(e.end_time)}
-                                      </span>
-                                    ) : null}
-                                  </td>
-                                  <td className="p-2">
-                                    <span className="font-medium">{e.title || '—'}</span>
-                                    {e.featured ? (
-                                      <span
-                                        className="ml-2 text-xs px-1.5 py-0.5 rounded"
-                                        style={{
-                                          backgroundColor: Colors.primary,
-                                          color: Colors.primaryDark,
-                                        }}
-                                      >
-                                        Featured
-                                      </span>
-                                    ) : null}
-                                  </td>
-                                  <td className="p-2">
-                                    <a
-                                      href={`#${breweryAnchorId(e.breweryId)}`}
-                                      className="underline hover:opacity-80"
-                                      style={{ color: Colors.primary }}
-                                    >
-                                      {e.breweryName}
-                                    </a>
-                                  </td>
-                                  <td className="p-2 text-xs">
-                                    {recur ? (
-                                      <span className="block" style={{ color: Colors.textSecondary }}>
-                                        {recur}
-                                      </span>
-                                    ) : null}
-                                    {e.cost != null ? (
-                                      <span className="block">Cost: {e.cost}</span>
-                                    ) : null}
-                                    {e.description?.trim() ? (
-                                      <span className="block line-clamp-2">{e.description}</span>
-                                    ) : null}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditing({ ...e })}
-                                      className="px-2 py-1 text-xs rounded border"
-                                      style={{
-                                        borderColor: Colors.primary,
-                                        color: Colors.textDark,
-                                        backgroundColor: Colors.background,
-                                      }}
-                                    >
-                                      Edit
-                                    </button>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                      dayEvents.map((e) => (
+                        <div
+                          key={`${e.id}-${e.event_date}`}
+                          className="p-3 flex flex-col gap-2"
+                          style={{ borderColor: Colors.dividerLight }}
+                        >
+                          <div className="min-w-0">
+                            <p
+                              className="text-xs font-medium truncate"
+                              style={{ color: Colors.textSecondary }}
+                            >
+                              {e.breweryName}
+                            </p>
+                            <p
+                              className="text-sm font-semibold break-words"
+                              style={{ color: Colors.textDark }}
+                            >
+                              {e.title || '—'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditing({ ...e })}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.primary,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(e.id)}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.error,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
 
-                  <div>
-                    <p className="text-sm font-semibold mb-2" style={{ color: Colors.textDark }}>
-                      Beer releases ({dayReleases.length})
-                    </p>
+                  <p
+                    className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y"
+                    style={{
+                      color: Colors.textSecondary,
+                      borderColor: Colors.dividerLight,
+                      backgroundColor: Colors.background,
+                    }}
+                  >
+                    Beer releases ({dayReleases.length})
+                  </p>
+                  <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayReleases.length === 0 ? (
-                      <p className="text-sm" style={{ color: Colors.textSecondary }}>
+                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No beer releases
                       </p>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm border-collapse min-w-[28rem]">
-                          <thead style={{ backgroundColor: Colors.backgroundLight }}>
-                            <tr>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Beer
-                              </th>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Brewery
-                              </th>
-                              <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
-                                Type / ABV
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody style={{ color: Colors.textDark }}>
-                            {dayReleases.map((r) => (
-                              <tr
-                                key={r.id}
-                                className="border-t align-top"
-                                style={{ borderColor: Colors.dividerLight }}
-                              >
-                                <td className="p-2 font-medium">{r.beer_name || '—'}</td>
-                                <td className="p-2">
-                                  <a
-                                    href={`#${breweryAnchorId(r.breweryId)}`}
-                                    className="underline hover:opacity-80"
-                                    style={{ color: Colors.primary }}
-                                  >
-                                    {r.breweryName}
-                                  </a>
-                                </td>
-                                <td className="p-2 text-xs">
-                                  {[r.Type, r.ABV].filter(Boolean).join(' · ') || '—'}
-                                  {r.description?.trim() ? (
-                                    <span className="block mt-1 line-clamp-2">{r.description}</span>
-                                  ) : null}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      dayReleases.map((r) => (
+                        <div
+                          key={r.id}
+                          className="p-3"
+                          style={{ borderColor: Colors.dividerLight }}
+                        >
+                          <p
+                            className="text-xs font-medium truncate"
+                            style={{ color: Colors.textSecondary }}
+                          >
+                            {r.breweryName}
+                          </p>
+                          <p
+                            className="text-sm font-semibold break-words"
+                            style={{ color: Colors.textDark }}
+                          >
+                            {r.beer_name || '—'}
+                          </p>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </section>
+              </div>
+            )
+          })}
+        </div>
+      </section>
 
-    {editing && (
-      <EventFormModal
-        modalTitle="Edit event"
-        event={editing}
-        onSave={async (data) => {
-          const result = await updateEventInEventsBase(editing.id, data)
-          if (result.ok) {
-            setEditing(null)
-            router.refresh()
-          }
-          return result
-        }}
-        onClose={() => setEditing(null)}
-      />
-    )}
+      {editing && (
+        <EventFormModal
+          modalTitle="Edit event"
+          event={editing}
+          onSave={async (data) => {
+            const result = await updateEventInEventsBase(editing.id, data)
+            if (result.ok) {
+              setEditing(null)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </>
   )
 }
