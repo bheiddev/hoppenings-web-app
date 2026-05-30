@@ -3,9 +3,12 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
+import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { EventFormModal } from '@/components/EventFormModal'
 import {
+  deleteBeerReleaseFromBase,
   deleteEventFromEventsBase,
+  updateBeerReleaseInBase,
   updateEventInEventsBase,
 } from '@/app/breweries-events/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
@@ -63,6 +66,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
 
   for (const list of eventsByDay.values()) {
     list.sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1
       const breweryCmp = a.breweryName.localeCompare(b.breweryName)
       if (breweryCmp !== 0) return breweryCmp
       return a.title.localeCompare(b.title)
@@ -86,6 +90,7 @@ export function BreweriesEventsUpcomingByDate({
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<EventRow | null>(null)
+  const [editingRelease, setEditingRelease] = useState<ReleaseRow | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const { dates, eventsByDay, releasesByDay } = useMemo(
@@ -93,11 +98,25 @@ export function BreweriesEventsUpcomingByDate({
     [regionBreweries]
   )
 
-  async function handleDelete(eventId: string) {
+  async function handleDeleteEvent(eventId: string) {
     setActionError(null)
     setLoadingId(eventId)
     try {
       const result = await deleteEventFromEventsBase(eventId)
+      setLoadingId(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete')
+    } catch (err) {
+      setLoadingId(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleDeleteRelease(releaseId: string) {
+    setActionError(null)
+    setLoadingId(releaseId)
+    try {
+      const result = await deleteBeerReleaseFromBase(releaseId)
       setLoadingId(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
@@ -215,7 +234,7 @@ export function BreweriesEventsUpcomingByDate({
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(e.id)}
+                              onClick={() => handleDeleteEvent(e.id)}
                               disabled={!!loadingId}
                               className="px-2 py-1 text-xs rounded border"
                               style={{
@@ -251,21 +270,51 @@ export function BreweriesEventsUpcomingByDate({
                       dayReleases.map((r) => (
                         <div
                           key={r.id}
-                          className="p-3"
+                          className="p-3 flex flex-col gap-2"
                           style={{ borderColor: Colors.dividerLight }}
                         >
-                          <p
-                            className="text-xs font-medium truncate"
-                            style={{ color: Colors.textSecondary }}
-                          >
-                            {r.breweryName}
-                          </p>
-                          <p
-                            className="text-sm font-semibold break-words"
-                            style={{ color: Colors.textDark }}
-                          >
-                            {r.beer_name || '—'}
-                          </p>
+                          <div className="min-w-0">
+                            <p
+                              className="text-xs font-medium truncate"
+                              style={{ color: Colors.textSecondary }}
+                            >
+                              {r.breweryName}
+                            </p>
+                            <p
+                              className="text-sm font-semibold break-words"
+                              style={{ color: Colors.textDark }}
+                            >
+                              {r.beer_name || '—'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingRelease({ ...r })}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.primary,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRelease(r.id)}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.error,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -290,6 +339,23 @@ export function BreweriesEventsUpcomingByDate({
             return result
           }}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {editingRelease && (
+        <BeerReleaseFormModal
+          modalTitle="Edit beer release"
+          release={editingRelease}
+          defaultBreweryId={editingRelease.breweryId}
+          onSave={async (data) => {
+            const result = await updateBeerReleaseInBase(editingRelease.id, data)
+            if (result.ok) {
+              setEditingRelease(null)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setEditingRelease(null)}
         />
       )}
     </>
