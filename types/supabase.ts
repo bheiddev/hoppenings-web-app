@@ -91,6 +91,16 @@ export interface ProposedEvent {
   description: string | null;
 }
 
+export interface FoodTruck {
+  id: number;
+  created_at: string;
+  brewery_id: string | null;
+  name: string | null;
+  permanent: boolean | null;
+  date: string | null;
+  closed: number[] | null;
+}
+
 export interface TaplistItem {
   brewery_id: string;
   beer_name: string;

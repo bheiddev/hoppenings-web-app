@@ -1,14 +1,16 @@
 import {
   getAllBreweriesWithSlugs,
   getBreweryEvents,
+  getBreweryFoodTrucks,
   getBreweryReleases,
 } from '@/lib/breweries'
-import { Event, BeerRelease } from '@/types/supabase'
+import { Event, BeerRelease, FoodTruck } from '@/types/supabase'
 
 export type BreweryWithData = {
   brewery: { id: string; name: string; region: string | null }
   events: Event[]
   releases: BeerRelease[]
+  foodTrucks: FoodTruck[]
 }
 
 /** Normalized key for breweries with no Region set (displayed as "Other") */
@@ -94,6 +96,7 @@ export async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
       brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
       events: await getBreweryEvents(brewery.id),
       releases: await getBreweryReleases(brewery.id),
+      foodTrucks: await getBreweryFoodTrucks(brewery.id),
     }))
   )
 }
