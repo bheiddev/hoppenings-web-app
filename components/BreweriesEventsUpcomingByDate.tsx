@@ -22,7 +22,7 @@ import {
 } from '@/lib/utils'
 import { BeerRelease, Event, FoodTruck } from '@/types/supabase'
 
-const UPCOMING_DAY_COUNT = 3
+const UPCOMING_DAY_COUNT = 5
 
 type EventRow = Event & { breweryName: string; breweryId: string }
 type ReleaseRow = BeerRelease & { breweryName: string; breweryId: string }
@@ -214,7 +214,7 @@ export function BreweriesEventsUpcomingByDate({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
           {dates.map((ymd, index) => {
             const dayEvents = eventsByDay.get(ymd) ?? []
             const dayReleases = releasesByDay.get(ymd) ?? []
