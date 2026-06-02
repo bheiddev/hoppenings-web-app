@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { EventFormModal } from '@/components/EventFormModal'
+import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
 import {
   deleteBeerReleaseFromBase,
   deleteEventFromEventsBase,
+  deleteFoodTruck,
   updateBeerReleaseInBase,
   updateEventInEventsBase,
+  updateFoodTruck,
 } from '@/app/breweries-events/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import {
@@ -30,23 +33,8 @@ function normalizeReleaseDate(releaseDate: string | null): string | null {
   return normalizeEventDateToMountainTime(releaseDate)
 }
 
-/** 0 = Sunday … 6 = Saturday in America/Denver (matches PostgreSQL DOW). */
-function getMountainDayOfWeek(ymd: string): number {
-  const [year, month, day] = ymd.split('-').map(Number)
-  const weekday = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).toLocaleDateString('en-US', {
-    timeZone: 'America/Denver',
-    weekday: 'long',
-  })
-  const dayMap: Record<string, number> = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
-  }
-  return dayMap[weekday] ?? 0
+function isDateSpecificFoodTruck(truck: FoodTruck): boolean {
+  return truck.permanent !== true
 }
 
 function formatEventCost(cost: number | null): string {
@@ -67,15 +55,8 @@ function formatEventRecurrence(
 }
 
 function foodTruckShowsOnDate(truck: FoodTruck, ymd: string): boolean {
-  if (truck.permanent) {
-    const dayOfWeek = getMountainDayOfWeek(ymd)
-    if (truck.closed?.includes(dayOfWeek)) return false
-    return true
-  }
-  if (truck.date) {
-    return normalizeEventDateToMountainTime(truck.date) === ymd
-  }
-  return false
+  if (!isDateSpecificFoodTruck(truck) || !truck.date) return false
+  return normalizeEventDateToMountainTime(truck.date) === ymd
 }
 
 function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
@@ -113,7 +94,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
         })
       }
     }
-    for (const truck of foodTrucks) {
+    for (const truck of foodTrucks.filter(isDateSpecificFoodTruck)) {
       for (const d of dates) {
         if (foodTruckShowsOnDate(truck, d)) {
           foodTrucksByDay.get(d)!.push({
@@ -160,6 +141,7 @@ export function BreweriesEventsUpcomingByDate({
   const router = useRouter()
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [editingRelease, setEditingRelease] = useState<ReleaseRow | null>(null)
+  const [editingFoodTruck, setEditingFoodTruck] = useState<FoodTruckRow | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const { dates, eventsByDay, releasesByDay, foodTrucksByDay } = useMemo(
@@ -186,6 +168,21 @@ export function BreweriesEventsUpcomingByDate({
     setLoadingId(releaseId)
     try {
       const result = await deleteBeerReleaseFromBase(releaseId)
+      setLoadingId(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete')
+    } catch (err) {
+      setLoadingId(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleDeleteFoodTruck(foodTruckId: number) {
+    setActionError(null)
+    const loadingKey = `food-truck-${foodTruckId}`
+    setLoadingId(loadingKey)
+    try {
+      const result = await deleteFoodTruck(foodTruckId)
       setLoadingId(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
@@ -411,21 +408,51 @@ export function BreweriesEventsUpcomingByDate({
                       dayFoodTrucks.map((t) => (
                         <div
                           key={`${t.id}-${ymd}`}
-                          className="p-3"
+                          className="p-3 flex flex-col gap-2"
                           style={{ borderColor: Colors.dividerLight }}
                         >
-                          <p
-                            className="text-xs font-medium truncate"
-                            style={{ color: Colors.textSecondary }}
-                          >
-                            {t.breweryName}
-                          </p>
-                          <p
-                            className="text-sm font-semibold break-words"
-                            style={{ color: Colors.textDark }}
-                          >
-                            {t.name || '—'}
-                          </p>
+                          <div className="min-w-0">
+                            <p
+                              className="text-xs font-medium truncate"
+                              style={{ color: Colors.textSecondary }}
+                            >
+                              {t.breweryName}
+                            </p>
+                            <p
+                              className="text-sm font-semibold break-words"
+                              style={{ color: Colors.textDark }}
+                            >
+                              {t.name || '—'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingFoodTruck({ ...t })}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.primary,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFoodTruck(t.id)}
+                              disabled={!!loadingId}
+                              className="px-2 py-1 text-xs rounded border"
+                              style={{
+                                borderColor: Colors.error,
+                                color: Colors.textDark,
+                                backgroundColor: Colors.background,
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -467,6 +494,23 @@ export function BreweriesEventsUpcomingByDate({
             return result
           }}
           onClose={() => setEditingRelease(null)}
+        />
+      )}
+
+      {editingFoodTruck && (
+        <FoodTruckFormModal
+          modalTitle="Edit food truck"
+          foodTruck={editingFoodTruck}
+          defaultBreweryId={editingFoodTruck.breweryId}
+          onSave={async (data) => {
+            const result = await updateFoodTruck(editingFoodTruck.id, data)
+            if (result.ok) {
+              setEditingFoodTruck(null)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setEditingFoodTruck(null)}
         />
       )}
     </>

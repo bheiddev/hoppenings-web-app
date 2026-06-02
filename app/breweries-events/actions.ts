@@ -258,6 +258,49 @@ export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBee
   return { ok: true }
 }
 
+export type UpdateFoodTruckPayload = {
+  name: string | null
+  brewery_id: string | null
+  date: string | null
+  permanent: boolean | null
+  closed: number[] | null
+}
+
+export async function updateFoodTruck(foodTruckId: number, data: UpdateFoodTruckPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('food_trucks')
+    .update({
+      name: data.name,
+      brewery_id: data.brewery_id,
+      date: data.date,
+      permanent: data.permanent,
+      closed: data.closed,
+    })
+    .eq('id', foodTruckId)
+
+  if (error) {
+    console.error('Error updating food truck:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function deleteFoodTruck(foodTruckId: number) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!.from('food_trucks').delete().eq('id', foodTruckId)
+
+  if (error) {
+    console.error('Error deleting food truck:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export async function deleteBeerReleaseFromBase(releaseId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
