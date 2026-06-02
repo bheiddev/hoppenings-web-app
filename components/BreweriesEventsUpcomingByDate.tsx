@@ -42,16 +42,74 @@ function formatEventCost(cost: number | null): string {
   return `$${cost.toFixed(2)}`
 }
 
+function isEventRecurring(
+  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
+): boolean {
+  return !!(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
+}
+
 function formatEventRecurrence(
   event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
 ): string {
-  if (!event.is_recurring && !event.is_recurring_biweekly && !event.is_recurring_monthly) {
-    return 'One Time'
-  }
+  if (!isEventRecurring(event)) return 'One Time'
   if (event.is_recurring) return 'Weekly'
   if (event.is_recurring_biweekly) return 'Biweekly'
   if (event.is_recurring_monthly) return 'Monthly'
   return 'One Time'
+}
+
+const sectionHeaderStyle = {
+  color: Colors.textPrimary,
+  borderColor: Colors.dividerLight,
+  backgroundColor: Colors.backgroundMedium,
+} as const
+
+function SectionHeader({ label, className = '' }: { label: string; className?: string }) {
+  return (
+    <p
+      className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y ${className}`}
+      style={sectionHeaderStyle}
+    >
+      {label}
+    </p>
+  )
+}
+
+function FeaturedIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      className="flex-shrink-0"
+    >
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 18.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  )
+}
+
+function RecurringIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="flex-shrink-0"
+    >
+      <path d="M17 1l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 014-4h14" />
+      <path d="M7 23l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 01-4 4H3" />
+    </svg>
+  )
 }
 
 function foodTruckShowsOnDate(truck: FoodTruck, ymd: string): boolean {
@@ -227,25 +285,21 @@ export function BreweriesEventsUpcomingByDate({
                 style={{ borderColor: Colors.dividerLight }}
               >
                 <div
-                  className="px-3 py-2 border-b flex items-center justify-between gap-2"
+                  className="px-3 py-2 border-b"
                   style={{
                     borderColor: Colors.dividerLight,
                     backgroundColor: Colors.backgroundLight,
                   }}
                 >
                   <h3
-                    className="text-sm font-semibold leading-snug min-w-0"
+                    className="text-sm font-semibold leading-snug"
                     style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
                   >
                     {formatMountainWeekDayHeading(ymd, index)}
                   </h3>
-                  <span
-                    className="text-xs font-semibold uppercase tracking-wide flex-shrink-0"
-                    style={{ color: Colors.textSecondary }}
-                  >
-                    Events ({dayEvents.length})
-                  </span>
                 </div>
+
+                <SectionHeader label={`Events (${dayEvents.length})`} />
 
                 <div className="flex-1">
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
@@ -254,11 +308,18 @@ export function BreweriesEventsUpcomingByDate({
                         No events
                       </p>
                     ) : (
-                      dayEvents.map((e) => (
+                      dayEvents.map((e) => {
+                        const recurring = isEventRecurring(e)
+                        return (
                         <div
                           key={`${e.id}-${e.event_date}`}
                           className="p-3 flex gap-3"
-                          style={{ borderColor: Colors.dividerLight }}
+                          style={{
+                            borderColor: Colors.dividerLight,
+                            backgroundColor: e.featured
+                              ? 'rgba(248, 199, 1, 0.12)'
+                              : Colors.background,
+                          }}
                         >
                           <div className="min-w-0 flex-1 flex flex-col gap-2">
                             <div className="min-w-0">
@@ -268,12 +329,34 @@ export function BreweriesEventsUpcomingByDate({
                               >
                                 {e.breweryName}
                               </p>
-                              <p
-                                className="text-sm font-semibold break-words"
-                                style={{ color: Colors.textDark }}
-                              >
-                                {e.title || '—'}
-                              </p>
+                              <div className="flex items-start gap-1.5">
+                                {(e.featured || recurring) && (
+                                  <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+                                    {e.featured && (
+                                      <span
+                                        title="Featured"
+                                        style={{ color: Colors.primary }}
+                                      >
+                                        <FeaturedIcon />
+                                      </span>
+                                    )}
+                                    {recurring && (
+                                      <span
+                                        title={formatEventRecurrence(e)}
+                                        style={{ color: Colors.info }}
+                                      >
+                                        <RecurringIcon />
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                                <p
+                                  className="text-sm font-semibold break-words min-w-0"
+                                  style={{ color: Colors.textDark }}
+                                >
+                                  {e.title || '—'}
+                                </p>
+                              </div>
                             </div>
                             <div className="flex flex-wrap gap-1">
                               <button
@@ -316,20 +399,12 @@ export function BreweriesEventsUpcomingByDate({
                             </span>
                           </div>
                         </div>
-                      ))
+                        )
+                      })
                     )}
                   </div>
 
-                  <p
-                    className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y"
-                    style={{
-                      color: Colors.textSecondary,
-                      borderColor: Colors.dividerLight,
-                      backgroundColor: Colors.background,
-                    }}
-                  >
-                    Beer releases ({dayReleases.length})
-                  </p>
+                  <SectionHeader label={`Beer releases (${dayReleases.length})`} />
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayReleases.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
@@ -389,16 +464,7 @@ export function BreweriesEventsUpcomingByDate({
                     )}
                   </div>
 
-                  <p
-                    className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y"
-                    style={{
-                      color: Colors.textSecondary,
-                      borderColor: Colors.dividerLight,
-                      backgroundColor: Colors.background,
-                    }}
-                  >
-                    Food trucks ({dayFoodTrucks.length})
-                  </p>
+                  <SectionHeader label={`Food trucks (${dayFoodTrucks.length})`} />
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayFoodTrucks.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
