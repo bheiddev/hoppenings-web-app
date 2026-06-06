@@ -31,6 +31,19 @@ function formatCreatedAt(iso: string) {
   }
 }
 
+function CompactField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <span className="font-medium" style={{ color: Colors.textSecondary }}>
+        {label}:{' '}
+      </span>
+      <span className="break-words whitespace-pre-wrap" style={{ color: Colors.textDark }}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
 export function BeerReleasesTableWithActions({
   releases,
   title,
@@ -82,24 +95,20 @@ export function BeerReleasesTableWithActions({
           style={{ backgroundColor: '#FEE2E2', color: Colors.error }}
         >
           {actionError}
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="ml-2 underline"
-          >
+          <button type="button" onClick={() => setActionError(null)} className="ml-2 underline">
             Dismiss
           </button>
         </div>
       )}
       <div
-        className="flex flex-col border rounded-lg overflow-hidden w-full"
+        className="flex flex-col border rounded-lg overflow-hidden w-full min-w-0"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
           className="flex-shrink-0 px-3 py-2 font-semibold text-sm flex items-center justify-between gap-2"
           style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
         >
-          <span>{title}</span>
+          <span className="min-w-0 break-words">{title}</span>
           <button
             type="button"
             onClick={openAdd}
@@ -113,121 +122,76 @@ export function BeerReleasesTableWithActions({
             Add
           </button>
         </div>
-        <div className="min-h-[12rem] max-h-[min(36rem,70vh)] overflow-y-auto overflow-x-auto overscroll-y-contain [scrollbar-gutter:stable]">
+        <div className="overflow-hidden">
           {releases.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No beer releases
             </p>
           ) : (
-            <table className="w-full text-left text-sm border-collapse min-w-[76rem]">
-              <thead
-                className="sticky top-0 z-10"
-                style={{ backgroundColor: Colors.backgroundLight }}
-              >
-                <tr>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    ID
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Created
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Beer
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Type
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    ABV
-                  </th>
-                  <th className="p-2 font-medium min-w-[12rem]" style={{ color: Colors.textDark }}>
-                    Description
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Brewery (join)
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id2
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    brewery_id3
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Release date
-                  </th>
-                  <th
-                    className="p-2 font-medium whitespace-nowrap sticky right-0 z-20 shadow-[-6px_0_8px_-4px_rgba(0,0,0,0.12)] border-l"
-                    style={{
-                      color: Colors.textDark,
-                      backgroundColor: Colors.backgroundLight,
-                      borderColor: Colors.dividerLight,
-                    }}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody style={{ color: Colors.textDark }}>
-                {releases.map((r) => (
-                  <tr key={r.id} className="border-t align-top" style={{ borderColor: Colors.dividerLight }}>
-                    <td className="p-2 font-mono text-xs whitespace-nowrap">{r.id}</td>
-                    <td className="p-2 whitespace-nowrap">{formatCreatedAt(r.created_at)}</td>
-                    <td className="p-2">{r.beer_name || '—'}</td>
-                    <td className="p-2">{r.Type || '—'}</td>
-                    <td className="p-2">{r.ABV ?? '—'}</td>
-                    <td className="p-2 text-xs break-words whitespace-pre-wrap max-w-md">
-                      {r.description?.trim() ? r.description : '—'}
-                    </td>
-                    <td className="p-2">{r.breweries?.name || '—'}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id2 ?? '—'}</td>
-                    <td className="p-2 font-mono text-xs">{r.brewery_id3 ?? '—'}</td>
-                    <td className="p-2 whitespace-nowrap">
-                      {r.release_date ? formatReleaseDate(r.release_date) : '—'}
-                    </td>
-                    <td
-                      className="p-2 sticky right-0 z-10 shadow-[-6px_0_8px_-4px_rgba(0,0,0,0.08)] border-l align-top"
+            <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+              {releases.map((r) => (
+                <div key={r.id} className="p-2 flex flex-col gap-1 text-xs">
+                  <CompactField label="ID" value={<span className="font-mono break-all">{r.id}</span>} />
+                  <CompactField label="Created" value={formatCreatedAt(r.created_at)} />
+                  <CompactField label="Beer" value={r.beer_name || '—'} />
+                  <CompactField label="Type" value={r.Type || '—'} />
+                  <CompactField label="ABV" value={r.ABV ?? '—'} />
+                  <CompactField
+                    label="Description"
+                    value={r.description?.trim() ? r.description : '—'}
+                  />
+                  <CompactField label="Brewery (join)" value={r.breweries?.name || '—'} />
+                  <CompactField
+                    label="brewery_id"
+                    value={<span className="font-mono break-all">{r.brewery_id}</span>}
+                  />
+                  <CompactField
+                    label="brewery_id2"
+                    value={
+                      r.brewery_id2 ? <span className="font-mono break-all">{r.brewery_id2}</span> : '—'
+                    }
+                  />
+                  <CompactField
+                    label="brewery_id3"
+                    value={
+                      r.brewery_id3 ? <span className="font-mono break-all">{r.brewery_id3}</span> : '—'
+                    }
+                  />
+                  <CompactField
+                    label="Release date"
+                    value={r.release_date ? formatReleaseDate(r.release_date) : '—'}
+                  />
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(r)}
+                      disabled={!!loadingId}
+                      className="px-2 py-1 text-xs rounded border"
                       style={{
+                        borderColor: Colors.primary,
+                        color: Colors.textDark,
                         backgroundColor: Colors.background,
-                        borderColor: Colors.dividerLight,
                       }}
                     >
-                      <div className="flex flex-wrap gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(r)}
-                          disabled={!!loadingId}
-                          className="px-2 py-1 text-xs rounded border"
-                          style={{
-                            borderColor: Colors.primary,
-                            color: Colors.textDark,
-                            backgroundColor: Colors.background,
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(r.id)}
-                          disabled={!!loadingId}
-                          className="px-2 py-1 text-xs rounded border"
-                          style={{
-                            borderColor: Colors.error,
-                            color: Colors.textDark,
-                            backgroundColor: Colors.background,
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(r.id)}
+                      disabled={!!loadingId}
+                      className="px-2 py-1 text-xs rounded border"
+                      style={{
+                        borderColor: Colors.error,
+                        color: Colors.textDark,
+                        backgroundColor: Colors.background,
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

@@ -49,7 +49,7 @@ export function BreweriesEventsRegionContent({
               {brewery.id}
             </span>
           </h3>
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start overflow-x-hidden">
             <div className="min-w-0">
               <EventsTableWithDelete
                 events={events}

@@ -14,6 +14,31 @@ interface FoodTrucksTableWithActionsProps {
   breweryId: string
 }
 
+function formatCreatedAt(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      timeZone: 'America/Denver',
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    return iso
+  }
+}
+
+function CompactField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <span className="font-medium" style={{ color: Colors.textSecondary }}>
+        {label}:{' '}
+      </span>
+      <span className="break-words whitespace-pre-wrap" style={{ color: Colors.textDark }}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
 export function FoodTrucksTableWithActions({
   foodTrucks,
   title,
@@ -65,79 +90,75 @@ export function FoodTrucksTableWithActions({
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
       >
         <div
-          className="flex-shrink-0 px-3 py-2 font-semibold text-sm"
+          className="flex-shrink-0 px-3 py-2 font-semibold text-sm break-words"
           style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
         >
           {title}
         </div>
-        <div className="min-h-[12rem] max-h-[min(32rem,70vh)] overflow-y-auto overflow-x-auto overscroll-y-contain [scrollbar-gutter:stable]">
+        <div className="overflow-hidden">
           {foodTrucks.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No food trucks
             </p>
           ) : (
-            <table className="w-full text-left text-sm border-collapse min-w-[20rem]">
-              <thead
-                className="sticky top-0 z-10"
-                style={{ backgroundColor: Colors.backgroundLight }}
-              >
-                <tr>
-                  <th className="p-2 font-medium min-w-[8rem]" style={{ color: Colors.textDark }}>
-                    Name
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Date
-                  </th>
-                  <th className="p-2 font-medium whitespace-nowrap" style={{ color: Colors.textDark }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody style={{ color: Colors.textDark }}>
-                {foodTrucks.map((truck) => (
-                  <tr
-                    key={truck.id}
-                    className="border-t align-top"
-                    style={{ borderColor: Colors.dividerLight }}
-                  >
-                    <td className="p-2 break-words">{truck.name || '—'}</td>
-                    <td className="p-2 whitespace-nowrap">
-                      {truck.date ? formatEventDate(truck.date) : '—'}
-                    </td>
-                    <td className="p-2">
-                      <div className="flex flex-wrap gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(truck)}
-                          disabled={loadingId !== null}
-                          className="px-2 py-1 text-xs rounded border"
-                          style={{
-                            borderColor: Colors.primary,
-                            color: Colors.textDark,
-                            backgroundColor: Colors.background,
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(truck.id)}
-                          disabled={loadingId !== null}
-                          className="px-2 py-1 text-xs rounded border"
-                          style={{
-                            borderColor: Colors.error,
-                            color: Colors.textDark,
-                            backgroundColor: Colors.background,
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+              {foodTrucks.map((truck) => (
+                <div key={truck.id} className="p-2 flex flex-col gap-1 text-xs">
+                  <CompactField label="ID" value={String(truck.id)} />
+                  <CompactField label="Created" value={formatCreatedAt(truck.created_at)} />
+                  <CompactField label="Name" value={truck.name || '—'} />
+                  <CompactField
+                    label="Date"
+                    value={truck.date ? formatEventDate(truck.date) : '—'}
+                  />
+                  <CompactField label="Permanent" value={truck.permanent ? 'Yes' : 'No'} />
+                  <CompactField
+                    label="Closed"
+                    value={
+                      truck.closed && truck.closed.length > 0 ? truck.closed.join(', ') : '—'
+                    }
+                  />
+                  <CompactField
+                    label="brewery_id"
+                    value={
+                      truck.brewery_id ? (
+                        <span className="font-mono break-all">{truck.brewery_id}</span>
+                      ) : (
+                        '—'
+                      )
+                    }
+                  />
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(truck)}
+                      disabled={loadingId !== null}
+                      className="px-2 py-1 text-xs rounded border"
+                      style={{
+                        borderColor: Colors.primary,
+                        color: Colors.textDark,
+                        backgroundColor: Colors.background,
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(truck.id)}
+                      disabled={loadingId !== null}
+                      className="px-2 py-1 text-xs rounded border"
+                      style={{
+                        borderColor: Colors.error,
+                        color: Colors.textDark,
+                        backgroundColor: Colors.background,
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
