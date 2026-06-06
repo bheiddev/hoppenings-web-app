@@ -1,7 +1,9 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
+import { ProposedEventsTable } from '@/components/ProposedEventsTable'
 import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
+import { FoodTrucksTableWithActions } from '@/components/FoodTrucksTableWithActions'
 
 interface BreweriesEventsRegionContentProps {
   regionBreweries: BreweryWithData[]
@@ -32,8 +34,8 @@ export function BreweriesEventsRegionContent({
       >
         {sectionHeading}
       </h2>
-      {sorted.map(({ brewery, events, releases }) => (
-        <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-6 scroll-mt-24">
+      {sorted.map(({ brewery, events, proposedEvents, releases, foodTrucks }) => (
+        <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-4 scroll-mt-24">
           <h3
             className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
             style={{ color: Colors.textPrimary }}
@@ -47,12 +49,35 @@ export function BreweriesEventsRegionContent({
               {brewery.id}
             </span>
           </h3>
-          <EventsTableWithDelete events={events} title="Events" breweryId={brewery.id} />
-          <BeerReleasesTableWithActions
-            releases={releases}
-            title="Beer releases"
-            breweryId={brewery.id}
-          />
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start">
+            <div className="min-w-0">
+              <EventsTableWithDelete
+                events={events}
+                title="Events (events_base)"
+                breweryId={brewery.id}
+              />
+            </div>
+            <div className="min-w-0">
+              <ProposedEventsTable
+                proposed={proposedEvents}
+                title="Proposed events (proposed_events)"
+              />
+            </div>
+            <div className="min-w-0">
+              <BeerReleasesTableWithActions
+                releases={releases}
+                title="Beer releases"
+                breweryId={brewery.id}
+              />
+            </div>
+            <div className="min-w-0">
+              <FoodTrucksTableWithActions
+                foodTrucks={foodTrucks}
+                title="Food trucks"
+                breweryId={brewery.id}
+              />
+            </div>
+          </div>
         </div>
       ))}
     </div>

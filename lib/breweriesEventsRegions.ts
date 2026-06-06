@@ -3,12 +3,14 @@ import {
   getBreweryEvents,
   getBreweryFoodTrucks,
   getBreweryReleases,
+  getProposedEventsByBreweryId,
 } from '@/lib/breweries'
-import { Event, BeerRelease, FoodTruck } from '@/types/supabase'
+import { Event, BeerRelease, FoodTruck, ProposedEvent } from '@/types/supabase'
 
 export type BreweryWithData = {
   brewery: { id: string; name: string; region: string | null }
   events: Event[]
+  proposedEvents: ProposedEvent[]
   releases: BeerRelease[]
   foodTrucks: FoodTruck[]
 }
@@ -95,6 +97,7 @@ export async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
     breweries.map(async (brewery) => ({
       brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
       events: await getBreweryEvents(brewery.id),
+      proposedEvents: await getProposedEventsByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),
       foodTrucks: await getBreweryFoodTrucks(brewery.id),
     }))
