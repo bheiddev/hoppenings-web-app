@@ -7,6 +7,7 @@ import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { EventFormModal } from '@/components/EventFormModal'
 import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
 import {
+  AdminColumnScrollBody,
   AdminSectionHeader,
   BeerReleaseAdminCard,
   EventAdminCard,
@@ -213,7 +214,7 @@ export function BreweriesEventsUpcomingByDate({
               <div
                 key={ymd}
                 className="flex flex-col min-w-0 border rounded-lg overflow-hidden"
-                style={{ borderColor: Colors.dividerLight }}
+                style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
               >
                 <div
                   className="px-3 py-2 border-b"
@@ -233,7 +234,7 @@ export function BreweriesEventsUpcomingByDate({
                 <AdminSectionHeader label={`Events (${dayEvents.length})`} />
 
                 <div className="flex-1">
-                  <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+                  <AdminColumnScrollBody>
                     {dayEvents.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No events
@@ -251,10 +252,10 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </div>
+                  </AdminColumnScrollBody>
 
                   <AdminSectionHeader label={`Beer releases (${dayReleases.length})`} />
-                  <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+                  <AdminColumnScrollBody>
                     {dayReleases.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No beer releases
@@ -272,10 +273,10 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </div>
+                  </AdminColumnScrollBody>
 
                   <AdminSectionHeader label={`Food trucks (${dayFoodTrucks.length})`} />
-                  <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+                  <AdminColumnScrollBody>
                     {dayFoodTrucks.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No food trucks
@@ -293,7 +294,7 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </div>
+                  </AdminColumnScrollBody>
                 </div>
               </div>
             )

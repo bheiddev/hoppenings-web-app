@@ -11,7 +11,11 @@ import {
   updateProposedEvent,
   type UpdateProposedEventPayload,
 } from '@/app/breweries-events/actions'
-import { AdminColumnHeader } from '@/components/breweriesEventsAdminCards'
+import {
+  AdminColumnHeader,
+  AdminColumnScrollBody,
+  AdminColumnShell,
+} from '@/components/breweriesEventsAdminCards'
 
 interface ProposedEventsTableProps {
   proposed: ProposedEvent[]
@@ -104,12 +108,9 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
           </button>
         </div>
       )}
-      <div
-        className="flex flex-col min-w-0 border rounded-lg overflow-hidden w-full"
-        style={{ borderColor: Colors.dividerLight }}
-      >
+      <AdminColumnShell>
         <AdminColumnHeader title={title} />
-        <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+        <AdminColumnScrollBody>
           {proposed.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No proposed events
@@ -221,8 +222,8 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
                 </div>
               ))
           )}
-        </div>
-      </div>
+        </AdminColumnScrollBody>
+      </AdminColumnShell>
 
       {editing && (
         <EditProposedEventModal

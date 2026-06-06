@@ -13,6 +13,8 @@ import {
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import {
   AdminColumnHeader,
+  AdminColumnScrollBody,
+  AdminColumnShell,
   BeerReleaseAdminCard,
 } from '@/components/breweriesEventsAdminCards'
 
@@ -78,10 +80,7 @@ export function BeerReleasesTableWithActions({
           </button>
         </div>
       )}
-      <div
-        className="flex flex-col min-w-0 border rounded-lg overflow-hidden w-full"
-        style={{ borderColor: Colors.dividerLight }}
-      >
+      <AdminColumnShell>
         <AdminColumnHeader
           title={title}
           action={
@@ -99,7 +98,7 @@ export function BeerReleasesTableWithActions({
             </button>
           }
         />
-        <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
+        <AdminColumnScrollBody>
           {releases.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No beer releases
@@ -115,8 +114,8 @@ export function BeerReleasesTableWithActions({
               />
             ))
           )}
-        </div>
-      </div>
+        </AdminColumnScrollBody>
+      </AdminColumnShell>
 
       {adding && (
         <BeerReleaseFormModal

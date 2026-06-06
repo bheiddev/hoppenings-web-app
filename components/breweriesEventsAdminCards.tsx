@@ -31,6 +31,40 @@ export function formatEventRecurrence(
   return 'One Time'
 }
 
+export const adminColumnShellStyle = {
+  borderColor: Colors.dividerLight,
+  backgroundColor: Colors.background,
+} as const
+
+export function AdminColumnShell({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={`flex flex-col min-w-0 border rounded-lg overflow-hidden w-full ${className}`}
+      style={adminColumnShellStyle}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** ~4–5 admin cards visible before vertical scroll */
+export function AdminColumnScrollBody({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="divide-y overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable] max-h-[26rem]"
+      style={{ borderColor: Colors.dividerLight }}
+    >
+      {children}
+    </div>
+  )
+}
+
 export function AdminColumnHeader({
   title,
   action,
@@ -233,7 +267,10 @@ export function BeerReleaseAdminCard({
   disabled?: boolean
 }) {
   return (
-    <div className="p-3 flex flex-col gap-2" style={{ borderColor: Colors.dividerLight }}>
+    <div
+      className="p-3 flex flex-col gap-2"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+    >
       <div className="min-w-0">
         {showBreweryName && breweryName && (
           <p className="text-xs font-medium truncate" style={{ color: Colors.textSecondary }}>
@@ -265,7 +302,10 @@ export function FoodTruckAdminCard({
   disabled?: boolean
 }) {
   return (
-    <div className="p-3 flex flex-col gap-2" style={{ borderColor: Colors.dividerLight }}>
+    <div
+      className="p-3 flex flex-col gap-2"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+    >
       <div className="min-w-0">
         {showBreweryName && breweryName && (
           <p className="text-xs font-medium truncate" style={{ color: Colors.textSecondary }}>
