@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Colors } from '@/lib/colors'
+import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import { FoodTruck } from '@/types/supabase'
 import type { UpdateFoodTruckPayload } from '@/app/breweries-events/actions'
 
@@ -163,29 +164,12 @@ export function FoodTruckFormModal({
             </p>
           )}
           <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded border"
-              style={{
-                borderColor: Colors.dividerLight,
-                color: Colors.textDark,
-                backgroundColor: Colors.background,
-              }}
-            >
+            <AdminButton variant="cancel" onClick={onClose} disabled={saving}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 rounded font-medium"
-              style={{
-                backgroundColor: Colors.primary,
-                color: Colors.primaryDark,
-              }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            </AdminButton>
+            <AdminButton variant="save" type="submit" loading={saving}>
+              Save
+            </AdminButton>
           </div>
         </form>
       </div>

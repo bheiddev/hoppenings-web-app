@@ -1,8 +1,9 @@
 'use client'
 
 import { Colors } from '@/lib/colors'
-import { formatEventDate, formatTime12Hour } from '@/lib/utils'
+import { formatEventDate, formatReleaseDate, formatTime12Hour } from '@/lib/utils'
 import { BeerRelease, Event, FoodTruck, ProposedEvent } from '@/types/supabase'
+import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 
 type RecurrenceFields = {
   is_recurring: boolean | null
@@ -35,6 +36,10 @@ export function formatEventRecurrence(event: RecurrenceFields): string {
 
 function formatCardEventDate(eventDate: string | null): string {
   return eventDate ? formatEventDate(eventDate) : '—'
+}
+
+function formatCardReleaseDate(releaseDate: string | null): string {
+  return formatReleaseDate(releaseDate) ?? '—'
 }
 
 export const adminColumnShellStyle = {
@@ -148,40 +153,27 @@ function RecurringIcon() {
 function AdminActionButtons({
   onEdit,
   onDelete,
-  disabled,
+  actionsDisabled,
+  deleteLoading,
 }: {
   onEdit: () => void
   onDelete: () => void
-  disabled?: boolean
+  actionsDisabled?: boolean
+  deleteLoading?: boolean
 }) {
   return (
     <div className="flex flex-wrap gap-1">
-      <button
-        type="button"
-        onClick={onEdit}
-        disabled={disabled}
-        className="px-2 py-1 text-xs rounded border"
-        style={{
-          borderColor: Colors.primary,
-          color: Colors.textDark,
-          backgroundColor: Colors.background,
-        }}
-      >
+      <AdminButton variant="edit" onClick={onEdit} disabled={actionsDisabled}>
         Edit
-      </button>
-      <button
-        type="button"
+      </AdminButton>
+      <AdminButton
+        variant="delete"
         onClick={onDelete}
-        disabled={disabled}
-        className="px-2 py-1 text-xs rounded border"
-        style={{
-          borderColor: Colors.error,
-          color: Colors.textDark,
-          backgroundColor: Colors.background,
-        }}
+        disabled={actionsDisabled}
+        loading={deleteLoading}
       >
         Delete
-      </button>
+      </AdminButton>
     </div>
   )
 }
@@ -265,14 +257,16 @@ export function EventAdminCard({
   showBreweryName = false,
   onEdit,
   onDelete,
-  disabled,
+  actionsDisabled,
+  deleteLoading,
 }: {
   event: Event
   breweryName?: string
   showBreweryName?: boolean
   onEdit: () => void
   onDelete: () => void
-  disabled?: boolean
+  actionsDisabled?: boolean
+  deleteLoading?: boolean
 }) {
   const recurring = isEventRecurring(event)
   const recurrenceLabel = formatEventRecurrence(event)
@@ -295,7 +289,12 @@ export function EventAdminCard({
           recurring={recurring}
           recurrenceLabel={recurrenceLabel}
         />
-        <AdminActionButtons onEdit={onEdit} onDelete={onDelete} disabled={disabled} />
+        <AdminActionButtons
+          onEdit={onEdit}
+          onDelete={onDelete}
+          actionsDisabled={actionsDisabled}
+          deleteLoading={deleteLoading}
+        />
       </div>
       <EventCardAside
         startTime={event.start_time}
@@ -313,7 +312,9 @@ export function ProposedEventAdminCard({
   onEdit,
   onAccept,
   onReject,
-  disabled,
+  actionsDisabled,
+  acceptLoading,
+  rejectLoading,
 }: {
   proposed: ProposedEvent
   breweryName?: string
@@ -321,7 +322,9 @@ export function ProposedEventAdminCard({
   onEdit: () => void
   onAccept: () => void
   onReject: () => void
-  disabled?: boolean
+  actionsDisabled?: boolean
+  acceptLoading?: boolean
+  rejectLoading?: boolean
 }) {
   const recurring = isEventRecurring(proposed)
   const recurrenceLabel = formatEventRecurrence(proposed)
@@ -346,45 +349,25 @@ export function ProposedEventAdminCard({
           recurrenceLabel={recurrenceLabel}
         />
         <div className="flex flex-wrap gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={disabled}
-            className="px-2 py-1 text-xs rounded border"
-            style={{
-              borderColor: Colors.primary,
-              color: Colors.textDark,
-              backgroundColor: Colors.background,
-            }}
-          >
+          <AdminButton variant="edit" onClick={onEdit} disabled={actionsDisabled}>
             Edit
-          </button>
-          <button
-            type="button"
+          </AdminButton>
+          <AdminButton
+            variant="accept"
             onClick={onAccept}
-            disabled={disabled}
-            className="px-2 py-1 text-xs rounded border"
-            style={{
-              borderColor: Colors.success,
-              color: Colors.textDark,
-              backgroundColor: Colors.background,
-            }}
+            disabled={actionsDisabled}
+            loading={acceptLoading}
           >
             Accept
-          </button>
-          <button
-            type="button"
+          </AdminButton>
+          <AdminButton
+            variant="reject"
             onClick={onReject}
-            disabled={disabled}
-            className="px-2 py-1 text-xs rounded border"
-            style={{
-              borderColor: Colors.error,
-              color: Colors.textDark,
-              backgroundColor: Colors.background,
-            }}
+            disabled={actionsDisabled}
+            loading={rejectLoading}
           >
             Reject
-          </button>
+          </AdminButton>
         </div>
       </div>
       <EventCardAside
@@ -402,14 +385,16 @@ export function BeerReleaseAdminCard({
   showBreweryName = false,
   onEdit,
   onDelete,
-  disabled,
+  actionsDisabled,
+  deleteLoading,
 }: {
   release: BeerRelease
   breweryName?: string
   showBreweryName?: boolean
   onEdit: () => void
   onDelete: () => void
-  disabled?: boolean
+  actionsDisabled?: boolean
+  deleteLoading?: boolean
 }) {
   return (
     <div
@@ -422,11 +407,19 @@ export function BeerReleaseAdminCard({
             {breweryName}
           </p>
         )}
+        <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+          {formatCardReleaseDate(release.release_date)}
+        </p>
         <p className="text-sm font-semibold break-words" style={{ color: Colors.textDark }}>
           {release.beer_name || '—'}
         </p>
       </div>
-      <AdminActionButtons onEdit={onEdit} onDelete={onDelete} disabled={disabled} />
+      <AdminActionButtons
+        onEdit={onEdit}
+        onDelete={onDelete}
+        actionsDisabled={actionsDisabled}
+        deleteLoading={deleteLoading}
+      />
     </div>
   )
 }
@@ -437,14 +430,16 @@ export function FoodTruckAdminCard({
   showBreweryName = false,
   onEdit,
   onDelete,
-  disabled,
+  actionsDisabled,
+  deleteLoading,
 }: {
   foodTruck: FoodTruck
   breweryName?: string
   showBreweryName?: boolean
   onEdit: () => void
   onDelete: () => void
-  disabled?: boolean
+  actionsDisabled?: boolean
+  deleteLoading?: boolean
 }) {
   return (
     <div
@@ -457,11 +452,19 @@ export function FoodTruckAdminCard({
             {breweryName}
           </p>
         )}
+        <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+          {formatCardEventDate(foodTruck.date)}
+        </p>
         <p className="text-sm font-semibold break-words" style={{ color: Colors.textDark }}>
           {foodTruck.name || '—'}
         </p>
       </div>
-      <AdminActionButtons onEdit={onEdit} onDelete={onDelete} disabled={disabled} />
+      <AdminActionButtons
+        onEdit={onEdit}
+        onDelete={onDelete}
+        actionsDisabled={actionsDisabled}
+        deleteLoading={deleteLoading}
+      />
     </div>
   )
 }

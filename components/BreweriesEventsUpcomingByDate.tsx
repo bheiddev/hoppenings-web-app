@@ -132,7 +132,7 @@ export function BreweriesEventsUpcomingByDate({
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [editingRelease, setEditingRelease] = useState<ReleaseRow | null>(null)
   const [editingFoodTruck, setEditingFoodTruck] = useState<FoodTruckRow | null>(null)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const { dates, eventsByDay, releasesByDay, foodTrucksByDay } = useMemo(
     () => collectUpcomingByDate(regionBreweries),
@@ -141,43 +141,43 @@ export function BreweriesEventsUpcomingByDate({
 
   async function handleDeleteEvent(eventId: string) {
     setActionError(null)
-    setLoadingId(eventId)
+    setPendingKey(`delete:event:${eventId}`)
     try {
       const result = await deleteEventFromEventsBase(eventId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
   async function handleDeleteRelease(releaseId: string) {
     setActionError(null)
-    setLoadingId(releaseId)
+    setPendingKey(`delete:release:${releaseId}`)
     try {
       const result = await deleteBeerReleaseFromBase(releaseId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
   async function handleDeleteFoodTruck(foodTruckId: number) {
     setActionError(null)
-    const loadingKey = `food-truck-${foodTruckId}`
-    setLoadingId(loadingKey)
+    const loadingKey = `delete:food-truck:${foodTruckId}`
+    setPendingKey(loadingKey)
     try {
       const result = await deleteFoodTruck(foodTruckId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
@@ -248,7 +248,8 @@ export function BreweriesEventsUpcomingByDate({
                           showBreweryName
                           onEdit={() => setEditing({ ...e })}
                           onDelete={() => handleDeleteEvent(e.id)}
-                          disabled={!!loadingId}
+                          actionsDisabled={pendingKey !== null}
+                          deleteLoading={pendingKey === `delete:event:${e.id}`}
                         />
                       ))
                     )}
@@ -269,7 +270,8 @@ export function BreweriesEventsUpcomingByDate({
                           showBreweryName
                           onEdit={() => setEditingRelease({ ...r })}
                           onDelete={() => handleDeleteRelease(r.id)}
-                          disabled={!!loadingId}
+                          actionsDisabled={pendingKey !== null}
+                          deleteLoading={pendingKey === `delete:release:${r.id}`}
                         />
                       ))
                     )}
@@ -290,7 +292,8 @@ export function BreweriesEventsUpcomingByDate({
                           showBreweryName
                           onEdit={() => setEditingFoodTruck({ ...t })}
                           onDelete={() => handleDeleteFoodTruck(t.id)}
-                          disabled={!!loadingId}
+                          actionsDisabled={pendingKey !== null}
+                          deleteLoading={pendingKey === `delete:food-truck:${t.id}`}
                         />
                       ))
                     )}

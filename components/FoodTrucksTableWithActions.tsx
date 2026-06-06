@@ -13,6 +13,10 @@ import {
   FoodTruckAdminCard,
 } from '@/components/breweriesEventsAdminCards'
 
+function deleteFoodTruckKey(foodTruckId: number) {
+  return `delete:food-truck:${foodTruckId}`
+}
+
 interface FoodTrucksTableWithActionsProps {
   foodTrucks: FoodTruck[]
   title: string
@@ -25,20 +29,20 @@ export function FoodTrucksTableWithActions({
   breweryId,
 }: FoodTrucksTableWithActionsProps) {
   const router = useRouter()
-  const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<FoodTruck | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(foodTruckId: number) {
     setActionError(null)
-    setLoadingId(foodTruckId)
+    setPendingKey(deleteFoodTruckKey(foodTruckId))
     try {
       const result = await deleteFoodTruck(foodTruckId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
@@ -79,7 +83,8 @@ export function FoodTrucksTableWithActions({
                 foodTruck={truck}
                 onEdit={() => openEdit(truck)}
                 onDelete={() => handleDelete(truck.id)}
-                disabled={loadingId !== null}
+                actionsDisabled={pendingKey !== null}
+                deleteLoading={pendingKey === deleteFoodTruckKey(truck.id)}
               />
             ))
           )}

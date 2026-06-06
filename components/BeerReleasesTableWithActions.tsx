@@ -11,12 +11,17 @@ import {
   type UpdateBeerReleasePayload,
 } from '@/app/breweries-events/actions'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
+import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
   AdminColumnShell,
   BeerReleaseAdminCard,
 } from '@/components/breweriesEventsAdminCards'
+
+function deleteReleaseKey(releaseId: string) {
+  return `delete:release:${releaseId}`
+}
 
 interface BeerReleasesTableWithActionsProps {
   releases: BeerRelease[]
@@ -30,21 +35,21 @@ export function BeerReleasesTableWithActions({
   breweryId,
 }: BeerReleasesTableWithActionsProps) {
   const router = useRouter()
-  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<BeerRelease | null>(null)
   const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(releaseId: string) {
     setActionError(null)
-    setLoadingId(releaseId)
+    setPendingKey(deleteReleaseKey(releaseId))
     try {
       const result = await deleteBeerReleaseFromBase(releaseId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
@@ -84,18 +89,14 @@ export function BeerReleasesTableWithActions({
         <AdminColumnHeader
           title={title}
           action={
-            <button
-              type="button"
+            <AdminButton
+              variant="add"
               onClick={openAdd}
-              disabled={!!loadingId}
-              className="px-2 py-1 text-xs rounded font-medium shrink-0"
-              style={{
-                backgroundColor: Colors.primary,
-                color: Colors.primaryDark,
-              }}
+              disabled={pendingKey !== null}
+              className="shrink-0 font-medium"
             >
               Add
-            </button>
+            </AdminButton>
           }
         />
         <AdminColumnScrollBody>
@@ -110,7 +111,8 @@ export function BeerReleasesTableWithActions({
                 release={r}
                 onEdit={() => openEdit(r)}
                 onDelete={() => handleDelete(r.id)}
-                disabled={!!loadingId}
+                actionsDisabled={pendingKey !== null}
+                deleteLoading={pendingKey === deleteReleaseKey(r.id)}
               />
             ))
           )}

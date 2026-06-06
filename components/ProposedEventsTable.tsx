@@ -10,12 +10,21 @@ import {
   updateProposedEvent,
   type UpdateProposedEventPayload,
 } from '@/app/breweries-events/actions'
+import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
   AdminColumnShell,
   ProposedEventAdminCard,
 } from '@/components/breweriesEventsAdminCards'
+
+function acceptProposedKey(id: number) {
+  return `accept:proposed:${id}`
+}
+
+function rejectProposedKey(id: number) {
+  return `reject:proposed:${id}`
+}
 
 interface ProposedEventsTableProps {
   proposed: ProposedEvent[]
@@ -25,33 +34,33 @@ interface ProposedEventsTableProps {
 export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProps) {
   const router = useRouter()
   const [editing, setEditing] = useState<ProposedEvent | null>(null)
-  const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleReject(id: number) {
     setActionError(null)
-    setLoadingId(id)
+    setPendingKey(rejectProposedKey(id))
     try {
       const result = await rejectProposedEvent(id)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to reject')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Reject failed')
     }
   }
 
   async function handleAccept(p: ProposedEvent) {
     setActionError(null)
-    setLoadingId(p.id)
+    setPendingKey(acceptProposedKey(p.id))
     try {
       const result = await acceptProposedEvent(p)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to accept')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Accept failed')
     }
   }
@@ -93,7 +102,9 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
                 onEdit={() => openEdit(p)}
                 onAccept={() => handleAccept(p)}
                 onReject={() => handleReject(p.id)}
-                disabled={loadingId !== null}
+                actionsDisabled={pendingKey !== null}
+                acceptLoading={pendingKey === acceptProposedKey(p.id)}
+                rejectLoading={pendingKey === rejectProposedKey(p.id)}
               />
             ))
           )}
@@ -381,29 +392,12 @@ function EditProposedEventModal({
             </p>
           )}
           <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded border"
-              style={{
-                borderColor: Colors.dividerLight,
-                color: Colors.textDark,
-                backgroundColor: Colors.background,
-              }}
-            >
+            <AdminButton variant="cancel" onClick={onClose} disabled={saving}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 rounded font-medium"
-              style={{
-                backgroundColor: Colors.primary,
-                color: Colors.primaryDark,
-              }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            </AdminButton>
+            <AdminButton variant="save" type="submit" loading={saving}>
+              Save
+            </AdminButton>
           </div>
         </form>
       </div>

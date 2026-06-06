@@ -11,12 +11,17 @@ import {
   type UpdateEventPayload,
 } from '@/app/breweries-events/actions'
 import { EventFormModal } from '@/components/EventFormModal'
+import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
   AdminColumnShell,
   EventAdminCard,
 } from '@/components/breweriesEventsAdminCards'
+
+function deleteEventKey(eventId: string) {
+  return `delete:event:${eventId}`
+}
 
 interface EventsTableWithDeleteProps {
   events: Event[]
@@ -26,21 +31,21 @@ interface EventsTableWithDeleteProps {
 
 export function EventsTableWithDelete({ events, title, breweryId }: EventsTableWithDeleteProps) {
   const router = useRouter()
-  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<Event | null>(null)
   const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(eventId: string) {
     setActionError(null)
-    setLoadingId(eventId)
+    setPendingKey(deleteEventKey(eventId))
     try {
       const result = await deleteEventFromEventsBase(eventId)
-      setLoadingId(null)
+      setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to delete')
     } catch (err) {
-      setLoadingId(null)
+      setPendingKey(null)
       setActionError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
@@ -80,18 +85,14 @@ export function EventsTableWithDelete({ events, title, breweryId }: EventsTableW
         <AdminColumnHeader
           title={title}
           action={
-            <button
-              type="button"
+            <AdminButton
+              variant="add"
               onClick={openAdd}
-              disabled={!!loadingId}
-              className="px-2 py-1 text-xs rounded font-medium shrink-0"
-              style={{
-                backgroundColor: Colors.primary,
-                color: Colors.primaryDark,
-              }}
+              disabled={pendingKey !== null}
+              className="shrink-0 font-medium"
             >
               Add
-            </button>
+            </AdminButton>
           }
         />
         <AdminColumnScrollBody>
@@ -106,7 +107,8 @@ export function EventsTableWithDelete({ events, title, breweryId }: EventsTableW
                 event={e}
                 onEdit={() => openEdit(e)}
                 onDelete={() => handleDelete(e.id)}
-                disabled={!!loadingId}
+                actionsDisabled={pendingKey !== null}
+                deleteLoading={pendingKey === deleteEventKey(e.id)}
               />
             ))
           )}
