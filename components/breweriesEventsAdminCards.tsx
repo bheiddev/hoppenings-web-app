@@ -1,8 +1,14 @@
 'use client'
 
 import { Colors } from '@/lib/colors'
-import { formatTime12Hour } from '@/lib/utils'
-import { BeerRelease, Event, FoodTruck } from '@/types/supabase'
+import { formatEventDate, formatTime12Hour } from '@/lib/utils'
+import { BeerRelease, Event, FoodTruck, ProposedEvent } from '@/types/supabase'
+
+type RecurrenceFields = {
+  is_recurring: boolean | null
+  is_recurring_biweekly: boolean | null
+  is_recurring_monthly: boolean | null
+}
 
 const sectionHeaderStyle = {
   color: Colors.textPrimary,
@@ -15,20 +21,20 @@ export function formatEventCost(cost: number | null): string {
   return `$${cost.toFixed(2)}`
 }
 
-export function isEventRecurring(
-  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
-): boolean {
+export function isEventRecurring(event: RecurrenceFields): boolean {
   return !!(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
 }
 
-export function formatEventRecurrence(
-  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
-): string {
+export function formatEventRecurrence(event: RecurrenceFields): string {
   if (!isEventRecurring(event)) return 'One Time'
   if (event.is_recurring) return 'Weekly'
   if (event.is_recurring_biweekly) return 'Biweekly'
   if (event.is_recurring_monthly) return 'Monthly'
   return 'One Time'
+}
+
+function formatCardEventDate(eventDate: string | null): string {
+  return eventDate ? formatEventDate(eventDate) : '—'
 }
 
 export const adminColumnShellStyle = {
@@ -180,6 +186,79 @@ function AdminActionButtons({
   )
 }
 
+function EventCardMeta({
+  breweryName,
+  showBreweryName,
+  eventDate,
+  title,
+  featured,
+  recurring,
+  recurrenceLabel,
+}: {
+  breweryName?: string
+  showBreweryName?: boolean
+  eventDate: string | null
+  title: string | null
+  featured: boolean
+  recurring: boolean
+  recurrenceLabel: string
+}) {
+  return (
+    <div className="min-w-0">
+      {showBreweryName && breweryName && (
+        <p className="text-xs font-medium truncate" style={{ color: Colors.textSecondary }}>
+          {breweryName}
+        </p>
+      )}
+      <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+        {formatCardEventDate(eventDate)}
+      </p>
+      <div className="flex items-start gap-1.5">
+        {(featured || recurring) && (
+          <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+            {featured && (
+              <span title="Featured" style={{ color: Colors.primary }}>
+                <FeaturedIcon />
+              </span>
+            )}
+            {recurring && (
+              <span title={recurrenceLabel} style={{ color: Colors.info }}>
+                <RecurringIcon />
+              </span>
+            )}
+          </span>
+        )}
+        <p className="text-sm font-semibold break-words min-w-0" style={{ color: Colors.textDark }}>
+          {title || '—'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function EventCardAside({
+  startTime,
+  cost,
+  recurrenceLabel,
+}: {
+  startTime: string | null
+  cost: number | null
+  recurrenceLabel: string
+}) {
+  return (
+    <div
+      className="flex flex-col items-end gap-1 flex-shrink-0 text-right"
+      style={{ color: Colors.textSecondary }}
+    >
+      <span className="text-xs font-medium whitespace-nowrap">
+        {startTime ? formatTime12Hour(startTime) : '—'}
+      </span>
+      <span className="text-xs font-medium whitespace-nowrap">{formatEventCost(cost)}</span>
+      <span className="text-xs whitespace-nowrap">{recurrenceLabel}</span>
+    </div>
+  )
+}
+
 export function EventAdminCard({
   event,
   breweryName,
@@ -196,6 +275,7 @@ export function EventAdminCard({
   disabled?: boolean
 }) {
   const recurring = isEventRecurring(event)
+  const recurrenceLabel = formatEventRecurrence(event)
 
   return (
     <div
@@ -206,47 +286,112 @@ export function EventAdminCard({
       }}
     >
       <div className="min-w-0 flex-1 flex flex-col gap-2">
-        <div className="min-w-0">
-          {showBreweryName && breweryName && (
-            <p className="text-xs font-medium truncate" style={{ color: Colors.textSecondary }}>
-              {breweryName}
-            </p>
-          )}
-          <div className="flex items-start gap-1.5">
-            {(event.featured || recurring) && (
-              <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
-                {event.featured && (
-                  <span title="Featured" style={{ color: Colors.primary }}>
-                    <FeaturedIcon />
-                  </span>
-                )}
-                {recurring && (
-                  <span title={formatEventRecurrence(event)} style={{ color: Colors.info }}>
-                    <RecurringIcon />
-                  </span>
-                )}
-              </span>
-            )}
-            <p
-              className="text-sm font-semibold break-words min-w-0"
-              style={{ color: Colors.textDark }}
-            >
-              {event.title || '—'}
-            </p>
-          </div>
-        </div>
+        <EventCardMeta
+          breweryName={breweryName}
+          showBreweryName={showBreweryName}
+          eventDate={event.event_date}
+          title={event.title}
+          featured={event.featured}
+          recurring={recurring}
+          recurrenceLabel={recurrenceLabel}
+        />
         <AdminActionButtons onEdit={onEdit} onDelete={onDelete} disabled={disabled} />
       </div>
-      <div
-        className="flex flex-col items-end gap-1 flex-shrink-0 text-right"
-        style={{ color: Colors.textSecondary }}
-      >
-        <span className="text-xs font-medium whitespace-nowrap">
-          {event.start_time ? formatTime12Hour(event.start_time) : '—'}
-        </span>
-        <span className="text-xs font-medium whitespace-nowrap">{formatEventCost(event.cost)}</span>
-        <span className="text-xs whitespace-nowrap">{formatEventRecurrence(event)}</span>
+      <EventCardAside
+        startTime={event.start_time}
+        cost={event.cost}
+        recurrenceLabel={recurrenceLabel}
+      />
+    </div>
+  )
+}
+
+export function ProposedEventAdminCard({
+  proposed,
+  breweryName,
+  showBreweryName = false,
+  onEdit,
+  onAccept,
+  onReject,
+  disabled,
+}: {
+  proposed: ProposedEvent
+  breweryName?: string
+  showBreweryName?: boolean
+  onEdit: () => void
+  onAccept: () => void
+  onReject: () => void
+  disabled?: boolean
+}) {
+  const recurring = isEventRecurring(proposed)
+  const recurrenceLabel = formatEventRecurrence(proposed)
+  const featured = proposed.featured ?? false
+
+  return (
+    <div
+      className="p-3 flex gap-3"
+      style={{
+        borderColor: Colors.dividerLight,
+        backgroundColor: featured ? 'rgba(248, 199, 1, 0.12)' : Colors.background,
+      }}
+    >
+      <div className="min-w-0 flex-1 flex flex-col gap-2">
+        <EventCardMeta
+          breweryName={breweryName}
+          showBreweryName={showBreweryName}
+          eventDate={proposed.event_date}
+          title={proposed.title}
+          featured={featured}
+          recurring={recurring}
+          recurrenceLabel={recurrenceLabel}
+        />
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={disabled}
+            className="px-2 py-1 text-xs rounded border"
+            style={{
+              borderColor: Colors.primary,
+              color: Colors.textDark,
+              backgroundColor: Colors.background,
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onAccept}
+            disabled={disabled}
+            className="px-2 py-1 text-xs rounded border"
+            style={{
+              borderColor: Colors.success,
+              color: Colors.textDark,
+              backgroundColor: Colors.background,
+            }}
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            disabled={disabled}
+            className="px-2 py-1 text-xs rounded border"
+            style={{
+              borderColor: Colors.error,
+              color: Colors.textDark,
+              backgroundColor: Colors.background,
+            }}
+          >
+            Reject
+          </button>
+        </div>
       </div>
+      <EventCardAside
+        startTime={proposed.start_time}
+        cost={proposed.cost}
+        recurrenceLabel={recurrenceLabel}
+      />
     </div>
   )
 }

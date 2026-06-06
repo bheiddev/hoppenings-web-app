@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { ProposedEvent } from '@/types/supabase'
 import {
@@ -15,41 +14,12 @@ import {
   AdminColumnHeader,
   AdminColumnScrollBody,
   AdminColumnShell,
+  ProposedEventAdminCard,
 } from '@/components/breweriesEventsAdminCards'
 
 interface ProposedEventsTableProps {
   proposed: ProposedEvent[]
   title: string
-}
-
-function formatCreatedAt(iso: string) {
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      timeZone: 'America/Denver',
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-  } catch {
-    return iso
-  }
-}
-
-function formatBool(value: boolean | null) {
-  if (value == null) return '—'
-  return value ? 'Yes' : 'No'
-}
-
-function CompactField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <span className="font-medium" style={{ color: Colors.textSecondary }}>
-        {label}:{' '}
-      </span>
-      <span className="break-words whitespace-pre-wrap" style={{ color: Colors.textDark }}>
-        {value}
-      </span>
-    </div>
-  )
 }
 
 export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProps) {
@@ -116,111 +86,16 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
               No proposed events
             </p>
           ) : (
-              proposed.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-2 flex flex-col gap-1 text-xs"
-                  style={{
-                    backgroundColor: p.featured ? 'rgba(248, 199, 1, 0.12)' : Colors.background,
-                  }}
-                >
-                  <CompactField label="ID" value={String(p.id)} />
-                  <CompactField label="Created" value={formatCreatedAt(p.created_at)} />
-                  <CompactField label="Title" value={p.title || '—'} />
-                  <CompactField
-                    label="Description"
-                    value={p.description?.trim() ? p.description : '—'}
-                  />
-                  <CompactField
-                    label="brewery_id"
-                    value={
-                      p.brewery_id ? (
-                        <span className="font-mono break-all">{p.brewery_id}</span>
-                      ) : (
-                        '—'
-                      )
-                    }
-                  />
-                  <CompactField
-                    label="brewery_id2"
-                    value={
-                      p.brewery_id2 ? (
-                        <span className="font-mono break-all">{p.brewery_id2}</span>
-                      ) : (
-                        '—'
-                      )
-                    }
-                  />
-                  <CompactField
-                    label="brewery_id3"
-                    value={
-                      p.brewery_id3 ? (
-                        <span className="font-mono break-all">{p.brewery_id3}</span>
-                      ) : (
-                        '—'
-                      )
-                    }
-                  />
-                  <CompactField
-                    label="Date"
-                    value={p.event_date ? formatEventDate(p.event_date) : '—'}
-                  />
-                  <CompactField
-                    label="Start"
-                    value={p.start_time ? formatTime12Hour(p.start_time) : '—'}
-                  />
-                  <CompactField
-                    label="End"
-                    value={p.end_time ? formatTime12Hour(p.end_time) : '—'}
-                  />
-                  <CompactField label="Cost" value={p.cost != null ? String(p.cost) : '—'} />
-                  <CompactField label="Featured" value={formatBool(p.featured)} />
-                  <CompactField label="Recurring" value={formatBool(p.is_recurring)} />
-                  <CompactField label="Biweekly" value={formatBool(p.is_recurring_biweekly)} />
-                  <CompactField label="Monthly" value={formatBool(p.is_recurring_monthly)} />
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(p)}
-                      disabled={loadingId !== null}
-                      className="px-2 py-1 text-xs rounded border"
-                      style={{
-                        borderColor: Colors.primary,
-                        color: Colors.textDark,
-                        backgroundColor: Colors.background,
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAccept(p)}
-                      disabled={loadingId !== null}
-                      className="px-2 py-1 text-xs rounded border"
-                      style={{
-                        borderColor: Colors.success,
-                        color: Colors.textDark,
-                        backgroundColor: Colors.background,
-                      }}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReject(p.id)}
-                      disabled={loadingId !== null}
-                      className="px-2 py-1 text-xs rounded border"
-                      style={{
-                        borderColor: Colors.error,
-                        color: Colors.textDark,
-                        backgroundColor: Colors.background,
-                      }}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))
+            proposed.map((p) => (
+              <ProposedEventAdminCard
+                key={p.id}
+                proposed={p}
+                onEdit={() => openEdit(p)}
+                onAccept={() => handleAccept(p)}
+                onReject={() => handleReject(p.id)}
+                disabled={loadingId !== null}
+              />
+            ))
           )}
         </AdminColumnScrollBody>
       </AdminColumnShell>
