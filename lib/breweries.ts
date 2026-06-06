@@ -300,8 +300,10 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
   try {
     const { data, error } = await supabase
       .from('proposed_events')
-      .select('id, created_at, brewery_id, title, event_date, start_time, is_recurring, description')
-      .eq('brewery_id', breweryId)
+      .select(
+        'id, created_at, title, description, brewery_id, event_date, start_time, brewery_id2, brewery_id3, cost, end_time, featured, is_recurring, is_recurring_biweekly, is_recurring_monthly'
+      )
+      .or(`brewery_id.eq.${breweryId},brewery_id2.eq.${breweryId},brewery_id3.eq.${breweryId}`)
       .order('event_date', { ascending: true })
 
     if (error) {
@@ -314,12 +316,19 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
     return data.map((row: any) => ({
       id: row.id,
       created_at: row.created_at,
-      brewery_id: row.brewery_id,
       title: row.title ?? null,
+      description: row.description ?? null,
+      brewery_id: row.brewery_id ?? null,
       event_date: row.event_date ?? null,
       start_time: row.start_time ?? null,
-      is_recurring: row.is_recurring ?? false,
-      description: row.description ?? null
+      brewery_id2: row.brewery_id2 ?? null,
+      brewery_id3: row.brewery_id3 ?? null,
+      cost: row.cost ?? null,
+      end_time: row.end_time ?? null,
+      featured: row.featured ?? null,
+      is_recurring: row.is_recurring ?? null,
+      is_recurring_biweekly: row.is_recurring_biweekly ?? null,
+      is_recurring_monthly: row.is_recurring_monthly ?? null,
     })) as ProposedEvent[]
   } catch (error) {
     console.error('Error fetching proposed events:', error)

@@ -81,14 +81,21 @@ export interface BeerRelease {
 }
 
 export interface ProposedEvent {
-  id: string;
+  id: number;
   created_at: string;
-  brewery_id: string;
   title: string | null;
+  description: string | null;
+  brewery_id: string | null;
   event_date: string | null;
   start_time: string | null;
-  is_recurring: boolean;
-  description: string | null;
+  brewery_id2: string | null;
+  brewery_id3: string | null;
+  cost: number | null;
+  end_time: string | null;
+  featured: boolean | null;
+  is_recurring: boolean | null;
+  is_recurring_biweekly: boolean | null;
+  is_recurring_monthly: boolean | null;
 }
 
 export interface FoodTruck {

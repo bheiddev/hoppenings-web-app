@@ -31,7 +31,7 @@ function getAdmin() {
   return { admin, error: null }
 }
 
-export async function rejectProposedEvent(id: string) {
+export async function rejectProposedEvent(id: number) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
   const { error } = await admin!
@@ -50,6 +50,9 @@ export async function rejectProposedEvent(id: string) {
 export async function acceptProposedEvent(proposed: ProposedEvent) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
+  if (!proposed.brewery_id) {
+    return { ok: false, error: 'Proposed event is missing brewery_id' }
+  }
   // If events_base is a view, change to the underlying table name (e.g. 'events')
   const { error: insertError } = await admin!
     .from('events_base')
@@ -58,13 +61,13 @@ export async function acceptProposedEvent(proposed: ProposedEvent) {
       brewery_id: proposed.brewery_id,
       event_date: proposed.event_date ?? '',
       start_time: proposed.start_time,
-      end_time: null,
-      cost: null,
+      end_time: proposed.end_time,
+      cost: proposed.cost,
       is_recurring: proposed.is_recurring ?? false,
-      is_recurring_biweekly: false,
-      is_recurring_monthly: false,
+      is_recurring_biweekly: proposed.is_recurring_biweekly ?? false,
+      is_recurring_monthly: proposed.is_recurring_monthly ?? false,
       description: proposed.description,
-      featured: false,
+      featured: proposed.featured ?? false,
     })
 
   if (insertError) {
@@ -86,19 +89,41 @@ export async function acceptProposedEvent(proposed: ProposedEvent) {
   return { ok: true }
 }
 
-export async function updateProposedEvent(
-  id: string,
-  data: { title: string | null; event_date: string | null; start_time: string | null; description: string | null }
-) {
+export type UpdateProposedEventPayload = {
+  title: string | null
+  description: string | null
+  event_date: string | null
+  start_time: string | null
+  end_time: string | null
+  cost: number | null
+  featured: boolean | null
+  is_recurring: boolean | null
+  is_recurring_biweekly: boolean | null
+  is_recurring_monthly: boolean | null
+  brewery_id: string | null
+  brewery_id2: string | null
+  brewery_id3: string | null
+}
+
+export async function updateProposedEvent(id: number, data: UpdateProposedEventPayload) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
   const { error } = await admin!
     .from('proposed_events')
     .update({
       title: data.title,
+      description: data.description,
       event_date: data.event_date,
       start_time: data.start_time,
-      description: data.description,
+      end_time: data.end_time,
+      cost: data.cost,
+      featured: data.featured,
+      is_recurring: data.is_recurring,
+      is_recurring_biweekly: data.is_recurring_biweekly,
+      is_recurring_monthly: data.is_recurring_monthly,
+      brewery_id: data.brewery_id,
+      brewery_id2: data.brewery_id2,
+      brewery_id3: data.brewery_id3,
     })
     .eq('id', id)
 
