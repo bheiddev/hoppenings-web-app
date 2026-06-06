@@ -11,6 +11,7 @@ import {
   updateProposedEvent,
   type UpdateProposedEventPayload,
 } from '@/app/breweries-events/actions'
+import { AdminColumnHeader } from '@/components/breweriesEventsAdminCards'
 
 interface ProposedEventsTableProps {
   proposed: ProposedEvent[]
@@ -104,23 +105,17 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
         </div>
       )}
       <div
-        className="flex flex-col border rounded-lg overflow-hidden w-full min-w-0"
-        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+        className="flex flex-col min-w-0 border rounded-lg overflow-hidden w-full"
+        style={{ borderColor: Colors.dividerLight }}
       >
-        <div
-          className="flex-shrink-0 px-3 py-2 font-semibold text-sm break-words"
-          style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
-        >
-          {title}
-        </div>
-        <div className="overflow-hidden">
+        <AdminColumnHeader title={title} />
+        <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
           {proposed.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No proposed events
             </p>
           ) : (
-            <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
-              {proposed.map((p) => (
+              proposed.map((p) => (
                 <div
                   key={p.id}
                   className="p-2 flex flex-col gap-1 text-xs"
@@ -224,8 +219,7 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
           )}
         </div>
       </div>

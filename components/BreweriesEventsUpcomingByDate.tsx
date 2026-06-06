@@ -7,6 +7,12 @@ import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { EventFormModal } from '@/components/EventFormModal'
 import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
 import {
+  AdminSectionHeader,
+  BeerReleaseAdminCard,
+  EventAdminCard,
+  FoodTruckAdminCard,
+} from '@/components/breweriesEventsAdminCards'
+import {
   deleteBeerReleaseFromBase,
   deleteEventFromEventsBase,
   deleteFoodTruck,
@@ -35,81 +41,6 @@ function normalizeReleaseDate(releaseDate: string | null): string | null {
 
 function isDateSpecificFoodTruck(truck: FoodTruck): boolean {
   return truck.permanent !== true
-}
-
-function formatEventCost(cost: number | null): string {
-  if (cost == null) return '—'
-  return `$${cost.toFixed(2)}`
-}
-
-function isEventRecurring(
-  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
-): boolean {
-  return !!(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
-}
-
-function formatEventRecurrence(
-  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
-): string {
-  if (!isEventRecurring(event)) return 'One Time'
-  if (event.is_recurring) return 'Weekly'
-  if (event.is_recurring_biweekly) return 'Biweekly'
-  if (event.is_recurring_monthly) return 'Monthly'
-  return 'One Time'
-}
-
-const sectionHeaderStyle = {
-  color: Colors.textPrimary,
-  borderColor: Colors.dividerLight,
-  backgroundColor: Colors.backgroundMedium,
-} as const
-
-function SectionHeader({ label, className = '' }: { label: string; className?: string }) {
-  return (
-    <p
-      className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y ${className}`}
-      style={sectionHeaderStyle}
-    >
-      {label}
-    </p>
-  )
-}
-
-function FeaturedIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden
-      className="flex-shrink-0"
-    >
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 18.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  )
-}
-
-function RecurringIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="flex-shrink-0"
-    >
-      <path d="M17 1l4 4-4 4" />
-      <path d="M3 11V9a4 4 0 014-4h14" />
-      <path d="M7 23l-4-4 4-4" />
-      <path d="M21 13v2a4 4 0 01-4 4H3" />
-    </svg>
-  )
 }
 
 function foodTruckShowsOnDate(truck: FoodTruck, ymd: string): boolean {
@@ -299,7 +230,7 @@ export function BreweriesEventsUpcomingByDate({
                   </h3>
                 </div>
 
-                <SectionHeader label={`Events (${dayEvents.length})`} />
+                <AdminSectionHeader label={`Events (${dayEvents.length})`} />
 
                 <div className="flex-1">
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
@@ -308,103 +239,21 @@ export function BreweriesEventsUpcomingByDate({
                         No events
                       </p>
                     ) : (
-                      dayEvents.map((e) => {
-                        const recurring = isEventRecurring(e)
-                        return (
-                        <div
+                      dayEvents.map((e) => (
+                        <EventAdminCard
                           key={`${e.id}-${e.event_date}`}
-                          className="p-3 flex gap-3"
-                          style={{
-                            borderColor: Colors.dividerLight,
-                            backgroundColor: e.featured
-                              ? 'rgba(248, 199, 1, 0.12)'
-                              : Colors.background,
-                          }}
-                        >
-                          <div className="min-w-0 flex-1 flex flex-col gap-2">
-                            <div className="min-w-0">
-                              <p
-                                className="text-xs font-medium truncate"
-                                style={{ color: Colors.textSecondary }}
-                              >
-                                {e.breweryName}
-                              </p>
-                              <div className="flex items-start gap-1.5">
-                                {(e.featured || recurring) && (
-                                  <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
-                                    {e.featured && (
-                                      <span
-                                        title="Featured"
-                                        style={{ color: Colors.primary }}
-                                      >
-                                        <FeaturedIcon />
-                                      </span>
-                                    )}
-                                    {recurring && (
-                                      <span
-                                        title={formatEventRecurrence(e)}
-                                        style={{ color: Colors.info }}
-                                      >
-                                        <RecurringIcon />
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                                <p
-                                  className="text-sm font-semibold break-words min-w-0"
-                                  style={{ color: Colors.textDark }}
-                                >
-                                  {e.title || '—'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setEditing({ ...e })}
-                                disabled={!!loadingId}
-                                className="px-2 py-1 text-xs rounded border"
-                                style={{
-                                  borderColor: Colors.primary,
-                                  color: Colors.textDark,
-                                  backgroundColor: Colors.background,
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteEvent(e.id)}
-                                disabled={!!loadingId}
-                                className="px-2 py-1 text-xs rounded border"
-                                style={{
-                                  borderColor: Colors.error,
-                                  color: Colors.textDark,
-                                  backgroundColor: Colors.background,
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                          <div
-                            className="flex flex-col items-end gap-1 flex-shrink-0 text-right"
-                            style={{ color: Colors.textSecondary }}
-                          >
-                            <span className="text-xs font-medium whitespace-nowrap">
-                              {formatEventCost(e.cost)}
-                            </span>
-                            <span className="text-xs whitespace-nowrap">
-                              {formatEventRecurrence(e)}
-                            </span>
-                          </div>
-                        </div>
-                        )
-                      })
+                          event={e}
+                          breweryName={e.breweryName}
+                          showBreweryName
+                          onEdit={() => setEditing({ ...e })}
+                          onDelete={() => handleDeleteEvent(e.id)}
+                          disabled={!!loadingId}
+                        />
+                      ))
                     )}
                   </div>
 
-                  <SectionHeader label={`Beer releases (${dayReleases.length})`} />
+                  <AdminSectionHeader label={`Beer releases (${dayReleases.length})`} />
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayReleases.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
@@ -412,59 +261,20 @@ export function BreweriesEventsUpcomingByDate({
                       </p>
                     ) : (
                       dayReleases.map((r) => (
-                        <div
+                        <BeerReleaseAdminCard
                           key={r.id}
-                          className="p-3 flex flex-col gap-2"
-                          style={{ borderColor: Colors.dividerLight }}
-                        >
-                          <div className="min-w-0">
-                            <p
-                              className="text-xs font-medium truncate"
-                              style={{ color: Colors.textSecondary }}
-                            >
-                              {r.breweryName}
-                            </p>
-                            <p
-                              className="text-sm font-semibold break-words"
-                              style={{ color: Colors.textDark }}
-                            >
-                              {r.beer_name || '—'}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setEditingRelease({ ...r })}
-                              disabled={!!loadingId}
-                              className="px-2 py-1 text-xs rounded border"
-                              style={{
-                                borderColor: Colors.primary,
-                                color: Colors.textDark,
-                                backgroundColor: Colors.background,
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRelease(r.id)}
-                              disabled={!!loadingId}
-                              className="px-2 py-1 text-xs rounded border"
-                              style={{
-                                borderColor: Colors.error,
-                                color: Colors.textDark,
-                                backgroundColor: Colors.background,
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+                          release={r}
+                          breweryName={r.breweryName}
+                          showBreweryName
+                          onEdit={() => setEditingRelease({ ...r })}
+                          onDelete={() => handleDeleteRelease(r.id)}
+                          disabled={!!loadingId}
+                        />
                       ))
                     )}
                   </div>
 
-                  <SectionHeader label={`Food trucks (${dayFoodTrucks.length})`} />
+                  <AdminSectionHeader label={`Food trucks (${dayFoodTrucks.length})`} />
                   <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
                     {dayFoodTrucks.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
@@ -472,54 +282,15 @@ export function BreweriesEventsUpcomingByDate({
                       </p>
                     ) : (
                       dayFoodTrucks.map((t) => (
-                        <div
+                        <FoodTruckAdminCard
                           key={`${t.id}-${ymd}`}
-                          className="p-3 flex flex-col gap-2"
-                          style={{ borderColor: Colors.dividerLight }}
-                        >
-                          <div className="min-w-0">
-                            <p
-                              className="text-xs font-medium truncate"
-                              style={{ color: Colors.textSecondary }}
-                            >
-                              {t.breweryName}
-                            </p>
-                            <p
-                              className="text-sm font-semibold break-words"
-                              style={{ color: Colors.textDark }}
-                            >
-                              {t.name || '—'}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setEditingFoodTruck({ ...t })}
-                              disabled={!!loadingId}
-                              className="px-2 py-1 text-xs rounded border"
-                              style={{
-                                borderColor: Colors.primary,
-                                color: Colors.textDark,
-                                backgroundColor: Colors.background,
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteFoodTruck(t.id)}
-                              disabled={!!loadingId}
-                              className="px-2 py-1 text-xs rounded border"
-                              style={{
-                                borderColor: Colors.error,
-                                color: Colors.textDark,
-                                backgroundColor: Colors.background,
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+                          foodTruck={t}
+                          breweryName={t.breweryName}
+                          showBreweryName
+                          onEdit={() => setEditingFoodTruck({ ...t })}
+                          onDelete={() => handleDeleteFoodTruck(t.id)}
+                          disabled={!!loadingId}
+                        />
                       ))
                     )}
                   </div>

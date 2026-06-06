@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatEventDate, formatTime12Hour } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { Event } from '@/types/supabase'
 import {
@@ -12,24 +11,15 @@ import {
   type UpdateEventPayload,
 } from '@/app/breweries-events/actions'
 import { EventFormModal } from '@/components/EventFormModal'
+import {
+  AdminColumnHeader,
+  EventAdminCard,
+} from '@/components/breweriesEventsAdminCards'
 
 interface EventsTableWithDeleteProps {
   events: Event[]
   title: string
   breweryId: string
-}
-
-function CompactField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <span className="font-medium" style={{ color: Colors.textSecondary }}>
-        {label}:{' '}
-      </span>
-      <span className="break-words whitespace-pre-wrap" style={{ color: Colors.textDark }}>
-        {value}
-      </span>
-    </div>
-  )
 }
 
 export function EventsTableWithDelete({ events, title, breweryId }: EventsTableWithDeleteProps) {
@@ -85,102 +75,41 @@ export function EventsTableWithDelete({ events, title, breweryId }: EventsTableW
         </div>
       )}
       <div
-        className="flex flex-col border rounded-lg overflow-hidden w-full min-w-0"
-        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+        className="flex flex-col min-w-0 border rounded-lg overflow-hidden w-full"
+        style={{ borderColor: Colors.dividerLight }}
       >
-        <div
-          className="flex-shrink-0 px-3 py-2 font-semibold text-sm flex items-center justify-between gap-2"
-          style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
-        >
-          <span className="min-w-0 break-words">{title}</span>
-          <button
-            type="button"
-            onClick={openAdd}
-            disabled={!!loadingId}
-            className="px-2 py-1 text-xs rounded font-medium shrink-0"
-            style={{
-              backgroundColor: Colors.primary,
-              color: Colors.primaryDark,
-            }}
-          >
-            Add
-          </button>
-        </div>
-        <div className="overflow-hidden">
+        <AdminColumnHeader
+          title={title}
+          action={
+            <button
+              type="button"
+              onClick={openAdd}
+              disabled={!!loadingId}
+              className="px-2 py-1 text-xs rounded font-medium shrink-0"
+              style={{
+                backgroundColor: Colors.primary,
+                color: Colors.primaryDark,
+              }}
+            >
+              Add
+            </button>
+          }
+        />
+        <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
           {events.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No events
             </p>
           ) : (
-            <div className="divide-y" style={{ borderColor: Colors.dividerLight }}>
-              {events.map((e) => (
-                <div
-                  key={e.id}
-                  className="p-2 flex flex-col gap-1 text-xs"
-                  style={{
-                    backgroundColor: e.featured ? 'rgba(248, 199, 1, 0.12)' : Colors.background,
-                  }}
-                >
-                  <CompactField label="ID" value={<span className="font-mono break-all">{e.id}</span>} />
-                  <CompactField label="Title" value={e.title || '—'} />
-                  <CompactField
-                    label="Description"
-                    value={e.description?.trim() ? e.description : '—'}
-                  />
-                  <CompactField
-                    label="Date"
-                    value={e.event_date ? formatEventDate(e.event_date) : '—'}
-                  />
-                  <CompactField
-                    label="Start"
-                    value={e.start_time ? formatTime12Hour(e.start_time) : '—'}
-                  />
-                  <CompactField
-                    label="End"
-                    value={e.end_time ? formatTime12Hour(e.end_time) : '—'}
-                  />
-                  <CompactField label="Cost" value={e.cost != null ? String(e.cost) : '—'} />
-                  <CompactField label="Featured" value={e.featured ? 'Yes' : 'No'} />
-                  <CompactField label="Recurring" value={e.is_recurring ? 'Yes' : 'No'} />
-                  <CompactField
-                    label="Biweekly"
-                    value={e.is_recurring_biweekly ? 'Yes' : 'No'}
-                  />
-                  <CompactField
-                    label="Monthly"
-                    value={e.is_recurring_monthly ? 'Yes' : 'No'}
-                  />
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(e)}
-                      disabled={!!loadingId}
-                      className="px-2 py-1 text-xs rounded border"
-                      style={{
-                        borderColor: Colors.primary,
-                        color: Colors.textDark,
-                        backgroundColor: Colors.background,
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(e.id)}
-                      disabled={!!loadingId}
-                      className="px-2 py-1 text-xs rounded border"
-                      style={{
-                        borderColor: Colors.error,
-                        color: Colors.textDark,
-                        backgroundColor: Colors.background,
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            events.map((e) => (
+              <EventAdminCard
+                key={e.id}
+                event={e}
+                onEdit={() => openEdit(e)}
+                onDelete={() => handleDelete(e.id)}
+                disabled={!!loadingId}
+              />
+            ))
           )}
         </div>
       </div>
