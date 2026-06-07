@@ -1,7 +1,5 @@
 'use client'
 
-import { Colors } from '@/lib/colors'
-
 export function AdminSpinner({ className = 'h-3 w-3' }: { className?: string }) {
   return (
     <svg
@@ -29,31 +27,20 @@ export function AdminSpinner({ className = 'h-3 w-3' }: { className?: string }) 
 
 export type AdminButtonVariant = 'edit' | 'delete' | 'accept' | 'reject' | 'add' | 'cancel' | 'save'
 
-const variantHoverClass: Record<AdminButtonVariant, string> = {
-  edit: 'hover:enabled:bg-[#F8C701]/25',
-  delete: 'hover:enabled:bg-[#F44336]/12',
-  accept: 'hover:enabled:bg-[#4CAF50]/12',
-  reject: 'hover:enabled:bg-[#F44336]/12',
-  add: 'hover:enabled:brightness-95',
-  cancel: 'hover:enabled:bg-[#E0D5B8]/70',
-  save: 'hover:enabled:brightness-95',
-}
-
-function variantBorderColor(variant: AdminButtonVariant): string {
-  switch (variant) {
-    case 'edit':
-      return Colors.primary
-    case 'delete':
-    case 'reject':
-      return Colors.error
-    case 'accept':
-      return Colors.success
-    case 'cancel':
-      return Colors.dividerLight
-    case 'add':
-    case 'save':
-      return 'transparent'
-  }
+// Tailwind classes (not inline styles) so hover states can change background, text, and border.
+const variantClass: Record<AdminButtonVariant, string> = {
+  edit:
+    'text-[#4E1F00] bg-[#F8F4E1] border-[#F8C701] hover:enabled:bg-[#F8C701]/30 hover:enabled:border-[#E6B800]',
+  delete:
+    'text-[#4E1F00] bg-[#F8F4E1] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
+  accept:
+    'text-[#4E1F00] bg-[#F8F4E1] border-[#4CAF50] hover:enabled:bg-[#4CAF50]/15 hover:enabled:text-[#2E7D32] hover:enabled:border-[#43A047]',
+  reject:
+    'text-[#4E1F00] bg-[#F8F4E1] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
+  add: 'text-[#4E1F00] bg-[#F8C701] border-transparent hover:enabled:brightness-[0.92]',
+  cancel:
+    'text-[#4E1F00] bg-[#F8F4E1] border-[#E7BFA8] hover:enabled:bg-[#E0D5B8]/70 hover:enabled:border-[#D4C4A8]',
+  save: 'text-[#4E1F00] bg-[#F8C701] border-transparent hover:enabled:brightness-[0.92]',
 }
 
 export function AdminButton({
@@ -74,23 +61,21 @@ export function AdminButton({
   className?: string
 }) {
   const isCompact = variant !== 'cancel' && variant !== 'save'
-  const filled = variant === 'add' || variant === 'save'
+  const isDisabled = disabled || loading
 
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-1 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantHoverClass[variant]} ${
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
+      className={`inline-flex items-center justify-center gap-1 border transition-colors duration-150 disabled:cursor-not-allowed ${
+        isDisabled && !loading ? 'opacity-50' : ''
+      } ${loading ? 'cursor-wait' : ''} ${variantClass[variant]} ${
         isCompact ? 'px-2 py-1 text-xs rounded' : 'px-4 py-2 rounded font-medium'
       } ${className}`}
-      style={{
-        color: filled ? Colors.primaryDark : Colors.textDark,
-        backgroundColor: filled ? Colors.primary : Colors.background,
-        borderColor: variantBorderColor(variant),
-      }}
     >
-      {loading && <AdminSpinner />}
+      {loading && <AdminSpinner className="h-3 w-3" />}
       {children}
     </button>
   )
