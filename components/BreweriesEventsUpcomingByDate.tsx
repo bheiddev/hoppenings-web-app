@@ -22,6 +22,7 @@ import {
   updateFoodTruck,
 } from '@/app/breweries-events/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
+import { foodTruckShowsOnDate, isDateSpecificFoodTruck } from '@/lib/foodTrucks'
 import {
   formatMountainWeekDayHeading,
   getMountainDateRangeFromToday,
@@ -38,15 +39,6 @@ type FoodTruckRow = FoodTruck & { breweryName: string; breweryId: string }
 function normalizeReleaseDate(releaseDate: string | null): string | null {
   if (!releaseDate?.trim()) return null
   return normalizeEventDateToMountainTime(releaseDate)
-}
-
-function isDateSpecificFoodTruck(truck: FoodTruck): boolean {
-  return truck.permanent !== true
-}
-
-function foodTruckShowsOnDate(truck: FoodTruck, ymd: string): boolean {
-  if (!isDateSpecificFoodTruck(truck) || !truck.date) return false
-  return normalizeEventDateToMountainTime(truck.date) === ymd
 }
 
 function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {

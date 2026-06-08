@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, TaplistItem } from '@/types/supabase'
+import { filterUpcomingFoodTrucks } from '@/lib/foodTrucks'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
@@ -227,7 +228,7 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
 }
 
 /**
- * Get food trucks scheduled at a brewery (permanent and date-specific).
+ * Get upcoming date-specific food trucks at a brewery, sorted chronologically.
  */
 export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck[]> {
   try {
@@ -235,7 +236,7 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
       .from('food_trucks')
       .select('id, created_at, brewery_id, name, permanent, date, closed')
       .eq('brewery_id', breweryId)
-      .order('name', { ascending: true })
+      .order('date', { ascending: true })
 
     if (error) {
       console.error('Error fetching brewery food trucks:', error)
@@ -244,7 +245,7 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
 
     if (!data) return []
 
-    return data.map((row) => ({
+    const trucks = data.map((row) => ({
       id: row.id,
       created_at: row.created_at,
       brewery_id: row.brewery_id,
@@ -253,6 +254,8 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
       date: row.date,
       closed: row.closed,
     })) as FoodTruck[]
+
+    return filterUpcomingFoodTrucks(trucks)
   } catch (error) {
     console.error('Error fetching brewery food trucks:', error)
     return []
