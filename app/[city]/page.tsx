@@ -122,6 +122,13 @@ export default async function CityLandingPage({
               {activity.label}
             </Link>
           ))}
+          <Link
+            href={`/${citySlug}/releases`}
+            className="px-4 py-2 rounded-full text-sm font-semibold"
+            style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+          >
+            Beer Releases
+          </Link>
         </div>
 
         <section className="mb-10">
