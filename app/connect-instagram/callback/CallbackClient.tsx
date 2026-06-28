@@ -88,7 +88,7 @@ export default function CallbackClient() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+      <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <div
@@ -101,7 +101,7 @@ export default function CallbackClient() {
             />
             <div
               className="text-lg font-bold"
-              style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+              style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
             >
               Connecting your Instagram…
             </div>
@@ -129,13 +129,13 @@ export default function CallbackClient() {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+      <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <div className="text-4xl mb-4" style={{ color: Colors.primary }} aria-hidden>
               ✓
             </div>
-            <div className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <div className="text-2xl font-bold" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               You&apos;re connected! Your Instagram posts will now appear on Hoppenings.
             </div>
           </div>
@@ -145,10 +145,10 @@ export default function CallbackClient() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="text-2xl font-bold mb-3" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+          <div className="text-2xl font-bold mb-3" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             We couldn&apos;t connect your Instagram
           </div>
           <div className="text-sm mb-6" style={{ color: Colors.textSecondary, fontFamily: 'var(--font-be-vietnam-pro)' }}>

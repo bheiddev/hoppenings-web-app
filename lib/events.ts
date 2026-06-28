@@ -27,7 +27,10 @@ const EVENTS_BASE_SELECT = `
     id,
     name,
     location,
-    Region
+    Region,
+    image_url,
+    latitude,
+    longitude
   )
 `
 
@@ -55,6 +58,9 @@ function mapEventRow(event: Record<string, unknown>): Event {
       name: (breweries?.name as string) || 'Unknown Brewery',
       location: (breweries?.location as string) || null,
       Region: (breweries?.Region as string) || null,
+      image_url: (breweries?.image_url as string | null) || null,
+      latitude: (breweries?.latitude as number | null) ?? null,
+      longitude: (breweries?.longitude as number | null) ?? null,
     },
   }
 }
@@ -134,6 +140,17 @@ export async function fetchEventsBaseRows(options?: {
 export async function getExpandedEventsForListing(): Promise<Event[]> {
   const rows = await fetchEventsBaseRows()
   return expandRecurringEvents(rows)
+}
+
+/** Events happening today (Mountain Time) for the home page carousel. */
+export async function getTonightCarouselEvents(): Promise<EventWithSlug[]> {
+  const rows = await fetchEventsBaseRows()
+  const expanded = expandRecurringEvents(rows, true)
+  const today = getTodayMountainDateString()
+  const todaysEvents = expanded.filter(
+    (event) => normalizeEventDateToMountainTime(event.event_date) === today
+  )
+  return attachSlugs(todaysEvents)
 }
 
 /** Strip trailing YYYY-MM-DD from a slug (undated recurring URLs). */

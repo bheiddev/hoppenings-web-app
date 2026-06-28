@@ -178,7 +178,7 @@ export function BreweriesEventsUpcomingByDate({
     <>
       <section
         className="mb-10 border rounded-xl p-6 w-full"
-        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
       >
         {actionError && (
           <div
@@ -206,13 +206,13 @@ export function BreweriesEventsUpcomingByDate({
               <div
                 key={ymd}
                 className="flex flex-col min-w-0 border rounded-lg overflow-hidden"
-                style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+                style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
               >
                 <div
                   className="px-3 py-2 border-b"
                   style={{
                     borderColor: Colors.dividerLight,
-                    backgroundColor: Colors.backgroundLight,
+                    backgroundColor: Colors.surfaceLight,
                   }}
                 >
                   <h3

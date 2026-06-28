@@ -1,11 +1,13 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { EventCard } from '@/components/EventCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
 import { getAllEventsWithSlugs } from '@/lib/events'
-import { groupEventsByDate, groupEventsByRegion, isEventInPast } from '@/lib/utils'
+import { groupEventsByDate, groupEventsByRegion, isEventInPast, formatRelativeEventDateHeading, isRelativeDayHeading } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -59,14 +61,17 @@ export default async function CityEventsPage({
   })
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/events" className="underline text-sm" style={{ color: Colors.primary }}>
-          Back to all events
-        </Link>
+        <BackLink
+          fallbackHref="/events"
+          showIcon={false}
+          className="underline text-sm"
+          style={{ color: Colors.primary }}
+        />
         <h1
-          className="text-4xl font-bold mt-4 mb-4"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mt-4 mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Brewery Events in {cityName}
         </h1>
@@ -75,14 +80,22 @@ export default async function CityEventsPage({
           <p style={{ color: Colors.textPrimary }}>No upcoming events found in {cityName}.</p>
         ) : (
           <div className="space-y-8">
-            {dateEntries.map(([dateLabel, dateEvents]) => (
+            {dateEntries.map(([dateLabel, dateEvents]) => {
+              const dateHeading = formatRelativeEventDateHeading(dateEvents[0].event_date)
+              return (
               <div key={dateLabel} className="space-y-4">
                 <div
                   className="flex items-center justify-between pb-2 border-b-2"
                   style={{ borderColor: Colors.dividerLight }}
                 >
-                  <h2 className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
-                    {dateLabel}
+                  <h2
+                    className="text-2xl font-bold"
+                    style={{
+                      color: isRelativeDayHeading(dateHeading) ? Colors.textPrimary : Colors.primary,
+                      fontFamily: 'var(--font-fjalla-one)',
+                    }}
+                  >
+                    {dateHeading}
                   </h2>
                 </div>
                 <div className="space-y-6">
@@ -94,7 +107,7 @@ export default async function CityEventsPage({
                       >
                         {region}
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <CardCarousel>
                         {regionEvents.map((event) => (
                           <EventCard
                             key={`${event.id}-${event.event_date}`}
@@ -102,12 +115,12 @@ export default async function CityEventsPage({
                             isFeatured={event.featured}
                           />
                         ))}
-                      </div>
+                      </CardCarousel>
                     </section>
                   ))}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

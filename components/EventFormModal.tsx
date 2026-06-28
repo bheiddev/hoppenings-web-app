@@ -91,7 +91,7 @@ export function EventFormModal({
     >
       <div
         className="rounded-lg shadow-lg max-w-xl w-full max-h-[90vh] overflow-auto p-6"
-        style={{ backgroundColor: Colors.background }}
+        style={{ backgroundColor: Colors.surface }}
         onClick={(ev) => ev.stopPropagation()}
       >
         <h3
@@ -113,7 +113,7 @@ export function EventFormModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -129,7 +129,7 @@ export function EventFormModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -147,7 +147,7 @@ export function EventFormModal({
                 style={{
                   borderColor: Colors.dividerLight,
                   color: Colors.textDark,
-                  backgroundColor: Colors.background,
+                  backgroundColor: Colors.surface,
                 }}
               />
             </div>
@@ -164,7 +164,7 @@ export function EventFormModal({
                 style={{
                   borderColor: Colors.dividerLight,
                   color: Colors.textDark,
-                  backgroundColor: Colors.background,
+                  backgroundColor: Colors.surface,
                 }}
               />
             </div>
@@ -183,7 +183,7 @@ export function EventFormModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -199,7 +199,7 @@ export function EventFormModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>

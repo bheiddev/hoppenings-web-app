@@ -5,7 +5,9 @@ import { Colors } from '@/lib/colors'
 import { EventCard } from '@/components/EventCard'
 import { BreweryCard } from '@/components/BreweryCard'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import {
@@ -16,7 +18,7 @@ import {
   filterEventsForCity,
   filterReleasesForCity,
 } from '@/lib/seoCities'
-import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading } from '@/lib/utils'
+import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading, isRelativeDayHeading } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -56,10 +58,11 @@ export default async function CityLandingPage({
   const citySlug = city as CitySlug
   const cityConfig = CITY_CONFIG[citySlug]
 
-  const [breweries, events, releases] = await Promise.all([
+  const [breweries, events, releases, breweryCardContext] = await Promise.all([
     getAllBreweriesWithSlugs(),
     getAllEventsWithSlugs(),
     getAllReleasesWithSlugs(),
+    getBreweryCardContextMap(),
   ])
 
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
@@ -93,15 +96,15 @@ export default async function CityLandingPage({
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1
-          className="text-4xl font-bold mb-4"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Brewery Events in {cityConfig.name}, Colorado
         </h1>
@@ -132,18 +135,33 @@ export default async function CityLandingPage({
         </div>
 
         <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.textPrimary }}>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             Breweries in {cityConfig.name}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <CardCarousel>
             {cityBreweries.slice(0, 18).map((brewery) => (
-              <BreweryCard key={brewery.id} brewery={brewery} />
+              <BreweryCard
+                key={brewery.id}
+                brewery={brewery}
+                context={getBreweryCardContext(breweryCardContext, brewery.id)}
+              />
             ))}
-          </div>
+          </CardCarousel>
         </section>
 
         <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.textPrimary }}>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+            Recent Beer Releases
+          </h2>
+          <CardCarousel>
+            {cityReleases.slice(0, 18).map((release) => (
+              <BeerReleaseCard key={release.id} beerRelease={release} />
+            ))}
+          </CardCarousel>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             This Week&apos;s Events
           </h2>
           {cityEventsThisWeek.length === 0 ? (
@@ -158,6 +176,7 @@ export default async function CityLandingPage({
             <div className="space-y-8">
               {weekDates.map((ymd, index) => {
                 const dayEvents = eventsByMountainDay.get(ymd) ?? []
+                const dayHeading = formatMountainWeekDayHeading(ymd, index)
                 return (
                   <div key={ymd} className="space-y-4">
                     <div
@@ -166,9 +185,12 @@ export default async function CityLandingPage({
                     >
                       <h3
                         className="text-xl font-bold"
-                        style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+                        style={{
+                          color: isRelativeDayHeading(dayHeading) ? Colors.textPrimary : Colors.primary,
+                          fontFamily: 'var(--font-fjalla-one)',
+                        }}
                       >
-                        {formatMountainWeekDayHeading(ymd, index)}
+                        {dayHeading}
                       </h3>
                     </div>
                     {dayEvents.length === 0 ? (
@@ -176,7 +198,7 @@ export default async function CityLandingPage({
                         No events scheduled.
                       </p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <CardCarousel>
                         {dayEvents.map((event) => (
                           <EventCard
                             key={`${event.id}-${event.event_date}`}
@@ -184,24 +206,13 @@ export default async function CityLandingPage({
                             isFeatured={event.featured}
                           />
                         ))}
-                      </div>
+                      </CardCarousel>
                     )}
                   </div>
                 )
               })}
             </div>
           )}
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.textPrimary }}>
-            Recent Beer Releases
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {cityReleases.slice(0, 18).map((release) => (
-              <BeerReleaseCard key={release.id} beerRelease={release} />
-            ))}
-          </div>
         </section>
       </div>
     </div>

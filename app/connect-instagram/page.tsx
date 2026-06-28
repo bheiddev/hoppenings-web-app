@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { Colors } from '@/lib/colors'
 
 export const metadata: Metadata = {
@@ -27,22 +27,16 @@ export default function ConnectInstagramPage() {
     : null
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <Link
-            href="/breweries"
-            className="inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline"
+          <BackLink
+            fallbackHref="/breweries"
             style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor" />
-            </svg>
-            Back to Breweries
-          </Link>
+          />
 
           <h1
-            className="text-4xl font-bold mb-2"
+            className="text-3xl font-bold mb-2"
             style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
           >
             Connect Facebook &amp; Instagram
@@ -55,7 +49,7 @@ export default function ConnectInstagramPage() {
 
         <div
           className="rounded-lg p-6"
-          style={{ backgroundColor: Colors.background, borderColor: Colors.dividerLight, borderWidth: 1 }}
+          style={{ backgroundColor: Colors.surface, borderColor: Colors.dividerLight, borderWidth: 1 }}
         >
           <h2
             className="text-lg font-bold mb-3"
@@ -67,7 +61,7 @@ export default function ConnectInstagramPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
               className="rounded-lg p-4 border"
-              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.backgroundLight }}
+              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
             >
               <div
                 className="text-sm font-bold mb-3"
@@ -89,7 +83,7 @@ export default function ConnectInstagramPage() {
 
             <div
               className="rounded-lg p-4 border"
-              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.backgroundLight }}
+              style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
             >
               <div
                 className="text-sm font-bold mb-3"

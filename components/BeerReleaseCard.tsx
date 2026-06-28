@@ -20,7 +20,7 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
     <div 
       className="rounded-lg p-6 border shadow-sm"
       style={{ 
-        backgroundColor: Colors.background,
+        backgroundColor: Colors.surface,
         borderColor: Colors.dividerLight,
       }}
     >
@@ -63,36 +63,18 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {beerRelease.ABV && (
-            <div 
-              className="flex items-center justify-center px-2.5 py-1 rounded-full"
-              style={{ 
-                backgroundColor: Colors.backgroundDark,
-              }}
-            >
-              <span 
-                className="text-xs font-medium leading-none" 
-                style={{ 
-                  fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.background
-                }}
-              >
-                ABV: {beerRelease.ABV}
-              </span>
-            </div>
-          )}
           {beerRelease.release_date && (
             <div 
               className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
-                backgroundColor: Colors.backgroundDark,
+                backgroundColor: Colors.surfaceDark,
               }}
             >
               <span 
                 className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.background
+                  color: Colors.textPrimary
                 }}
               >
                 {formatReleaseDate(beerRelease.release_date)}
@@ -105,7 +87,7 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
           className="px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
-            backgroundColor: Colors.backgroundDark,
+            backgroundColor: Colors.surfaceDark,
             color: Colors.textPrimary
           }}
         >

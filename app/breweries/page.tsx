@@ -1,8 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { BreweryCard } from '@/components/BreweryCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { Colors } from '@/lib/colors'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
 import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
 
 export const metadata: Metadata = {
@@ -17,7 +19,10 @@ export const metadata: Metadata = {
 }
 
 export default async function BreweriesPage() {
-  const breweries = await getAllBreweriesWithSlugs()
+  const [breweries, breweryCardContext] = await Promise.all([
+    getAllBreweriesWithSlugs(),
+    getBreweryCardContextMap(),
+  ])
   const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])
     .map(([citySlug, cityConfig]) => ({
       citySlug,
@@ -27,9 +32,9 @@ export default async function BreweriesPage() {
     .filter(({ breweries }) => breweries.length > 0)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-4xl font-bold mb-8" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+        <h1 className="text-3xl font-bold mb-8" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
           BREWERIES
         </h1>
         <div className="flex flex-wrap gap-3 mb-10">
@@ -56,21 +61,22 @@ export default async function BreweriesPage() {
             {cityEntries.map(({ citySlug, cityName, breweries: cityBreweries }) => (
               <section key={citySlug} className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b-2" style={{ borderColor: Colors.dividerLight }}>
-                  <h2 className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                  <h2 className="text-2xl font-bold" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                     {cityName}
                   </h2>
                   <Link href={`/${citySlug}/breweries`} className="underline text-sm" style={{ color: Colors.primary }}>
                     View all
                   </Link>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <CardCarousel>
                   {cityBreweries.map((brewery) => (
                     <BreweryCard
                       key={brewery.id}
                       brewery={brewery}
+                      context={getBreweryCardContext(breweryCardContext, brewery.id)}
                     />
                   ))}
-                </div>
+                </CardCarousel>
               </section>
             ))}
           </div>

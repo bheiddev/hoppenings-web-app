@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fjalla_One, Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+import { NavigationTracker } from "@/components/NavigationTracker";
 import AppBanner from "@/components/AppBanner";
 import { Colors } from "@/lib/colors";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
       >
         <AppBanner />
         <Navigation />
+        <NavigationTracker />
         {children}
       </body>
     </html>

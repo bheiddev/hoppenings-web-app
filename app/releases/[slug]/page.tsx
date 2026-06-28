@@ -8,6 +8,7 @@ import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
@@ -89,22 +90,16 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(releaseJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href="/releases"
-            className="inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline"
+          <BackLink
+            fallbackHref="/releases"
             style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-            </svg>
-            Back to Releases
-          </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+          />
+          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {release.beer_name}
           </h1>
           {release.Type && (
@@ -127,7 +122,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             
             <div className="flex flex-col gap-3 md:flex-shrink-0">
               {release.ABV && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
                   <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     ABV: {release.ABV}
                   </span>
@@ -135,7 +130,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
               )}
 
               {release.release_date && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
                   <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     {formatReleaseDate(release.release_date)}
                   </span>
@@ -151,7 +146,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             <div style={{ height: '1.5px', backgroundColor: Colors.divider, marginBottom: '2rem', opacity: 0.5 }} />
             
             <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
+              <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                 AVAILABLE AT
               </h2>
 
@@ -161,13 +156,13 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
                   return (
                     <div key={brewery.id} className="mb-8">
                       <Link href={`/breweries/${brewerySlug}`}>
-                        <h3 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                        <h3 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                           {brewery.name}
                         </h3>
                       </Link>
 
                       {brewery.image_url && (
-                        <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
+                        <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
                           <Image
                             src={brewery.image_url}
                             alt={brewery.name}
@@ -188,7 +183,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
                         href={`/breweries/${brewerySlug}`}
                         className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
                         style={{ 
-                          backgroundColor: Colors.background,
+                          backgroundColor: Colors.surface,
                           color: Colors.textDark,
                           fontFamily: 'var(--font-fjalla-one)',
                         }}

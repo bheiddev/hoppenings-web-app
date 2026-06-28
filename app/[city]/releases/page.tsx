@@ -1,8 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { CITY_CONFIG, CitySlug, filterReleasesForCity } from '@/lib/seoCities'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 
@@ -46,14 +48,17 @@ export default async function CityReleasesPage({
   const cityReleases = filterReleasesForCity(releases, citySlug)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/releases" className="underline text-sm" style={{ color: Colors.primary }}>
-          Back to all releases
-        </Link>
+        <BackLink
+          fallbackHref="/releases"
+          showIcon={false}
+          className="underline text-sm"
+          style={{ color: Colors.primary }}
+        />
         <h1
-          className="text-4xl font-bold mt-4 mb-4"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mt-4 mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Beer Releases in {cityName}
         </h1>
@@ -63,11 +68,11 @@ export default async function CityReleasesPage({
             No recent releases found in {cityName}.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <CardCarousel>
             {cityReleases.map((release) => (
               <BeerReleaseCard key={release.id} beerRelease={release} />
             ))}
-          </div>
+          </CardCarousel>
         )}
       </div>
     </div>

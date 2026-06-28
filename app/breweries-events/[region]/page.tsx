@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BreweriesEventsBreweryBreakdown } from '@/components/BreweriesEventsBreweryBreakdown'
@@ -47,20 +47,19 @@ export default async function BreweriesEventsRegionPage({
   const releaseCount = regionBreweries.reduce((sum, r) => sum + r.releases.length, 0)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <p className="mb-4">
-          <Link
-            href="/breweries-events"
+          <BackLink
+            fallbackHref="/breweries-events"
+            showIcon={false}
             className="text-sm underline hover:opacity-80"
             style={{ color: Colors.primary }}
-          >
-            ← All regions
-          </Link>
+          />
         </p>
         <h1
-          className="text-4xl font-bold mb-2"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mb-2"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           {bucket.displayLabel}
         </h1>

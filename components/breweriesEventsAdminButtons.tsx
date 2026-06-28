@@ -30,16 +30,16 @@ export type AdminButtonVariant = 'edit' | 'delete' | 'accept' | 'reject' | 'add'
 // Tailwind classes (not inline styles) so hover states can change background, text, and border.
 const variantClass: Record<AdminButtonVariant, string> = {
   edit:
-    'text-[#4E1F00] bg-[#F8F4E1] border-[#F8C701] hover:enabled:bg-[#F8C701]/30 hover:enabled:border-[#E6B800]',
+    'text-[#4E1F00] bg-[#FCCCA8] border-[#F8C701] hover:enabled:bg-[#F8C701]/30 hover:enabled:border-[#E6B800]',
   delete:
-    'text-[#4E1F00] bg-[#F8F4E1] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
+    'text-[#4E1F00] bg-[#FCCCA8] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
   accept:
-    'text-[#4E1F00] bg-[#F8F4E1] border-[#4CAF50] hover:enabled:bg-[#4CAF50]/15 hover:enabled:text-[#2E7D32] hover:enabled:border-[#43A047]',
+    'text-[#4E1F00] bg-[#FCCCA8] border-[#4CAF50] hover:enabled:bg-[#4CAF50]/15 hover:enabled:text-[#2E7D32] hover:enabled:border-[#43A047]',
   reject:
-    'text-[#4E1F00] bg-[#F8F4E1] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
+    'text-[#4E1F00] bg-[#FCCCA8] border-[#F44336] hover:enabled:bg-[#F44336]/15 hover:enabled:text-[#C62828] hover:enabled:border-[#D32F2F]',
   add: 'text-[#4E1F00] bg-[#F8C701] border-transparent hover:enabled:brightness-[0.92]',
   cancel:
-    'text-[#4E1F00] bg-[#F8F4E1] border-[#E7BFA8] hover:enabled:bg-[#E0D5B8]/70 hover:enabled:border-[#D4C4A8]',
+    'text-[#4E1F00] bg-[#FCCCA8] border-[#FCCCA8] hover:enabled:bg-[#FCCCA8]/70 hover:enabled:border-[#E8B898]',
   save: 'text-[#4E1F00] bg-[#F8C701] border-transparent hover:enabled:brightness-[0.92]',
 }
 

@@ -3,6 +3,8 @@
  * FjallaOne for headers, BeVietnamPro for body text
  */
 
+import { Colors } from '@/lib/colors'
+
 export const fontClasses = {
   heading: 'var(--font-fjalla-one)',
   body: 'var(--font-be-vietnam-pro)',
@@ -14,6 +16,7 @@ export const fontClasses = {
 export function getHeadingFontStyle(): React.CSSProperties {
   return {
     fontFamily: fontClasses.heading,
+    color: Colors.primary,
   }
 }
 

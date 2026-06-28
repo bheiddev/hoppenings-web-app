@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { BeerRelease } from '@/types/supabase'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { Colors } from '@/lib/colors'
 import { CITY_CONFIG, CitySlug, filterReleasesForCity } from '@/lib/seoCities'
 
@@ -42,9 +43,9 @@ export default async function ReleasesPage() {
     .filter(({ releases }) => releases.length > 0)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-4xl font-bold mb-8" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+        <h1 className="text-3xl font-bold mb-8" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
           RELEASES
         </h1>
         <div className="flex flex-wrap gap-3 mb-10">
@@ -71,7 +72,7 @@ export default async function ReleasesPage() {
             {cityEntries.map(({ citySlug, cityName, releases: cityReleases }) => (
               <div key={citySlug} className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b-2" style={{ borderColor: Colors.dividerLight }}>
-                  <h2 className="text-2xl font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                  <h2 className="text-2xl font-bold" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                     {cityName}
                   </h2>
                   <Link href={`/${citySlug}/releases`} className="underline text-sm" style={{ color: Colors.primary }}>
@@ -89,14 +90,14 @@ export default async function ReleasesPage() {
                         >
                           {beerType}
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <CardCarousel>
                           {typeReleases.map((release) => (
                             <BeerReleaseCard
                               key={release.id}
                               beerRelease={release}
                             />
                           ))}
-                        </div>
+                        </CardCarousel>
                       </section>
                     ))}
                 </div>

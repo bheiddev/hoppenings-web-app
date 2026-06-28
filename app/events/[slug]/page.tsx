@@ -9,6 +9,7 @@ import { generateBrewerySlug, generateEventSlug } from '@/lib/slug'
 import { getBreweryEvents } from '@/lib/breweries'
 import Image from 'next/image'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { TextWithLinks } from '@/components/TextWithLinks'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
@@ -181,7 +182,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Previous Event Banner */}
@@ -189,7 +190,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           <div 
             className="mb-6 p-4 rounded-lg border-2"
             style={{ 
-              backgroundColor: Colors.background,
+              backgroundColor: Colors.surface,
               borderColor: Colors.textSecondary,
             }}
           >
@@ -212,17 +213,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href="/events"
-            className="inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline"
+          <BackLink
+            fallbackHref="/events"
             style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-            </svg>
-            Back to Events
-          </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+          />
+          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {event.title}
           </h1>
           <p className="text-xl" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
@@ -245,7 +240,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             
             <div className="flex flex-col gap-3 md:flex-shrink-0">
               {event.start_time && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
                   <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     {formatTime12Hour(event.start_time)}
                   </span>
@@ -253,7 +248,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               )}
 
               {event.cost !== null && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.backgroundLight }}>
+                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
                   <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
                     ${event.cost.toFixed(2)}
                   </span>
@@ -280,7 +275,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
             return (
               <Link href={`/breweries/${brewerySlug}`}>
-                <h2 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                <h2 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                   {breweryName}
                 </h2>
               </Link>
@@ -288,7 +283,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           })()}
 
           {brewery?.image_url && (
-            <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
+            <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
               <Image
                 src={brewery.image_url}
                 alt={brewery.name}
@@ -315,7 +310,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                 href={`/breweries/${brewerySlug}`}
                 className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
                 style={{ 
-                  backgroundColor: Colors.background,
+                  backgroundColor: Colors.surface,
                   color: Colors.textDark,
                   fontFamily: 'var(--font-fjalla-one)',
                 }}
@@ -329,7 +324,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           })()}
 
           <div className="mt-8 pt-6 border-t" style={{ borderColor: Colors.dividerLight }}>
-            <h3 className="text-lg font-bold mb-3" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h3 className="text-lg font-bold mb-3" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               Explore More
             </h3>
             <div className="flex flex-col gap-2 text-sm" style={{ color: Colors.textPrimary }}>

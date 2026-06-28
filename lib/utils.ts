@@ -59,12 +59,15 @@ export function formatEventDate(dateString: string): string {
 }
 
 /**
- * Format release date to MDY format
+ * Format release date to MDY format (calendar date in Mountain Time).
  */
 export function formatReleaseDate(releaseDate: string | null): string | null {
   if (!releaseDate) return null;
-  const date = new Date(releaseDate);
+  const ymd = normalizeEventDateToMountainTime(releaseDate.trim());
+  const [year, month, day] = ymd.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   return date.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -120,7 +123,7 @@ export function groupEventsByRegion(events: Event[]): Record<string, Event[]> {
 /**
  * Get current date/time components in Mountain Time
  */
-function getCurrentMountainTime(): { date: string; hours: number; minutes: number; seconds: number } {
+export function getMountainTimeNow(): { date: string; hours: number; minutes: number; seconds: number } {
   const now = new Date();
   
   // Get date components in Mountain Time
@@ -181,10 +184,22 @@ export function getMountainDateRangeFromToday(dayCount: number): string[] {
 
 /** Subheading for a day column on weekly schedules (Mountain calendar dates). */
 export function formatMountainWeekDayHeading(ymd: string, indexInWeek: number): string {
-  const formatted = formatEventDate(ymd);
-  if (indexInWeek === 0) return `Today — ${formatted}`;
-  if (indexInWeek === 1) return `Tomorrow — ${formatted}`;
-  return formatted;
+  if (indexInWeek === 0) return 'Today';
+  if (indexInWeek === 1) return 'Tomorrow';
+  return formatEventDate(ymd);
+}
+
+/** Date group heading with Today/Tomorrow for the next two Mountain calendar days. */
+export function formatRelativeEventDateHeading(eventDate: string): string {
+  const normalized = normalizeEventDateToMountainTime(eventDate);
+  const today = getTodayMountainDateString();
+  if (normalized === today) return 'Today';
+  if (normalized === addDaysToDateString(today, 1)) return 'Tomorrow';
+  return formatEventDate(eventDate);
+}
+
+export function isRelativeDayHeading(label: string): boolean {
+  return label === 'Today' || label === 'Tomorrow';
 }
 
 export type EventLikeForMountainWeek = {
@@ -227,7 +242,7 @@ export function bucketEventsByMountainWeekDays<T extends EventLikeForMountainWee
  * Check if an event should be shown (happening today or in the future in Mountain Time)
  */
 function shouldShowEvent(eventDate: string, startTime: string | null): boolean {
-  const mountainTime = getCurrentMountainTime();
+  const mountainTime = getMountainTimeNow();
   const todayMountain = mountainTime.date;
   
   // Normalize the event date to Mountain Time format
@@ -280,7 +295,7 @@ function addDaysToDateString(dateStr: string, days: number): string {
  * Check if an event date is in the past (before today in Mountain Time)
  */
 export function isEventInPast(eventDate: string): boolean {
-  const mountainTime = getCurrentMountainTime();
+  const mountainTime = getMountainTimeNow();
   const todayMountain = mountainTime.date;
   const eventDateMountain = normalizeEventDateToMountainTime(eventDate);
   return compareDateStrings(eventDateMountain, todayMountain) < 0;
@@ -288,7 +303,7 @@ export function isEventInPast(eventDate: string): boolean {
 
 /** Calendar date (YYYY-MM-DD) for "today" in America/Denver. */
 export function getTodayMountainDateString(): string {
-  return getCurrentMountainTime().date;
+  return getMountainTimeNow().date;
 }
 
 /** True when the event falls on the given calendar day in Mountain Time. */
@@ -302,7 +317,7 @@ export function isEventToday(eventDate: string): boolean {
  * @param filterPastEvents - If true, filter out past events. If false, include all events including past ones. Defaults to true.
  */
 export function expandRecurringEvents(events: Event[], filterPastEvents: boolean = true): Event[] {
-  const mountainTime = getCurrentMountainTime();
+  const mountainTime = getMountainTimeNow();
   const todayMountain = mountainTime.date;
   
   // Log current date for debugging

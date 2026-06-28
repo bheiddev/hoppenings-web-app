@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
+import { BackLink } from '@/components/BackLink'
 import { Colors } from '@/lib/colors'
-import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Event Sign Up | Hoppenings',
@@ -14,21 +14,15 @@ export const metadata: Metadata = {
 
 export default function EventSignUpPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href="/events"
-            className="inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline"
+          <BackLink
+            fallbackHref="/events"
             style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-            </svg>
-            Back to Events
-          </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+          />
+          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             SPEED DATING & MIXER @ OCC
           </h1>
         </div>
@@ -38,7 +32,7 @@ export default function EventSignUpPage() {
           <div 
             className="rounded-lg overflow-hidden"
             style={{ 
-              backgroundColor: Colors.background,
+              backgroundColor: Colors.surface,
               padding: '1rem',
             }}
           >

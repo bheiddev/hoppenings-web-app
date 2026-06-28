@@ -5,9 +5,10 @@ import { formatEventDate } from '@/lib/utils'
 import { formatTime, groupHours, formatDays, getBreweryAmenities } from '@/lib/breweryUtils'
 import { Colors } from '@/lib/colors'
 import Image from 'next/image'
-import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { EventCard } from '@/components/EventCard'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
+import { CardCarousel } from '@/components/CardCarousel'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
@@ -119,29 +120,23 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breweryJsonLd) }} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href="/breweries"
-            className="inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline"
+          <BackLink
+            fallbackHref="/breweries"
             style={{ color: Colors.textPrimary }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-            </svg>
-            Back to Breweries
-          </Link>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+          />
+          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
             {brewery.name.toUpperCase()}
           </h1>
         </div>
 
         {/* Brewery Image */}
         {brewery.image_url && (
-          <div className="relative w-full h-96 mb-8 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.backgroundDark }}>
+          <div className="relative w-full h-96 mb-8 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
             <Image
               src={brewery.image_url}
               alt={brewery.name}
@@ -164,7 +159,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {/* Information Section */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               ADDRESS AND PHONE NUMBER
             </h3>
             <div className="space-y-3">
@@ -192,7 +187,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           </div>
 
           <div>
-            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               HOURS OF OPERATION
             </h3>
             {hoursGroups.length > 0 ? (
@@ -265,40 +260,35 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         {releases.length > 0 && (
           <div className="mb-8">
             <div style={{ height: '1px', backgroundColor: 'white', marginBottom: '2rem' }} />
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               NEW RELEASES
             </h2>
-            <div className="space-y-4">
+            <CardCarousel>
               {releases.map((release) => (
                 <BeerReleaseCard key={release.id} beerRelease={release} />
               ))}
-            </div>
+            </CardCarousel>
           </div>
         )}
 
         {/* Events Section */}
         {events.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.background, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
               UPCOMING EVENTS
             </h2>
             <div className="space-y-8">
               {Object.entries(groupedEvents).map(([date, dateEvents]) => (
                 <div key={date}>
-                  <h3 className="text-2xl font-bold mb-2" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+                  <h3 className="text-2xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                     {date}
                   </h3>
                   <div style={{ height: '1px', backgroundColor: Colors.textPrimary, marginBottom: '1rem', opacity: 0.5 }} />
-                  <div className="space-y-4">
-                    {dateEvents.map((event, idx) => (
-                      <div key={event.id}>
-                        <EventCard event={event} isFeatured={event.featured} />
-                        {idx < dateEvents.length - 1 && (
-                          <div style={{ height: '1.5px', backgroundColor: Colors.textPrimary, margin: '1rem 0', opacity: 0.5 }} />
-                        )}
-                      </div>
+                  <CardCarousel>
+                    {dateEvents.map((event) => (
+                      <EventCard key={event.id} event={event} isFeatured={event.featured} />
                     ))}
-                  </div>
+                  </CardCarousel>
                 </div>
               ))}
             </div>

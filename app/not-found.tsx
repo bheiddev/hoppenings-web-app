@@ -9,9 +9,9 @@ export const metadata = {
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="text-center px-4 max-w-md">
-        <h1 className="text-4xl font-bold mb-4" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+        <h1 className="text-3xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
           Page not found
         </h1>
         <p className="text-lg mb-8" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>

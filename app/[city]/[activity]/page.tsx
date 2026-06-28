@@ -1,8 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { EventCard } from '@/components/EventCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import {
   ACTIVITY_CONFIG,
@@ -12,7 +14,7 @@ import {
   filterEventsForActivity,
   filterEventsForCity,
 } from '@/lib/seoCities'
-import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading } from '@/lib/utils'
+import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading, isRelativeDayHeading } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -67,14 +69,17 @@ export default async function CityActivityPage({
     bucketEventsByMountainWeekDays(filtered, 7)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href={`/${citySlug}`} className="underline text-sm" style={{ color: Colors.primary }}>
-          Back to {cityName}
-        </Link>
+        <BackLink
+          fallbackHref={`/${citySlug}`}
+          showIcon={false}
+          className="underline text-sm"
+          style={{ color: Colors.primary }}
+        />
         <h1
-          className="text-4xl font-bold mt-4 mb-4"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mt-4 mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           {activityLabel} in {cityName}
         </h1>
@@ -101,6 +106,7 @@ export default async function CityActivityPage({
           <div className="space-y-8">
             {weekDates.map((ymd, index) => {
               const dayEvents = eventsByMountainDay.get(ymd) ?? []
+              const dayHeading = formatMountainWeekDayHeading(ymd, index)
               return (
                 <div key={ymd} className="space-y-4">
                   <div
@@ -109,9 +115,12 @@ export default async function CityActivityPage({
                   >
                     <h2
                       className="text-xl font-bold"
-                      style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+                      style={{
+                        color: isRelativeDayHeading(dayHeading) ? Colors.textPrimary : Colors.primary,
+                        fontFamily: 'var(--font-fjalla-one)',
+                      }}
                     >
-                      {formatMountainWeekDayHeading(ymd, index)}
+                      {dayHeading}
                     </h2>
                   </div>
                   {dayEvents.length === 0 ? (
@@ -119,7 +128,7 @@ export default async function CityActivityPage({
                       No events scheduled.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <CardCarousel>
                       {dayEvents.map((event) => (
                         <EventCard
                           key={`${event.id}-${event.event_date}`}
@@ -127,7 +136,7 @@ export default async function CityActivityPage({
                           isFeatured={event.featured}
                         />
                       ))}
-                    </div>
+                    </CardCarousel>
                   )}
                 </div>
               )

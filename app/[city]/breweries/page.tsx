@@ -1,10 +1,13 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BreweryCard } from '@/components/BreweryCard'
+import { CardCarousel } from '@/components/CardCarousel'
 import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -42,18 +45,24 @@ export default async function CityBreweriesPage({
 
   const citySlug = city as CitySlug
   const cityName = CITY_CONFIG[citySlug].name
-  const breweries = await getAllBreweriesWithSlugs()
+  const [breweries, breweryCardContext] = await Promise.all([
+    getAllBreweriesWithSlugs(),
+    getBreweryCardContextMap(),
+  ])
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/breweries" className="underline text-sm" style={{ color: Colors.primary }}>
-          Back to all breweries
-        </Link>
+        <BackLink
+          fallbackHref="/breweries"
+          showIcon={false}
+          className="underline text-sm"
+          style={{ color: Colors.primary }}
+        />
         <h1
-          className="text-4xl font-bold mt-4 mb-4"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mt-4 mb-4"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Breweries in {cityName}
         </h1>
@@ -63,11 +72,15 @@ export default async function CityBreweriesPage({
             No breweries currently listed in {cityName}.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <CardCarousel>
             {cityBreweries.map((brewery) => (
-              <BreweryCard key={brewery.id} brewery={brewery} />
+              <BreweryCard
+                key={brewery.id}
+                brewery={brewery}
+                context={getBreweryCardContext(breweryCardContext, brewery.id)}
+              />
             ))}
-          </div>
+          </CardCarousel>
         )}
       </div>
     </div>

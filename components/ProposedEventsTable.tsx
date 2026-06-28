@@ -200,7 +200,7 @@ function EditProposedEventModal({
     >
       <div
         className="rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-auto p-6"
-        style={{ backgroundColor: Colors.background }}
+        style={{ backgroundColor: Colors.surface }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3
@@ -222,7 +222,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -238,7 +238,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -254,7 +254,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -271,7 +271,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -288,7 +288,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -304,7 +304,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -320,7 +320,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -336,7 +336,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>
@@ -352,7 +352,7 @@ function EditProposedEventModal({
               style={{
                 borderColor: Colors.dividerLight,
                 color: Colors.textDark,
-                backgroundColor: Colors.background,
+                backgroundColor: Colors.surface,
               }}
             />
           </div>

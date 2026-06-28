@@ -6,7 +6,7 @@ export default function ConnectInstagramCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+        <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
           <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
               <div
@@ -17,7 +17,7 @@ export default function ConnectInstagramCallbackPage() {
                   animation: 'spin 1s linear infinite',
                 }}
               />
-              <div className="text-lg font-bold" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}>
+              <div className="text-lg font-bold" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
                 Connecting your Instagram…
               </div>
               <style>{`

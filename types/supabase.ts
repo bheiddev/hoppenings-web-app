@@ -58,6 +58,9 @@ export interface Event {
     name: string;
     location?: string | null;
     Region?: string | null;
+    image_url?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   };
 }
 

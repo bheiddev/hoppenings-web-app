@@ -31,11 +31,11 @@ export default async function BreweriesEventsPage() {
   })
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.backgroundMedium }}>
+    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1
-          className="text-4xl font-bold mb-2"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="text-3xl font-bold mb-2"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Breweries & Events
         </h1>
@@ -46,7 +46,7 @@ export default async function BreweriesEventsPage() {
 
         <section
           className="mb-10 border rounded-xl p-6 w-full"
-          style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+          style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
         >
           <h2
             className="text-xl font-bold mb-6"
@@ -77,7 +77,7 @@ export default async function BreweriesEventsPage() {
 
             <div className="flex-1 min-w-0 overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse min-w-[28rem]">
-                <thead style={{ backgroundColor: Colors.backgroundLight }}>
+                <thead style={{ backgroundColor: Colors.surfaceLight }}>
                   <tr>
                     <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
                       Region

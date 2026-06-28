@@ -94,6 +94,23 @@ function inferCityFromRegionOrLocation(
   return null
 }
 
+const TONIGHT_CAROUSEL_CITY_ORDER: CitySlug[] = [
+  'colorado-springs',
+  'fort-collins',
+  'boulder-longmont',
+]
+
+/** Lower sort index = earlier in the Events Tonight carousel. Unknown cities sort last. */
+export function getTonightCarouselCitySortOrder(
+  regionRaw: string | null | undefined,
+  locationRaw: string | null | undefined
+): number {
+  const city = inferCityFromRegionOrLocation(regionRaw, locationRaw)
+  if (!city) return TONIGHT_CAROUSEL_CITY_ORDER.length
+  const index = TONIGHT_CAROUSEL_CITY_ORDER.indexOf(city)
+  return index >= 0 ? index : TONIGHT_CAROUSEL_CITY_ORDER.length
+}
+
 function breweryBelongsToCity(brewery: BreweryWithSlug, city: CitySlug): boolean {
   return inferCityFromRegionOrLocation(brewery.Region, brewery.location) === city
 }

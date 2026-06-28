@@ -43,7 +43,7 @@ export default function AppBanner() {
   return (
     <div 
       className="fixed bottom-0 left-0 right-0 z-50 shadow-md"
-      style={{ backgroundColor: Colors.background }}
+      style={{ backgroundColor: Colors.surface }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-4 max-w-7xl mx-auto">
         <p 

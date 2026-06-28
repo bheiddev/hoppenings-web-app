@@ -62,11 +62,11 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
       )}
       <div
         className="flex flex-col h-64 border rounded-lg overflow-hidden"
-        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.background }}
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
       >
         <div
           className="flex-shrink-0 px-3 py-2 font-semibold text-sm"
-          style={{ backgroundColor: Colors.backgroundLight, color: Colors.textDark }}
+          style={{ backgroundColor: Colors.surfaceLight, color: Colors.textDark }}
         >
           {title}
         </div>
@@ -79,7 +79,7 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
             <table className="w-full text-left text-sm border-collapse">
               <thead
                 className="sticky top-0 z-10"
-                style={{ backgroundColor: Colors.backgroundLight }}
+                style={{ backgroundColor: Colors.surfaceLight }}
               >
                 <tr>
                   <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
@@ -123,7 +123,7 @@ export function TaplistTableWithAddButton({ taplist, title }: TaplistTableWithAd
                         style={{
                           borderColor: Colors.primary,
                           color: Colors.textDark,
-                          backgroundColor: Colors.background,
+                          backgroundColor: Colors.surface,
                         }}
                       >
                         Add to releases

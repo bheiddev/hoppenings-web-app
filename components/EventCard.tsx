@@ -23,7 +23,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
     <div 
       className="rounded-lg p-6 border shadow-sm"
       style={{ 
-        backgroundColor: Colors.background,
+        backgroundColor: Colors.surface,
         borderColor: Colors.dividerLight,
       }}
     >
@@ -70,14 +70,14 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
             <div 
               className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
-                backgroundColor: Colors.backgroundDark,
+                backgroundColor: Colors.surfaceDark,
               }}
             >
               <span 
                 className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.background
+                  color: Colors.textPrimary
                 }}
               >
                 ${event.cost.toFixed(2)}
@@ -88,14 +88,14 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
             <div 
               className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
-                backgroundColor: Colors.backgroundDark,
+                backgroundColor: Colors.surfaceDark,
               }}
             >
               <span 
                 className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.background
+                  color: Colors.textPrimary
                 }}
               >
                 {formatTime12Hour(event.start_time)}
@@ -108,7 +108,7 @@ export function EventCard({ event, isFeatured = false }: EventCardProps) {
           className="px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
-            backgroundColor: Colors.backgroundDark,
+            backgroundColor: Colors.surfaceDark,
             color: Colors.textPrimary
           }}
         >

@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, TaplistItem } from '@/types/supabase'
 import { filterUpcomingFoodTrucks } from '@/lib/foodTrucks'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
-import { expandRecurringEvents } from './utils'
+import { expandRecurringEvents, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BreweryWithSlug extends Brewery {
@@ -316,23 +316,25 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
 
     if (!data) return []
 
-    return data.map((row: any) => ({
-      id: row.id,
-      created_at: row.created_at,
-      title: row.title ?? null,
-      description: row.description ?? null,
-      brewery_id: row.brewery_id ?? null,
-      event_date: row.event_date ?? null,
-      start_time: row.start_time ?? null,
-      brewery_id2: row.brewery_id2 ?? null,
-      brewery_id3: row.brewery_id3 ?? null,
-      cost: row.cost ?? null,
-      end_time: row.end_time ?? null,
-      featured: row.featured ?? null,
-      is_recurring: row.is_recurring ?? null,
-      is_recurring_biweekly: row.is_recurring_biweekly ?? null,
-      is_recurring_monthly: row.is_recurring_monthly ?? null,
-    })) as ProposedEvent[]
+    return data
+      .map((row: any) => ({
+        id: row.id,
+        created_at: row.created_at,
+        title: row.title ?? null,
+        description: row.description ?? null,
+        brewery_id: row.brewery_id ?? null,
+        event_date: row.event_date ?? null,
+        start_time: row.start_time ?? null,
+        brewery_id2: row.brewery_id2 ?? null,
+        brewery_id3: row.brewery_id3 ?? null,
+        cost: row.cost ?? null,
+        end_time: row.end_time ?? null,
+        featured: row.featured ?? null,
+        is_recurring: row.is_recurring ?? null,
+        is_recurring_biweekly: row.is_recurring_biweekly ?? null,
+        is_recurring_monthly: row.is_recurring_monthly ?? null,
+      }))
+      .filter((event) => !event.event_date?.trim() || !isEventInPast(event.event_date)) as ProposedEvent[]
   } catch (error) {
     console.error('Error fetching proposed events:', error)
     return []
