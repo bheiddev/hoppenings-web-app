@@ -35,7 +35,7 @@ export default async function BreweriesEventsPage() {
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1
           className="text-3xl font-bold mb-2"
-          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+          style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
           Breweries & Events
         </h1>
@@ -50,7 +50,7 @@ export default async function BreweriesEventsPage() {
         >
           <h2
             className="text-xl font-bold mb-6"
-            style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+            style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
           >
             Executive view
           </h2>
@@ -66,7 +66,7 @@ export default async function BreweriesEventsPage() {
                     <Link
                       href={`/breweries-events/${r.slug}`}
                       className="text-sm underline hover:opacity-80"
-                      style={{ color: Colors.primary }}
+                      style={{ color: Colors.primaryDark }}
                     >
                       {r.displayLabel}
                     </Link>
@@ -107,7 +107,7 @@ export default async function BreweriesEventsPage() {
                         <Link
                           href={`/breweries-events/${r.slug}`}
                           className="text-sm underline hover:opacity-80"
-                          style={{ color: Colors.primary }}
+                          style={{ color: Colors.primaryDark }}
                         >
                           Open region →
                         </Link>

@@ -54,12 +54,12 @@ export default async function BreweriesEventsRegionPage({
             fallbackHref="/breweries-events"
             showIcon={false}
             className="text-sm underline hover:opacity-80"
-            style={{ color: Colors.primary }}
+            style={{ color: Colors.primaryDark }}
           />
         </p>
         <h1
           className="text-3xl font-bold mb-2"
-          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+          style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
           {bucket.displayLabel}
         </h1>

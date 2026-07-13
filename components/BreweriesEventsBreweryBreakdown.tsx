@@ -32,7 +32,7 @@ function BreweryBreakdownEntry({ row }: { row: BreweryBreakdownRow }) {
       <a
         href={`#${breweryAnchorId(row.breweryId)}`}
         className="text-sm font-medium underline hover:opacity-80 leading-snug"
-        style={{ color: Colors.primary }}
+        style={{ color: Colors.primaryDark }}
       >
         {row.breweryName}
       </a>

@@ -30,7 +30,7 @@ export function BreweriesEventsRegionContent({
     <div className="space-y-10">
       <h2
         className="text-2xl font-bold"
-        style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+        style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
       >
         {sectionHeading}
       </h2>
