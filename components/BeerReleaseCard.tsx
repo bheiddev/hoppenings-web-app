@@ -18,7 +18,7 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
   )
   return (
     <div 
-      className="rounded-lg p-6 border shadow-sm"
+      className="rounded-xl p-6 border shadow-sm"
       style={{ 
         backgroundColor: Colors.surface,
         borderColor: Colors.dividerLight,
@@ -67,14 +67,14 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
             <div 
               className="flex items-center justify-center px-2.5 py-1 rounded-full"
               style={{ 
-                backgroundColor: Colors.surfaceDark,
+                backgroundColor: Colors.surfaceLight,
               }}
             >
               <span 
                 className="text-xs font-medium leading-none" 
                 style={{ 
                   fontFamily: 'var(--font-be-vietnam-pro)',
-                  color: Colors.textPrimary
+                  color: Colors.textDark
                 }}
               >
                 {formatReleaseDate(beerRelease.release_date)}
@@ -87,8 +87,8 @@ export function BeerReleaseCard({ beerRelease }: BeerReleaseCardProps) {
           className="px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
           style={{ 
             fontFamily: 'var(--font-fjalla-one)',
-            backgroundColor: Colors.surfaceDark,
-            color: Colors.textPrimary
+            backgroundColor: Colors.primary,
+            color: Colors.onPrimary
           }}
         >
           VIEW RELEASE

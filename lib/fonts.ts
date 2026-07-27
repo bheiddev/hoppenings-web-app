@@ -17,6 +17,7 @@ export function getHeadingFontStyle(): React.CSSProperties {
   return {
     fontFamily: fontClasses.heading,
     color: Colors.primary,
+    letterSpacing: '0.02em',
   }
 }
 

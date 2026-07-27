@@ -65,7 +65,7 @@ export function CardCarousel({
 
   const buttonStyle = {
     backgroundColor: Colors.primary,
-    color: Colors.primaryDark,
+    color: Colors.onPrimary,
   }
 
   return (

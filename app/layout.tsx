@@ -43,7 +43,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${fjallaOne.variable} ${beVietnamPro.variable} antialiased`}
-        style={{ backgroundColor: Colors.background, fontFamily: 'var(--font-be-vietnam-pro)' }}
+        style={{ backgroundColor: Colors.background, color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
       >
         <AppBanner />
         <Navigation />

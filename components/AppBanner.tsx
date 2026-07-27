@@ -37,18 +37,18 @@ export default function AppBanner() {
     localStorage.setItem('appBannerDismissed', 'true')
   }
 
-  if (pathname === '/collab-fest-ad') return null
+  if (pathname === '/collab-fest-ad' || /^\/breweries\/[^/]+/.test(pathname)) return null
   if (!isVisible) return null
 
   return (
     <div 
       className="fixed bottom-0 left-0 right-0 z-50 shadow-md"
-      style={{ backgroundColor: Colors.surface }}
+      style={{ backgroundColor: Colors.backgroundDark }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-4 max-w-7xl mx-auto">
         <p 
           className="text-xs sm:text-sm font-medium flex-1 min-w-0"
-          style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
         >
           Download the Hoppenings mobile app for the full experience.
         </p>
@@ -97,7 +97,7 @@ export default function AppBanner() {
             height="20" 
             viewBox="0 0 24 24" 
             fill="none"
-            style={{ color: Colors.textDark }}
+            style={{ color: Colors.textOnDark }}
           >
             <path 
               d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" 

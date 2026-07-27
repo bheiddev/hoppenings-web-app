@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --background: #5F2627;
-  --foreground: #FCCCA8;
+  /* Surfaces */
+  --background: #F9F7F2;
+  --foreground: #2D2926;
+  --surface: #FFFFFF;
+  --surface-light: #F2EEE9;
+  --surface-dark: #1A1A1A;
+
+  /* Brand */
+  --primary: #5D2525;
+  --primary-dark: #3A1515;
+  --on-primary: #FFFFFF;
+  --accent: #F8C701;
+  --success: #2D5A27;
+  --warning: #D49B34;
+  --info: #D1811D;
+
+  /* Text */
+  --text-primary: #2D2926;
+  --text-secondary: #665E5A;
+  --text-muted: #999999;
+  --text-on-dark: #FFFFFF;
+
+  /* Borders & effects */
+  --border: #E5DFD6;
+  --divider: #E5DFD6;
+  --shadow: rgba(0, 0, 0, 0.12);
+  --overlay: rgba(0, 0, 0, 0.5);
+
+  /* Radii (cards ~12–16px, pills fully round) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Spacing rhythm */
+  --section-gap: 3rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-light: var(--surface-light);
+  --color-surface-dark: var(--surface-dark);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
   --font-fjalla-one: var(--font-fjalla-one);
   --font-be-vietnam-pro: var(--font-be-vietnam-pro);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #5F2627;
-    --foreground: #FCCCA8;
-  }
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-be-vietnam-pro), sans-serif;
+}
+
+/* Display headings — condensed, bold, tracking from mockups */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-fjalla-one), sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+}
+
+/* Shared UI primitives */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: var(--font-fjalla-one), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid currentColor;
+  background: transparent;
+  font-family: var(--font-fjalla-one), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: opacity 0.15s ease;
+}
+
+.btn-ghost:hover {
+  opacity: 0.85;
+}
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  color: var(--on-primary);
+  font-family: var(--font-be-vietnam-pro), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.card-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px var(--shadow);
 }

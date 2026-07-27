@@ -110,7 +110,7 @@ export default function ConnectInstagramPage() {
                 className="inline-flex items-center justify-center gap-2 px-10 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
                 style={{
                   backgroundColor: Colors.primary,
-                  color: Colors.textDark,
+                  color: Colors.onPrimary,
                   fontFamily: 'var(--font-fjalla-one)',
                 }}
               >

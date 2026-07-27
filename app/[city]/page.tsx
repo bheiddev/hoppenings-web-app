@@ -120,7 +120,7 @@ export default async function CityLandingPage({
               key={slug}
               href={`/${citySlug}/${slug}`}
               className="px-4 py-2 rounded-full text-sm font-semibold"
-              style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+              style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
             >
               {activity.label}
             </Link>
@@ -128,7 +128,7 @@ export default async function CityLandingPage({
           <Link
             href={`/${citySlug}/releases`}
             className="px-4 py-2 rounded-full text-sm font-semibold"
-            style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+            style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
           >
             Beer Releases
           </Link>

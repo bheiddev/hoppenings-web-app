@@ -58,6 +58,21 @@ export function formatEventDate(dateString: string): string {
   }
 }
 
+/** Compact event date for cards (e.g. "Mon, Jan 5") */
+export function formatEventDateShort(dateString: string): string {
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? dateString
+    : normalizeEventDateToMountainTime(dateString)
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`)
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 /**
  * Format release date to MDY format (calendar date in Mountain Time).
  */

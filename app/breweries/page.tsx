@@ -43,7 +43,7 @@ export default async function BreweriesPage() {
               key={citySlug}
               href={`/${citySlug}/breweries`}
               className="px-4 py-2 rounded-full text-sm font-semibold"
-              style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+              style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
             >
               {cityName}
             </Link>

@@ -12,9 +12,9 @@ type RecurrenceFields = {
 }
 
 const sectionHeaderStyle = {
-  color: Colors.textPrimary,
+  color: Colors.textDark,
   borderColor: Colors.dividerLight,
-  backgroundColor: Colors.surfaceMedium,
+  backgroundColor: Colors.surfaceLight,
 } as const
 
 export function formatEventCost(cost: number | null): string {
@@ -209,7 +209,7 @@ function EventCardMeta({
         {(featured || recurring) && (
           <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
             {featured && (
-              <span title="Featured" style={{ color: Colors.primary }}>
+              <span title="Featured" style={{ color: Colors.accent }}>
                 <FeaturedIcon />
               </span>
             )}

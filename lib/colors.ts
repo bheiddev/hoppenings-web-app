@@ -1,49 +1,48 @@
 /**
  * Color palette for Hoppenings web app
- * Matching the mobile app color scheme
+ * Warm craft-brewery aesthetic from site design mockups
  */
-const TAN = '#FCCCA8'
-
 export const Colors = {
   // Primary Brand Colors
-  primary: '#F8C701',        // Gold/Yellow - main brand color
-  primaryDark: '#4E1F00',    // Dark Brown - text on primary buttons
-  
+  primary: '#5D2525',        // Maroon — CTAs, headings, accents
+  primaryDark: '#3A1515',    // Darker maroon — heading emphasis on light surfaces
+  onPrimary: '#FFFFFF',      // Text/icons on primary fills
+  accent: '#F8C701',         // Brand gold — highlights, stars
+
   // Background Colors
-  background: '#5F2627',     // Dark Brown - main/global background
-  surface: TAN,              // Tan - cards, inputs, banners
-  surfaceMedium: '#5F2627',  // Dark Brown - page and header surfaces
-  surfaceLight: TAN,         // Tan - table headers, pills, contact items
-  surfaceDark: '#5F2627',    // Dark Brown - image placeholders, pill backgrounds
-  backgroundDark: '#5F2627', // Dark Brown - dark backgrounds
-  backgroundMedium: '#833D30', // Medium Brown - headers, cards
-  backgroundLight: TAN,      // Tan - contact items, cache sections
-  
+  background: '#F9F7F2',     // Cream — main page background
+  surface: '#FFFFFF',        // White — cards, inputs, modals
+  surfaceMedium: '#F9F7F2',  // Cream — page surfaces
+  surfaceLight: '#F2EEE9',   // Light beige — table headers, secondary surfaces
+  surfaceDark: '#1A1A1A',    // Charcoal — dark pills, image placeholders
+  backgroundDark: '#1A1A1A', // Charcoal — nav, footer, hero overlays
+  backgroundMedium: '#5D2525', // Maroon — accent surfaces
+  backgroundLight: '#F2EEE9',  // Light beige
+
   // Text Colors
-  tan: TAN,                  // Brand tan - hop icon color
-  textPrimary: TAN,          // Light text on dark backgrounds
-  textSecondary: '#774141',  // Medium text color
-  textDark: '#4E1F00',       // Dark text on light backgrounds
-  textMuted: '#999',         // Muted text for unavailable items
-  
+  tan: '#F9F7F2',            // Cream (legacy name; light fill on dark)
+  textPrimary: '#2D2926',    // Dark charcoal — body text on cream
+  textSecondary: '#665E5A',  // Muted brown-gray
+  textDark: '#2D2926',       // Dark text on light cards
+  textMuted: '#999999',
+  textOnDark: '#FFFFFF',     // Text on dark nav / footer / pills
+
   // UI Colors
-  divider: '#5F2627',        // Main divider color
-  dividerLight: TAN,         // Tan divider
-  dividerWhite: TAN,           // Tan divider with opacity
-  border: TAN,               // Border color
-  
+  divider: '#E5DFD6',
+  dividerLight: '#E5DFD6',
+  dividerWhite: '#FFFFFF',
+  border: '#E5DFD6',
+
   // Status Colors
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FF9800',
-  info: '#FF9B01',           // Orange for icons/details
-  
+  success: '#2D5A27',        // Forest green — OPEN NOW / NEW
+  error: '#C62828',
+  warning: '#D49B34',        // Amber
+  info: '#D1811D',           // Orange accent
+
   // Map and UI Specific
-  mapMarker: '#F8C701',      // Map marker color
-  shadow: 'rgba(0, 0, 0, 0.25)', // Standard shadow
-  overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlay
-  
-  // Transparent overlays
-  overlayDark: 'rgba(131, 61, 48, 0.8)', // Dark overlay for loading
-  pillBackground: 'rgba(95, 38, 39, 0.75)', // Detail pill background
+  mapMarker: '#F8C701',
+  shadow: 'rgba(0, 0, 0, 0.12)',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  overlayDark: 'rgba(26, 26, 26, 0.75)',
+  pillBackground: 'rgba(93, 37, 37, 0.9)',
 } as const;

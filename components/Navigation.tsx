@@ -8,12 +8,13 @@ import { Colors } from '@/lib/colors'
 export default function Navigation() {
   const pathname = usePathname()
 
-  if (pathname === '/collab-fest-ad') {
+  // Landing-style brewery pages and ad spots own the full viewport
+  if (pathname === '/collab-fest-ad' || /^\/breweries\/[^/]+/.test(pathname)) {
     return null
   }
 
   return (
-    <nav style={{ backgroundColor: Colors.surfaceMedium, borderBottom: `2px solid ${Colors.divider}` }}>
+    <nav style={{ backgroundColor: Colors.backgroundDark }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16">
           <Link href="/" className="flex items-center gap-0">
@@ -29,8 +30,8 @@ export default function Navigation() {
               />
             </span>
             <span
-              className="text-3xl font-bold"
-              style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
+              className="text-3xl font-bold tracking-wide uppercase"
+              style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
             >
               Hoppenings
             </span>

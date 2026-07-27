@@ -28,7 +28,7 @@ export default function CollabFestAdPage() {
         <p
           className="text-[clamp(2.5rem,12vw,7rem)] leading-[0.95] tracking-tight uppercase"
           style={{
-            color: Colors.primary,
+            color: Colors.accent,
             fontFamily: 'var(--font-fjalla-one)',
             textShadow: '0 4px 24px rgba(0,0,0,0.35)',
           }}
@@ -37,19 +37,19 @@ export default function CollabFestAdPage() {
         </p>
         <div
           className="h-1 w-24 sm:w-32 rounded-full"
-          style={{ backgroundColor: Colors.primary }}
+          style={{ backgroundColor: Colors.accent }}
           aria-hidden
         />
         <p
           className="text-[clamp(1.125rem,3.5vw,2rem)] font-medium max-w-3xl leading-snug"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
         >
           {TAGLINE}
         </p>
         <p
           className="text-[clamp(1.75rem,6vw,3.5rem)] font-bold mt-2 sm:mt-4"
           style={{
-            color: Colors.textPrimary,
+            color: Colors.textOnDark,
             fontFamily: 'var(--font-fjalla-one)',
             letterSpacing: '0.02em',
           }}
@@ -58,9 +58,9 @@ export default function CollabFestAdPage() {
         </p>
         <p
           className="text-[clamp(1rem,2.5vw,1.35rem)] opacity-90 max-w-xl"
-          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
         >
-          Get the app — search <span style={{ color: Colors.primary }}>Hoppenings</span> on the App Store
+          Get the app — search <span style={{ color: Colors.accent }}>Hoppenings</span> on the App Store
           &amp; Google Play.
         </p>
       </div>

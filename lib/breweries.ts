@@ -1,8 +1,8 @@
 import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, TaplistItem } from '@/types/supabase'
-import { filterUpcomingFoodTrucks } from '@/lib/foodTrucks'
+import { filterUpcomingFoodTrucks, foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
-import { expandRecurringEvents, isEventInPast } from './utils'
+import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
 
 export interface BreweryWithSlug extends Brewery {
@@ -259,6 +259,85 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
   } catch (error) {
     console.error('Error fetching brewery food trucks:', error)
     return []
+  }
+}
+
+export type BreweryTonightFood = {
+  active: boolean
+  label: string
+  detail: string | null
+}
+
+/**
+ * Resolve tonight's food situation: scheduled truck, permanent truck, or kitchen flag.
+ */
+export async function getBreweryTonightFood(
+  breweryId: string,
+  hasKitchenFood: boolean
+): Promise<BreweryTonightFood> {
+  try {
+    const today = getTodayMountainDateString()
+    const { data, error } = await supabase
+      .from('food_trucks')
+      .select('id, created_at, brewery_id, name, permanent, date, closed')
+      .eq('brewery_id', breweryId)
+
+    if (error) {
+      console.error('Error fetching brewery food for tonight:', error)
+    } else {
+      const trucks = (data ?? []).map((row) => ({
+        id: row.id,
+        created_at: row.created_at,
+        brewery_id: row.brewery_id,
+        name: row.name,
+        permanent: row.permanent,
+        date: row.date,
+        closed: row.closed,
+      })) as FoodTruck[]
+
+      const todayTruck = trucks.find(
+        (truck) => !truck.closed && foodTruckShowsOnDate(truck, today)
+      )
+      if (todayTruck) {
+        return {
+          active: true,
+          label: todayTruck.name?.trim() || 'Food truck tonight',
+          detail: 'Food truck',
+        }
+      }
+
+      const permanentTruck = trucks.find(
+        (truck) => truck.permanent === true && !truck.closed
+      )
+      if (permanentTruck) {
+        return {
+          active: true,
+          label: permanentTruck.name?.trim() || 'Food available',
+          detail: 'On site',
+        }
+      }
+    }
+
+    if (hasKitchenFood) {
+      return {
+        active: true,
+        label: 'Kitchen open',
+        detail: 'Food available',
+      }
+    }
+
+    return {
+      active: false,
+      label: 'No food tonight',
+      detail: null,
+    }
+  } catch (error) {
+    console.error('Error resolving brewery tonight food:', error)
+    return {
+      active: false,
+      label: 'No food tonight',
+      detail: null,
+    }
   }
 }
 

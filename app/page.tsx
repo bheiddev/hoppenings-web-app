@@ -88,7 +88,7 @@ export default async function Home() {
                 key={href}
                 href={href}
                 className="px-4 py-2 rounded-full text-sm font-semibold text-center whitespace-nowrap"
-                style={{ backgroundColor: Colors.primary, color: Colors.primaryDark }}
+                style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
               >
                 {label}
               </Link>

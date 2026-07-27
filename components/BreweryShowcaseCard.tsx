@@ -119,8 +119,8 @@ export function BreweryShowcaseCard({
   return (
     <Link
       href={href}
-      className={`block h-full rounded-lg overflow-hidden shadow-sm transition-opacity hover:opacity-90 ${className}`}
-      style={{ backgroundColor: Colors.surfaceMedium }}
+      className={`block h-full rounded-xl overflow-hidden shadow-sm transition-opacity hover:opacity-90 ${className}`}
+      style={{ backgroundColor: Colors.surface, border: `1px solid ${Colors.border}` }}
     >
       <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-3">
         <h3

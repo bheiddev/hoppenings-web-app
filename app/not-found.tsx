@@ -23,7 +23,7 @@ export default function NotFound() {
             className="inline-flex justify-center gap-2 px-6 py-3 rounded-full font-semibold transition-colors"
             style={{
               backgroundColor: Colors.primary,
-              color: Colors.primaryDark,
+              color: Colors.onPrimary,
               fontFamily: 'var(--font-fjalla-one)',
             }}
           >

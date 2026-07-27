@@ -1,14 +1,26 @@
 import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
-import { getBreweryBySlug, getAllBreweriesWithSlugs, getBreweryHours, getBreweryEvents, getBreweryReleases } from '@/lib/breweries'
-import { formatEventDate } from '@/lib/utils'
-import { formatTime, groupHours, formatDays, getBreweryAmenities } from '@/lib/breweryUtils'
+import {
+  getBreweryBySlug,
+  getAllBreweriesWithSlugs,
+  getBreweryEvents,
+  getBreweryReleases,
+  getBreweryTonightFood,
+} from '@/lib/breweries'
+import {
+  formatTime12Hour,
+  isEventToday,
+  normalizeEventDateToMountainTime,
+} from '@/lib/utils'
+import { getBreweryAmenities } from '@/lib/breweryUtils'
+import { matchBreweryEventIcon } from '@/lib/breweryCardStatus'
+import { generateEventSlug, generateReleaseSlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
 import Image from 'next/image'
-import { BackLink } from '@/components/BackLink'
 import { EventCard } from '@/components/EventCard'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
 import { CardCarousel } from '@/components/CardCarousel'
+import { HoppeningTonight } from '@/components/HoppeningTonight'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
@@ -67,21 +79,59 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   }
 
   // Fetch related data
-  const [hours, events, releases] = await Promise.all([
-    getBreweryHours(brewery.id),
+  const [events, releases, tonightFood] = await Promise.all([
     getBreweryEvents(brewery.id),
-    getBreweryReleases(brewery.id)
+    getBreweryReleases(brewery.id),
+    getBreweryTonightFood(brewery.id, Boolean(brewery.has_food_trucks)),
   ])
 
-  // Group events by date
-  const groupedEvents = events.reduce((groups: { [key: string]: typeof events }, event) => {
-    const dateString = formatEventDate(event.event_date)
-    if (!groups[dateString]) {
-      groups[dateString] = []
-    }
-    groups[dateString].push(event)
-    return groups
-  }, {})
+  const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
+
+  const latestRelease = releases[0] ?? null
+  const hoppeningRelease = latestRelease
+    ? {
+        name: latestRelease.beer_name,
+        detail: [latestRelease.Type, latestRelease.ABV ? `${latestRelease.ABV}% ABV` : null]
+          .filter(Boolean)
+          .join(' · ') || null,
+        href: `/releases/${generateReleaseSlug(
+          latestRelease.beer_name,
+          latestRelease.Type,
+          latestRelease.breweries.name,
+          latestRelease.breweries.location || null,
+          latestRelease.id
+        )}`,
+      }
+    : null
+
+  const hoppeningEvent = tonightEvent
+    ? {
+        title: tonightEvent.title,
+        detail: tonightEvent.start_time
+          ? formatTime12Hour(tonightEvent.start_time)
+          : null,
+        icon: matchBreweryEventIcon(tonightEvent.title, tonightEvent.description),
+        href: `/events/${generateEventSlug(
+          tonightEvent.title,
+          tonightEvent.breweries.name,
+          tonightEvent.breweries.location || null,
+          tonightEvent.event_date,
+          tonightEvent.id,
+          Boolean(
+            tonightEvent.is_recurring ||
+              tonightEvent.is_recurring_biweekly ||
+              tonightEvent.is_recurring_monthly
+          )
+        )}`,
+      }
+    : null
+
+  const chronologicalEvents = [...events].sort((a, b) => {
+    const dateA = normalizeEventDateToMountainTime(a.event_date)
+    const dateB = normalizeEventDateToMountainTime(b.event_date)
+    if (dateA !== dateB) return dateA.localeCompare(dateB)
+    return (a.start_time ?? '').localeCompare(b.start_time ?? '')
+  })
 
   const allAmenities = getBreweryAmenities(brewery)
   // Filter out pet friendly, non-alcoholic, outdoor seating, food, and wifi
@@ -92,7 +142,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     amenity.key !== 'has_food_trucks' &&
     amenity.key !== 'has_wifi'
   )
-  const hoursGroups = hours ? groupHours(hours) : []
   const city = brewery.location ? brewery.location.split(',')[0].trim() : 'Colorado'
   const breweryJsonLd = {
     '@context': 'https://schema.org',
@@ -122,96 +171,97 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breweryJsonLd) }} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <BackLink
-            fallbackHref="/breweries"
-            style={{ color: Colors.textPrimary }}
+
+      {/* Hero */}
+      <section
+        className="relative w-full min-h-[55vh] flex items-center"
+        style={{ backgroundColor: Colors.surfaceDark }}
+      >
+        {brewery.image_url ? (
+          <Image
+            src={brewery.image_url}
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+            unoptimized
+            aria-hidden
           />
-          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            {brewery.name.toUpperCase()}
+        ) : null}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.2) 100%)',
+          }}
+          aria-hidden
+        />
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-10 py-10">
+          <h1
+            className="font-bold uppercase leading-[0.95] tracking-wide text-left text-[clamp(1.75rem,7vw,4rem)]"
+            style={{
+              color: Colors.textOnDark,
+              fontFamily: 'var(--font-fjalla-one)',
+              textShadow: '0 2px 8px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.75)',
+            }}
+          >
+            {brewery.name}
           </h1>
-        </div>
 
-        {/* Brewery Image */}
-        {brewery.image_url && (
-          <div className="relative w-full h-96 mb-8 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
-            <Image
-              src={brewery.image_url}
-              alt={brewery.name}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        )}
-
-        {/* Description */}
-        {brewery.description && (
-          <div className="mb-8">
-            <p className="text-sm leading-relaxed" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-              {brewery.description}
-            </p>
-          </div>
-        )}
-
-        {/* Information Section */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-              ADDRESS AND PHONE NUMBER
-            </h3>
-            <div className="space-y-3">
+          {(brewery.address || brewery.phone) && (
+            <div className="mt-4 sm:mt-5 flex flex-col gap-2.5 max-w-xl">
               {brewery.address && (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(brewery.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-sm underline"
-                  style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                  className="inline-flex items-start gap-2.5 text-sm sm:text-base hover:opacity-90 transition-opacity"
+                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
-                  {brewery.address}
+                  <svg
+                    width="16"
+                    height="20"
+                    viewBox="0 0 16 22"
+                    fill="currentColor"
+                    className="shrink-0 mt-0.5"
+                    aria-hidden
+                  >
+                    <path d="M7.99989 0.5C3.85835 0.5 0.5 3.98812 0.5 8.2897C0.5 13.4039 5.62899 19.3371 7.40417 21.2379C7.73022 21.5874 8.26978 21.5874 8.59583 21.2379C10.3708 19.3381 15.5 13.4039 15.5 8.2897C15.5 3.98812 12.1414 0.5 7.99989 0.5ZM7.99989 11.7518C6.15931 11.7518 4.66661 10.2014 4.66661 8.2897C4.66661 6.37799 6.15931 4.82761 7.99989 4.82761C9.84048 4.82761 11.3332 6.37799 11.3332 8.2897C11.3332 10.2025 9.84048 11.7518 7.99989 11.7518Z" />
+                  </svg>
+                  <span>{brewery.address}</span>
                 </a>
               )}
               {brewery.phone && (
                 <a
                   href={`tel:${brewery.phone.replace(/\D/g, '')}`}
-                  className="block text-sm underline"
-                  style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                  className="inline-flex items-center gap-2.5 text-sm sm:text-base hover:opacity-90 transition-opacity"
+                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
-                  {brewery.phone}
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="shrink-0"
+                    aria-hidden
+                  >
+                    <path d="M6.62 10.79a15.15 15.15 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.85 21 3 13.15 3 3a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z" />
+                  </svg>
+                  <span>{brewery.phone}</span>
                 </a>
               )}
             </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-              HOURS OF OPERATION
-            </h3>
-            {hoursGroups.length > 0 ? (
-              <div className="space-y-2">
-                {hoursGroups.map((group, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-sm font-medium" style={{ color: Colors.textPrimary, width: '70px', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                      {formatDays(group.days)}
-                    </span>
-                    <span className="text-sm" style={{ color: Colors.textPrimary, textAlign: 'left', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                      {(group.open == null && group.close == null) 
-                        ? 'Closed' 
-                        : `${formatTime(group.open)} - ${formatTime(group.close)}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                Hours not available
-              </p>
-            )}
-          </div>
+          )}
         </div>
+      </section>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <HoppeningTonight
+          release={hoppeningRelease}
+          event={hoppeningEvent}
+          food={tonightFood}
+        />
 
         {/* Amenities */}
         <div className="mb-8">
@@ -256,11 +306,25 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {/* New Releases Section */}
+        {/* Upcoming Events */}
+        {chronologicalEvents.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: '#000000', fontFamily: 'var(--font-fjalla-one)' }}>
+              UPCOMING EVENTS
+            </h2>
+            <CardCarousel>
+              {chronologicalEvents.map((event) => (
+                <EventCard key={`${event.id}-${event.event_date}`} event={event} isFeatured={event.featured} />
+              ))}
+            </CardCarousel>
+          </div>
+        )}
+
+        {/* New Releases */}
         {releases.length > 0 && (
           <div className="mb-8">
             <div style={{ height: '1px', backgroundColor: 'white', marginBottom: '2rem' }} />
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
+            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: '#000000', fontFamily: 'var(--font-fjalla-one)' }}>
               NEW RELEASES
             </h2>
             <CardCarousel>
@@ -268,30 +332,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                 <BeerReleaseCard key={release.id} beerRelease={release} />
               ))}
             </CardCarousel>
-          </div>
-        )}
-
-        {/* Events Section */}
-        {events.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-              UPCOMING EVENTS
-            </h2>
-            <div className="space-y-8">
-              {Object.entries(groupedEvents).map(([date, dateEvents]) => (
-                <div key={date}>
-                  <h3 className="text-2xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-                    {date}
-                  </h3>
-                  <div style={{ height: '1px', backgroundColor: Colors.textPrimary, marginBottom: '1rem', opacity: 0.5 }} />
-                  <CardCarousel>
-                    {dateEvents.map((event) => (
-                      <EventCard key={event.id} event={event} isFeatured={event.featured} />
-                    ))}
-                  </CardCarousel>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
