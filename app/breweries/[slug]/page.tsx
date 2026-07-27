@@ -21,6 +21,9 @@ import { EventCard } from '@/components/EventCard'
 import { BeerReleaseCard } from '@/components/BeerReleaseCard'
 import { CardCarousel } from '@/components/CardCarousel'
 import { HoppeningTonight } from '@/components/HoppeningTonight'
+import { MugClubCta } from '@/components/breweryDemo/MugClubCta'
+import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
+import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
@@ -88,7 +91,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
 
   const latestRelease = releases[0] ?? null
-  const hoppeningRelease = latestRelease
+  const hoppeningReleaseBase = latestRelease
     ? {
         name: latestRelease.beer_name,
         detail: [latestRelease.Type, latestRelease.ABV ? `${latestRelease.ABV}% ABV` : null]
@@ -143,6 +146,26 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     amenity.key !== 'has_wifi'
   )
   const city = brewery.location ? brewery.location.split(',')[0].trim() : 'Colorado'
+  const isDemoBrewery = brewery.slug === 'mash-mechanix-downtown'
+  const hoppeningRelease = isDemoBrewery
+    ? {
+        name: hoppeningReleaseBase?.name ?? 'View Full Tap Menu',
+        detail: hoppeningReleaseBase?.detail ?? 'Draft beer, seltzers & more',
+        href: 'https://www.mashmechanix.com/menu',
+      }
+    : hoppeningReleaseBase
+  const foodForTonight =
+    isDemoBrewery
+      ? {
+          ...tonightFood,
+          active: true,
+          label: tonightFood.label?.toLowerCase().includes('smokehouse')
+            ? tonightFood.label
+            : 'Mash Smokehouse',
+          detail: tonightFood.detail ?? 'Stage Stop Cantina · full-time kitchen',
+          href: 'https://www.mashmechanix.com/smokehouse',
+        }
+      : tonightFood
   const breweryJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BarOrPub',
@@ -174,7 +197,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
 
       {/* Hero */}
       <section
-        className="relative w-full min-h-[55vh] flex items-center"
+        className="relative w-full min-h-[55vh] flex items-center overflow-hidden"
         style={{ backgroundColor: Colors.surfaceDark }}
       >
         {brewery.image_url ? (
@@ -190,14 +213,41 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           />
         ) : null}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 z-[1]"
           style={{
             background:
               'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.2) 100%)',
           }}
           aria-hidden
         />
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-10 py-10">
+
+        <a
+          href="/"
+          className="absolute top-5 right-5 sm:top-8 sm:right-8 z-[2] flex flex-col items-end gap-1.5 hover:opacity-90 transition-opacity"
+          aria-label="Powered by Hoppenings"
+        >
+          <span
+            className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em]"
+            style={{
+              color: Colors.textOnDark,
+              fontFamily: 'var(--font-be-vietnam-pro)',
+              textShadow: '0 1px 4px rgba(0,0,0,0.75)',
+            }}
+          >
+            Powered by
+          </span>
+          <Image
+            src="/HoppeningsSticker.png"
+            alt="Hoppenings"
+            width={220}
+            height={72}
+            className="h-9 sm:h-12 w-auto mix-blend-screen"
+            unoptimized
+            priority
+          />
+        </a>
+
+        <div className="relative z-[2] w-full max-w-6xl mx-auto px-6 sm:px-10 py-10">
           <h1
             className="font-bold uppercase leading-[0.95] tracking-wide text-left text-[clamp(1.75rem,7vw,4rem)]"
             style={{
@@ -260,7 +310,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         <HoppeningTonight
           release={hoppeningRelease}
           event={hoppeningEvent}
-          food={tonightFood}
+          food={foodForTonight}
         />
 
         {/* Amenities */}
@@ -333,6 +383,14 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
               ))}
             </CardCarousel>
           </div>
+        )}
+
+        {isDemoBrewery && (
+          <>
+            <HappyHourDeals />
+            <MugClubCta />
+            <HoppeningsAppPromo />
+          </>
         )}
       </div>
     </div>

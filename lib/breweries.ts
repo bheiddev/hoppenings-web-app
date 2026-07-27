@@ -266,6 +266,7 @@ export type BreweryTonightFood = {
   active: boolean
   label: string
   detail: string | null
+  href?: string | null
 }
 
 /**

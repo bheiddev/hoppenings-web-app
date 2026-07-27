@@ -22,6 +22,7 @@ export type HoppeningTonightFood = {
   active: boolean
   label: string
   detail: string | null
+  href?: string | null
 }
 
 type HoppeningTonightProps = {
@@ -131,6 +132,20 @@ function TonightCard({
   }
 
   if (href && active) {
+    const isExternal = /^https?:\/\//.test(href)
+    if (isExternal) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${className} hover:opacity-90`}
+          style={style}
+        >
+          {content}
+        </a>
+      )
+    }
     return (
       <Link href={href} className={`${className} hover:opacity-90`} style={style}>
         {content}
@@ -182,7 +197,7 @@ export function HoppeningTonight({ release, event, food }: HoppeningTonightProps
           detail={food.detail}
           iconSrc="/food-truck.svg"
           iconColor={ICON_COLORS.food}
-          href={null}
+          href={food.href ?? null}
           active={food.active}
         />
       </div>
