@@ -237,11 +237,11 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
             Powered by
           </span>
           <Image
-            src="/HoppeningsSticker.png"
+            src="/HoppeningsLogoWhite.png"
             alt="Hoppenings"
-            width={220}
-            height={72}
-            className="h-9 sm:h-12 w-auto mix-blend-screen"
+            width={440}
+            height={144}
+            className="h-16 sm:h-24 w-auto"
             unoptimized
             priority
           />
