@@ -358,7 +358,7 @@ export function ProposedEventAdminCard({
             disabled={actionsDisabled}
             loading={acceptLoading}
           >
-            Accept
+            Approve
           </AdminButton>
           <AdminButton
             variant="reject"

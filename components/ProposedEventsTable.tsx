@@ -129,7 +129,7 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
   )
 }
 
-function EditProposedEventModal({
+export function EditProposedEventModal({
   proposed,
   onSave,
   onClose,
