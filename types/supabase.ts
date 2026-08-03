@@ -122,3 +122,24 @@ export interface TaplistItem {
   last_seen: string | null;
 }
 
+/** Shared with mobile — profiles.id = auth.users.id (created by handle_new_user trigger) */
+export interface Profile {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  provider: string | null;
+  staff_brewery_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Client-writable profile fields only */
+export interface ProfileUpdate {
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
+  staff_brewery_id?: string | null;
+}
+

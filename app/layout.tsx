@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { NavigationTracker } from "@/components/NavigationTracker";
 import AppBanner from "@/components/AppBanner";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Colors } from "@/lib/colors";
 
 const fjallaOne = Fjalla_One({
@@ -45,10 +46,12 @@ export default function RootLayout({
         className={`${fjallaOne.variable} ${beVietnamPro.variable} antialiased`}
         style={{ backgroundColor: Colors.background, color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
       >
-        <AppBanner />
-        <Navigation />
-        <NavigationTracker />
-        {children}
+        <AuthProvider>
+          <AppBanner />
+          <Navigation />
+          <NavigationTracker />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
