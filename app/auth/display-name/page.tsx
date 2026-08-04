@@ -11,11 +11,12 @@ import {
 } from '@/components/auth/AuthShell'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { updateProfile } from '@/lib/auth/profileService'
+import { getPostAuthPath } from '@/lib/auth/postAuthRedirect'
 import { validateDisplayName } from '@/lib/auth/displayNameValidation'
 
 export default function DisplayNamePage() {
   const router = useRouter()
-  const { user, isLoading, isAuthenticated, refreshProfile } = useAuth()
+  const { user, profile, isLoading, isAuthenticated, refreshProfile } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -47,7 +48,7 @@ export default function DisplayNamePage() {
     }
 
     await refreshProfile()
-    router.replace('/account')
+    router.replace(getPostAuthPath(profile?.admin ? { ...profile, display_name: trimmed } : profile))
   }
 
   if (!isLoading && !isAuthenticated) {

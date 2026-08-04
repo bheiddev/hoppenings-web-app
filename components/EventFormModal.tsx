@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import { Event } from '@/types/supabase'
-import type { UpdateEventPayload } from '@/app/breweries-events/actions'
+import type { UpdateEventPayload } from '@/app/admin/actions'
 
 function eventDateForInput(eventDate: string): string {
   if (!eventDate) return ''

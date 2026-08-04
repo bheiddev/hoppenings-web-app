@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import { BeerRelease } from '@/types/supabase'
-import type { UpdateBeerReleasePayload } from '@/app/breweries-events/actions'
+import type { UpdateBeerReleasePayload } from '@/app/admin/actions'
 
 function formatCreatedAt(iso: string) {
   try {

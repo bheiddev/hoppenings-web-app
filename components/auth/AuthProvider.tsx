@@ -6,12 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { Session, User } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 import { getProfile } from '@/lib/auth/profileService'
+import { getPostAuthPath } from '@/lib/auth/postAuthRedirect'
 import { signOut as authSignOut } from '@/lib/auth/authService'
 import type { Profile } from '@/types/supabase'
 
@@ -49,20 +51,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false)
+  const userIdRef = useRef<string | null>(null)
+  const profileLoadedForUserRef = useRef<string | null>(null)
+  const redirectingRef = useRef(false)
 
   const loadProfile = useCallback(async (userId: string) => {
     const data = await getProfile(userId)
-    setProfile(data)
+    if (userIdRef.current === userId) {
+      setProfile(data)
+      profileLoadedForUserRef.current = userId
+    }
     return data
   }, [])
 
   const refreshProfile = useCallback(async () => {
-    if (!user) {
+    if (!userIdRef.current) {
       setProfile(null)
+      profileLoadedForUserRef.current = null
       return
     }
-    await loadProfile(user.id)
-  }, [user, loadProfile])
+    await loadProfile(userIdRef.current)
+  }, [loadProfile])
 
   const clearPasswordRecovery = useCallback(() => {
     setPasswordRecoveryPending(false)
@@ -70,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await authSignOut()
+    userIdRef.current = null
+    profileLoadedForUserRef.current = null
     setUser(null)
     setSession(null)
     setProfile(null)
@@ -80,8 +91,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowser()
     let cancelled = false
 
+    async function applySession(nextSession: Session | null, opts?: { skipProfileIfLoaded?: boolean }) {
+      const nextUser = nextSession?.user ?? null
+      userIdRef.current = nextUser?.id ?? null
+      setSession(nextSession)
+      setUser(nextUser)
+
+      if (!nextUser) {
+        profileLoadedForUserRef.current = null
+        setProfile(null)
+        setPasswordRecoveryPending(false)
+        setIsLoading(false)
+        return
+      }
+
+      const alreadyLoaded = profileLoadedForUserRef.current === nextUser.id
+      if (opts?.skipProfileIfLoaded && alreadyLoaded) {
+        setIsLoading(false)
+        return
+      }
+
+      // Keep loading true until profile is fetched so RequireAuth doesn't
+      // treat a missing profile as "not admin" and bounce the user.
+      setIsLoading(true)
+      try {
+        if (!cancelled) await loadProfile(nextUser.id)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
     async function init() {
       try {
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession()
+
+        if (cancelled) return
+
+        if (!currentSession?.user) {
+          await applySession(null)
+          return
+        }
+
+        // Validate with server once; avoid signOut on transient failures
         const {
           data: { user: validatedUser },
           error,
@@ -90,62 +143,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return
 
         if (error || !validatedUser) {
-          if (error) {
-            try {
-              await supabase.auth.signOut()
-            } catch {
-              // ignore
-            }
-          }
+          await applySession(null)
+          return
+        }
+
+        await applySession(currentSession)
+      } catch (err) {
+        console.error('Auth init failed:', err)
+        if (!cancelled) {
+          userIdRef.current = null
+          profileLoadedForUserRef.current = null
           setUser(null)
           setSession(null)
           setProfile(null)
           setIsLoading(false)
-          return
         }
-
-        const {
-          data: { session: currentSession },
-        } = await supabase.auth.getSession()
-
-        if (cancelled) return
-
-        setUser(validatedUser)
-        setSession(currentSession)
-        await loadProfile(validatedUser.id)
-      } catch (err) {
-        console.error('Auth init failed:', err)
-        if (!cancelled) {
-          setUser(null)
-          setSession(null)
-          setProfile(null)
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false)
       }
     }
 
     void init()
 
+    // Do not await other Supabase calls inside this callback (auth lock).
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') {
         setPasswordRecoveryPending(true)
       }
 
-      const nextUser = nextSession?.user ?? null
-      setSession(nextSession)
-      setUser(nextUser)
-
-      if (nextUser) {
-        await loadProfile(nextUser.id)
-      } else {
-        setProfile(null)
-        setPasswordRecoveryPending(false)
+      // INITIAL_SESSION overlaps init(); TOKEN_REFRESHED shouldn't refetch profile.
+      if (event === 'INITIAL_SESSION') return
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(nextSession)
+        return
       }
 
-      setIsLoading(false)
+      setTimeout(() => {
+        if (cancelled) return
+        void applySession(nextSession, {
+          skipProfileIfLoaded: event === 'USER_UPDATED',
+        })
+      }, 0)
     })
 
     return () => {
@@ -154,44 +192,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadProfile])
 
-  const needsDisplayName = Boolean(user && !isLoading && !hasDisplayName(profile))
+  const profileReady = !user || profileLoadedForUserRef.current === user.id
+  const needsDisplayName = Boolean(
+    user && !isLoading && profileReady && !hasDisplayName(profile)
+  )
+  const isAdmin = Boolean(profile?.admin)
 
-  // Route gates: recovery → set-password; missing display name → display-name screen
   useEffect(() => {
     if (isLoading) return
+    if (!profileReady && user) return
+
+    let destination: string | null = null
 
     if (passwordRecoveryPending && pathname !== '/auth/set-password') {
-      router.replace('/auth/set-password')
-      return
-    }
-
-    if (
+      destination = '/auth/set-password'
+    } else if (
       needsDisplayName &&
       !passwordRecoveryPending &&
       pathname !== '/auth/display-name' &&
       pathname !== '/auth/callback' &&
       pathname !== '/auth/set-password'
     ) {
-      router.replace('/auth/display-name')
-      return
-    }
-
-    // Signed-in users with a display name don't need auth entry / gate pages
-    if (
+      destination = '/auth/display-name'
+    } else if (
       user &&
       !needsDisplayName &&
       !passwordRecoveryPending &&
       (AUTH_PUBLIC_PATHS.has(pathname) || pathname === '/auth/display-name')
     ) {
-      router.replace('/account')
+      destination = isAdmin ? '/admin' : getPostAuthPath(profile)
     }
+
+    if (!destination || destination === pathname || redirectingRef.current) return
+
+    redirectingRef.current = true
+    router.replace(destination)
+    // Allow a later navigation after the route settles
+    const t = setTimeout(() => {
+      redirectingRef.current = false
+    }, 500)
+    return () => clearTimeout(t)
   }, [
     isLoading,
+    profileReady,
     passwordRecoveryPending,
     needsDisplayName,
+    isAdmin,
     pathname,
     router,
     user,
+    profile,
   ])
 
   const value = useMemo<AuthContextValue>(

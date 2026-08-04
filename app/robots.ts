@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      disallow: ['/breweries-events', '/breweries-events/'],
+      disallow: ['/admin', '/admin/', '/breweries-events', '/breweries-events/', '/profile', '/account', '/auth'],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
   }

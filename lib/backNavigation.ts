@@ -16,7 +16,8 @@ export function pathToLabel(path: string): string {
   if (normalized === '/events') return 'All Events'
   if (normalized === '/breweries') return 'All Breweries'
   if (normalized === '/releases') return 'All Beer Releases'
-  if (normalized === '/breweries-events') return 'All Regions'
+  if (normalized === '/admin' || normalized === '/breweries-events') return 'Content Admin'
+  if (normalized === '/profile' || normalized === '/account') return 'Profile'
   if (normalized === '/connect-instagram') return 'Connect Instagram'
   if (normalized === '/events/signup') return 'Event Sign Up'
 
@@ -54,7 +55,7 @@ export function pathToLabel(path: string): string {
     return `${activityLabel} in ${cityName}`
   }
 
-  const regionMatch = normalized.match(/^\/breweries-events\/([^/]+)$/)
+  const regionMatch = normalized.match(/^\/(?:admin|breweries-events)\/([^/]+)$/)
   if (regionMatch) {
     return slugToTitle(regionMatch[1])
   }

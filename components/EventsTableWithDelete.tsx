@@ -9,7 +9,7 @@ import {
   deleteEventFromEventsBase,
   updateEventInEventsBase,
   type UpdateEventPayload,
-} from '@/app/breweries-events/actions'
+} from '@/app/admin/actions'
 import { EventFormModal } from '@/components/EventFormModal'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {

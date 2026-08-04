@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AuthError, AuthShell } from '@/components/auth/AuthShell'
 import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 import { getProfile } from '@/lib/auth/profileService'
+import { getPostAuthPath } from '@/lib/auth/postAuthRedirect'
 import { Colors } from '@/lib/colors'
 
 /**
@@ -84,7 +85,7 @@ export default function AuthCallbackPage() {
         const profile = await getProfile(user.id)
         const needsName = !profile?.display_name?.trim()
         if (!cancelled) {
-          router.replace(needsName ? '/auth/display-name' : '/account')
+          router.replace(needsName ? '/auth/display-name' : getPostAuthPath(profile))
         }
       } catch (err) {
         console.error('Auth callback error:', err)

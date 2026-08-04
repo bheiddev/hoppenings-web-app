@@ -9,7 +9,7 @@ import {
   acceptProposedEvent,
   updateProposedEvent,
   type UpdateProposedEventPayload,
-} from '@/app/breweries-events/actions'
+} from '@/app/admin/actions'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,

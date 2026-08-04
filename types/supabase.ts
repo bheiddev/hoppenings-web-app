@@ -128,17 +128,17 @@ export interface Profile {
   email: string | null;
   display_name: string | null;
   avatar_url: string | null;
-  bio: string | null;
   provider: string | null;
+  provider_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   staff_brewery_id: string | null;
-  created_at: string;
-  updated_at: string;
+  admin: boolean | null;
 }
 
 /** Client-writable profile fields only */
 export interface ProfileUpdate {
   display_name?: string;
-  bio?: string;
   avatar_url?: string;
   staff_brewery_id?: string | null;
 }

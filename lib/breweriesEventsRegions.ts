@@ -91,10 +91,43 @@ export function findRegionBucketBySlug(
   return buckets.find((b) => b.slug === slug)
 }
 
-export async function getBreweriesWithEvents(): Promise<BreweryWithData[]> {
+export async function getRegionBucketsFromBreweries(): Promise<RegionBucket[]> {
   const breweries = await getAllBreweriesWithSlugs()
+  const light: BreweryWithData[] = breweries.map((brewery) => ({
+    brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
+    events: [],
+    proposedEvents: [],
+    releases: [],
+    foodTrucks: [],
+  }))
+  return buildRegionBuckets(light)
+}
+
+export async function getBreweriesWithEvents(options?: {
+  regionSlug?: string
+}): Promise<BreweryWithData[]> {
+  const breweries = await getAllBreweriesWithSlugs()
+
+  let scoped = breweries
+  if (options?.regionSlug) {
+    const buckets = buildRegionBuckets(
+      breweries.map((brewery) => ({
+        brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
+        events: [],
+        proposedEvents: [],
+        releases: [],
+        foodTrucks: [],
+      }))
+    )
+    const bucket = findRegionBucketBySlug(options.regionSlug, buckets)
+    if (!bucket) return []
+    scoped = breweries.filter(
+      (b) => bucketForRegion(b.Region ?? null).normKey === bucket.normKey
+    )
+  }
+
   return Promise.all(
-    breweries.map(async (brewery) => ({
+    scoped.map(async (brewery) => ({
       brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
       events: await getBreweryEvents(brewery.id),
       proposedEvents: await getProposedEventsByBreweryId(brewery.id),

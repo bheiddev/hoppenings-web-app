@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { TaplistItem } from '@/types/supabase'
-import { addTaplistItemToReleases } from '@/app/breweries-events/actions'
+import { addTaplistItemToReleases } from '@/app/admin/actions'
 
 interface TaplistTableWithAddButtonProps {
   taplist: TaplistItem[]

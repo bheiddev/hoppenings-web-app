@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { FoodTruck } from '@/types/supabase'
-import { deleteFoodTruck, updateFoodTruck } from '@/app/breweries-events/actions'
+import { deleteFoodTruck, updateFoodTruck } from '@/app/admin/actions'
 import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
 import {
   AdminColumnHeader,

@@ -4,10 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { ProposedEvent, TaplistItem } from '@/types/supabase'
 
-const BREWERIES_EVENTS_PATH = '/breweries-events'
+const ADMIN_PATH = '/admin'
 
 function revalidateBreweriesEvents() {
-  revalidatePath(BREWERIES_EVENTS_PATH, 'layout')
+  revalidatePath(ADMIN_PATH, 'layout')
 }
 
 /** Expanded recurring rows use synthetic ids `{uuid}-{YYYY-MM-DD}`; DB expects the base UUID. */

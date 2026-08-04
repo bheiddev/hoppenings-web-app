@@ -50,7 +50,7 @@ export default function SetPasswordPage() {
     setSuccess(true)
 
     setTimeout(() => {
-      router.replace(needsDisplayName ? '/auth/display-name' : '/account')
+      router.replace(needsDisplayName ? '/auth/display-name' : '/profile')
     }, 800)
   }
 

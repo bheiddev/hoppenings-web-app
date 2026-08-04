@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   AuthDivider,
   AuthError,
@@ -13,10 +13,15 @@ import {
   OAuthButtons,
 } from '@/components/auth/AuthShell'
 import { signInWithEmail, signInWithOAuth } from '@/lib/auth/authService'
+import { getProfile } from '@/lib/auth/profileService'
+import { getPostAuthPath } from '@/lib/auth/postAuthRedirect'
+import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 import { Colors } from '@/lib/colors'
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -27,12 +32,19 @@ export default function SignInPage() {
     setError(null)
     setLoading(true)
     const result = await signInWithEmail(email.trim(), password)
-    setLoading(false)
     if (!result.success) {
+      setLoading(false)
       setError(result.error ?? 'Sign in failed')
       return
     }
-    router.replace('/account')
+
+    const supabase = getSupabaseBrowser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const profile = user ? await getProfile(user.id) : null
+    setLoading(false)
+    router.replace(getPostAuthPath(profile, next))
   }
 
   async function handleOAuth(provider: 'google' | 'apple') {
@@ -87,5 +99,21 @@ export default function SignInPage() {
         <AuthSecondaryLink href="/auth/sign-up">Sign up</AuthSecondaryLink>
       </p>
     </AuthShell>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthShell title="Sign in" subtitle="Loading…">
+          <p className="text-sm" style={{ color: Colors.textSecondary }}>
+            Loading…
+          </p>
+        </AuthShell>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   )
 }

@@ -9,7 +9,7 @@ import {
   deleteBeerReleaseFromBase,
   updateBeerReleaseInBase,
   type UpdateBeerReleasePayload,
-} from '@/app/breweries-events/actions'
+} from '@/app/admin/actions'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {

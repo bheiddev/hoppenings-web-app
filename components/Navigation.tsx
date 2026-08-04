@@ -42,17 +42,32 @@ export default function Navigation() {
           <div className="flex items-center gap-3">
             {!isLoading &&
               (isAuthenticated ? (
-                <Link
-                  href="/account"
-                  className="text-sm font-medium px-3 py-1.5 rounded border transition-opacity hover:opacity-90"
-                  style={{
-                    color: Colors.textOnDark,
-                    borderColor: 'rgba(255,255,255,0.35)',
-                    fontFamily: 'var(--font-be-vietnam-pro)',
-                  }}
-                >
-                  {profile?.display_name?.trim() || 'Account'}
-                </Link>
+                <>
+                  {profile?.admin ? (
+                    <Link
+                      href="/admin"
+                      className="text-sm font-medium px-3 py-1.5 rounded border transition-opacity hover:opacity-90"
+                      style={{
+                        color: Colors.textOnDark,
+                        borderColor: 'rgba(255,255,255,0.35)',
+                        fontFamily: 'var(--font-be-vietnam-pro)',
+                      }}
+                    >
+                      Admin
+                    </Link>
+                  ) : null}
+                  <Link
+                    href="/profile"
+                    className="text-sm font-medium px-3 py-1.5 rounded border transition-opacity hover:opacity-90"
+                    style={{
+                      color: Colors.textOnDark,
+                      borderColor: 'rgba(255,255,255,0.35)',
+                      fontFamily: 'var(--font-be-vietnam-pro)',
+                    }}
+                  >
+                    {profile?.display_name?.trim() || 'Profile'}
+                  </Link>
+                </>
               ) : (
                 <Link
                   href="/auth/sign-in"

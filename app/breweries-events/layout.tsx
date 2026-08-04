@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function BreweriesEventsLayout({
+export default function LegacyBreweriesEventsLayout({
   children,
 }: {
   children: React.ReactNode

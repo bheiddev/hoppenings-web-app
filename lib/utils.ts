@@ -334,12 +334,6 @@ export function isEventToday(eventDate: string): boolean {
 export function expandRecurringEvents(events: Event[], filterPastEvents: boolean = true): Event[] {
   const mountainTime = getMountainTimeNow();
   const todayMountain = mountainTime.date;
-  
-  // Log current date for debugging
-  if (filterPastEvents) {
-    console.log(`📅 Filtering events - Today in Mountain Time: ${todayMountain} (${new Date().toISOString()} UTC)`);
-  }
-  
   const expandedEvents: Event[] = [];
   
   events.forEach((event) => {
@@ -395,8 +389,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
             id: `${event.id}-${currentDateStr}`,
             event_date: currentDateStr,
           });
-        } else {
-          console.log(`🔴 Filtering out past recurring event occurrence: "${event.title}" on ${currentDateStr} (today is ${todayMountain})`);
         }
         currentDateStr = addDaysToDateString(currentDateStr, 7);
       }
@@ -449,8 +441,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
             id: `${event.id}-${currentDateStr}`,
             event_date: currentDateStr,
           });
-        } else {
-          console.log(`🔴 Filtering out past biweekly recurring event occurrence: "${event.title}" on ${currentDateStr} (today is ${todayMountain})`);
         }
         currentDateStr = addDaysToDateString(currentDateStr, 14);
       }
@@ -526,8 +516,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
             id: `${event.id}-${dateStr}`,
             event_date: dateStr,
           });
-        } else {
-          console.log(`🔴 Filtering out past monthly recurring event occurrence: "${event.title}" on ${dateStr} (today is ${todayMountain})`);
         }
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
@@ -551,9 +539,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
             ...event,
             event_date: normalizedDate,
           });
-        } else {
-          // Event is in the past - log for debugging
-          console.log(`🔴 Filtering out past one-time event: "${event.title}" on ${normalizedDate} (today is ${todayMountain})`);
         }
       }
     }
@@ -573,20 +558,10 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         const comparison = compareDateStrings(eventDateMountain, todayMountain);
         const isTodayOrFuture = comparison >= 0;
         
-        // Log filtered events for debugging
-        if (!isTodayOrFuture) {
-          console.log(`🔴 Filtering out past event: "${event.title}" on ${eventDateMountain} (today is ${todayMountain}, comparison: ${comparison})`);
-        }
-        
         return isTodayOrFuture;
       })
     : expandedEvents;
-  
-  // Log summary after filtering
-  if (filterPastEvents) {
-    console.log(`✅ Filtered events: ${expandedEvents.length} total, ${filteredEvents.length} after filtering (removed ${expandedEvents.length - filteredEvents.length} past events)`);
-  }
-  
+
   // Sort by date
   filteredEvents.sort((a, b) => 
     new Date(a.event_date).getTime() - new Date(b.event_date).getTime()

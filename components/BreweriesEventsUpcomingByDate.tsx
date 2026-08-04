@@ -25,7 +25,7 @@ import {
   updateEventInEventsBase,
   updateFoodTruck,
   updateProposedEvent,
-} from '@/app/breweries-events/actions'
+} from '@/app/admin/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate, isDateSpecificFoodTruck } from '@/lib/foodTrucks'
 import {
