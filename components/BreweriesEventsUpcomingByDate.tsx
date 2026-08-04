@@ -160,8 +160,12 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
 
 export function BreweriesEventsUpcomingByDate({
   regionBreweries,
+  title,
+  subtitle,
 }: {
   regionBreweries: BreweryWithData[]
+  title?: string
+  subtitle?: string
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<EventRow | null>(null)
@@ -252,6 +256,24 @@ export function BreweriesEventsUpcomingByDate({
         className="mb-10 border rounded-xl p-6 w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
       >
+        {(title || subtitle) && (
+          <div className="mb-6">
+            {title ? (
+              <h2
+                className="text-xl font-bold"
+                style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                {title}
+              </h2>
+            ) : null}
+            {subtitle ? (
+              <p className="text-xs mt-1" style={{ color: Colors.textMuted }}>
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+        )}
+
         {actionError && (
           <div
             className="mb-4 px-3 py-2 rounded text-sm"

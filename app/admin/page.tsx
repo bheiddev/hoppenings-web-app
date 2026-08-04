@@ -3,9 +3,12 @@ import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSection'
 import { SeoAnalyticsSection } from '@/components/admin/SeoAnalyticsSection'
+import { BreweriesEventsUpcomingByDate } from '@/components/BreweriesEventsUpcomingByDate'
 import { buildRegionBuckets, getBreweriesWithEvents, groupByRegion } from '@/lib/breweriesEventsRegions'
 import { getMobileAnalyticsSummary } from '@/lib/ga4'
 import { getSeoAnalyticsSummary } from '@/lib/gsc'
+
+const COS_REGION_SLUG = 'colorado-springs'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +25,8 @@ export default async function AdminPage() {
   ])
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
+  const cosBucket = regionBuckets.find((b) => b.slug === COS_REGION_SLUG)
+  const cosBreweries = cosBucket ? (byRegion.get(cosBucket.normKey) ?? []) : []
 
   const regionMetrics = regionBuckets.map((b) => {
     const rows = byRegion.get(b.normKey) ?? []
@@ -50,6 +55,12 @@ export default async function AdminPage() {
         <p className="text-sm mb-8 max-w-2xl" style={{ color: Colors.textSecondary }}>
           Manage proposed and live events, beer releases, and food trucks by region.
         </p>
+
+        <BreweriesEventsUpcomingByDate
+          regionBreweries={cosBreweries}
+          title="Colorado Springs · 5-day forecast"
+          subtitle="Proposed events, live events, beer releases, and food trucks for the next five days."
+        />
 
         <MobileAnalyticsSection result={analytics} />
         <SeoAnalyticsSection result={seo} />
