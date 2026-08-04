@@ -73,7 +73,7 @@ export function BreweriesEventsBreweryBreakdown({
 
   return (
     <section
-      className="mb-10 border rounded-xl p-6 w-full"
+      className="border rounded-xl p-6 w-full"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
       <p className="text-sm font-semibold mb-4" style={{ color: Colors.textDark }}>

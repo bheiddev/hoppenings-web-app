@@ -253,7 +253,7 @@ export function BreweriesEventsUpcomingByDate({
   return (
     <>
       <section
-        className="mb-10 border rounded-xl p-6 w-full"
+        className="border rounded-xl p-6 w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
       >
         {(title || subtitle) && (

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { AdminChrome } from '@/components/auth/AdminChrome'
 import { RequireAuth } from '@/components/auth/RequireAuth'
 
 export const metadata: Metadata = {
@@ -8,9 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <RequireAuth requireAdmin>
-      <AdminChrome>{children}</AdminChrome>
-    </RequireAuth>
-  )
+  return <RequireAuth requireAdmin>{children}</RequireAuth>
 }

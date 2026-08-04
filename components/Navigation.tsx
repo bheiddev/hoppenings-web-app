@@ -22,7 +22,7 @@ export default function Navigation() {
           <Link href="/" className="flex items-center gap-0">
             <span className="relative h-10 w-10 shrink-0">
               <Image
-                src="/4ce85581-ee3d-4931-9ef5-236d7d74b1a5.png"
+                src="/HoppeningsLogo2White.png"
                 alt=""
                 fill
                 className="object-contain"

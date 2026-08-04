@@ -122,7 +122,7 @@ function SeoTable({
 export function SeoAnalyticsSection({ result }: { result: SeoAnalyticsResult }) {
   return (
     <section
-      className="mb-10 border rounded-xl p-6 w-full"
+      className="border rounded-xl p-6 w-full"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
       <div className="flex flex-wrap items-end justify-between gap-2 mb-6">
