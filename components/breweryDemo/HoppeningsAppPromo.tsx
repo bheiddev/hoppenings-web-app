@@ -72,7 +72,7 @@ export function HoppeningsAppPromo() {
             className="hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/Apple.png"
+              src="/AppleAppStore.png"
               alt="Download on the App Store"
               width={140}
               height={42}
@@ -87,7 +87,7 @@ export function HoppeningsAppPromo() {
             className="hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/PlayImage.png"
+              src="/googleplaytan.png"
               alt="Get it on Google Play"
               width={155}
               height={42}

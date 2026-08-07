@@ -105,7 +105,7 @@ export function AdminColumnHeader({
 export function AdminSectionHeader({ label }: { label: string }) {
   return (
     <p
-      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-y"
+      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-b"
       style={sectionHeaderStyle}
     >
       {label}

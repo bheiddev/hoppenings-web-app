@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
@@ -29,13 +29,17 @@ import {
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate, isDateSpecificFoodTruck } from '@/lib/foodTrucks'
 import {
-  formatMountainWeekDayHeading,
+  formatEventDateShort,
+  formatRelativeEventDateHeading,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
 import { BeerRelease, Event, FoodTruck, ProposedEvent } from '@/types/supabase'
 
-const UPCOMING_DAY_COUNT = 5
+/** Days shown in one carousel page. */
+const VISIBLE_DAY_COUNT = 5
+/** How far ahead the carousel can page. */
+const FORECAST_HORIZON_DAYS = 60
 
 type EventRow = Event & { breweryName: string; breweryId: string }
 type ProposedRow = ProposedEvent & { breweryName: string; breweryId: string }
@@ -55,8 +59,32 @@ function normalizeReleaseDate(releaseDate: string | null): string | null {
   return normalizeEventDateToMountainTime(releaseDate)
 }
 
+function forecastDayHeading(ymd: string): string {
+  const relative = formatRelativeEventDateHeading(ymd)
+  if (relative === 'Today' || relative === 'Tomorrow') return relative
+  return formatEventDateShort(ymd)
+}
+
+function ForecastCategoryBlock({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div
+      className="border rounded-lg overflow-hidden"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <AdminSectionHeader label={label} />
+      <AdminColumnScrollBody>{children}</AdminColumnScrollBody>
+    </div>
+  )
+}
+
 function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
-  const dates = getMountainDateRangeFromToday(UPCOMING_DAY_COUNT)
+  const dates = getMountainDateRangeFromToday(FORECAST_HORIZON_DAYS)
   const weekStart = dates[0]
   const weekEnd = dates[dates.length - 1]
 
@@ -174,10 +202,26 @@ export function BreweriesEventsUpcomingByDate({
   const [editingFoodTruck, setEditingFoodTruck] = useState<FoodTruckRow | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [windowStart, setWindowStart] = useState(0)
   const { dates, eventsByDay, proposedByDay, releasesByDay, foodTrucksByDay } = useMemo(
     () => collectUpcomingByDate(regionBreweries),
     [regionBreweries]
   )
+
+  const maxWindowStart = Math.max(0, dates.length - VISIBLE_DAY_COUNT)
+  const safeWindowStart = Math.min(windowStart, maxWindowStart)
+  const visibleDates = dates.slice(safeWindowStart, safeWindowStart + VISIBLE_DAY_COUNT)
+  const canGoPrev = safeWindowStart > 0
+  const canGoNext = safeWindowStart < maxWindowStart
+
+  function shiftWindow(delta: number) {
+    setWindowStart((current) => {
+      const next = current + delta
+      if (next < 0) return 0
+      if (next > maxWindowStart) return maxWindowStart
+      return next
+    })
+  }
 
   async function handleAcceptProposed(proposed: ProposedEvent) {
     setActionError(null)
@@ -256,8 +300,8 @@ export function BreweriesEventsUpcomingByDate({
         className="border rounded-xl p-6 w-full"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
       >
-        {(title || subtitle) && (
-          <div className="mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+          <div className="min-w-0">
             {title ? (
               <h2
                 className="text-xl font-bold"
@@ -265,14 +309,63 @@ export function BreweriesEventsUpcomingByDate({
               >
                 {title}
               </h2>
-            ) : null}
+            ) : (
+              <h2
+                className="text-xl font-bold"
+                style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                5-day forecast
+              </h2>
+            )}
             {subtitle ? (
               <p className="text-xs mt-1" style={{ color: Colors.textMuted }}>
                 {subtitle}
               </p>
-            ) : null}
+            ) : (
+              <p className="text-xs mt-1" style={{ color: Colors.textMuted }}>
+                Showing{' '}
+                {visibleDates[0] ? formatEventDateShort(visibleDates[0]) : '—'}
+                {' – '}
+                {visibleDates[visibleDates.length - 1]
+                  ? formatEventDateShort(visibleDates[visibleDates.length - 1])
+                  : '—'}
+              </p>
+            )}
           </div>
-        )}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous 5 days"
+              disabled={!canGoPrev}
+              onClick={() => shiftWindow(-VISIBLE_DAY_COUNT)}
+              className="px-3 py-1.5 text-sm font-semibold border disabled:opacity-40"
+              style={{
+                borderColor: Colors.dividerLight,
+                backgroundColor: Colors.surfaceLight,
+                color: Colors.textDark,
+                fontFamily: 'var(--font-fjalla-one)',
+              }}
+            >
+              ← Prev
+            </button>
+            <button
+              type="button"
+              aria-label="Next 5 days"
+              disabled={!canGoNext}
+              onClick={() => shiftWindow(VISIBLE_DAY_COUNT)}
+              className="px-3 py-1.5 text-sm font-semibold border disabled:opacity-40"
+              style={{
+                borderColor: Colors.primaryDark,
+                backgroundColor: Colors.primaryDark,
+                color: Colors.onPrimary,
+                fontFamily: 'var(--font-fjalla-one)',
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
 
         {actionError && (
           <div
@@ -291,7 +384,7 @@ export function BreweriesEventsUpcomingByDate({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-          {dates.map((ymd, index) => {
+          {visibleDates.map((ymd) => {
             const dayEvents = eventsByDay.get(ymd) ?? []
             const dayProposed = proposedByDay.get(ymd) ?? []
             const dayReleases = releasesByDay.get(ymd) ?? []
@@ -314,13 +407,15 @@ export function BreweriesEventsUpcomingByDate({
                     className="text-sm font-semibold leading-snug"
                     style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
                   >
-                    {formatMountainWeekDayHeading(ymd, index)}
+                    {forecastDayHeading(ymd)}
                   </h3>
                 </div>
 
-                <div className="flex-1">
-                  <AdminSectionHeader label={`Proposed (${dayProposed.length})`} />
-                  <AdminColumnScrollBody>
+                <div
+                  className="flex-1 flex flex-col gap-3 p-3"
+                  style={{ backgroundColor: Colors.surfaceMedium }}
+                >
+                  <ForecastCategoryBlock label={`Proposed (${dayProposed.length})`}>
                     {dayProposed.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No proposed events
@@ -341,10 +436,9 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </AdminColumnScrollBody>
+                  </ForecastCategoryBlock>
 
-                  <AdminSectionHeader label={`Events (${dayEvents.length})`} />
-                  <AdminColumnScrollBody>
+                  <ForecastCategoryBlock label={`Events (${dayEvents.length})`}>
                     {dayEvents.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No events
@@ -363,10 +457,9 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </AdminColumnScrollBody>
+                  </ForecastCategoryBlock>
 
-                  <AdminSectionHeader label={`Beer releases (${dayReleases.length})`} />
-                  <AdminColumnScrollBody>
+                  <ForecastCategoryBlock label={`Beer releases (${dayReleases.length})`}>
                     {dayReleases.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No beer releases
@@ -385,10 +478,9 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </AdminColumnScrollBody>
+                  </ForecastCategoryBlock>
 
-                  <AdminSectionHeader label={`Food trucks (${dayFoodTrucks.length})`} />
-                  <AdminColumnScrollBody>
+                  <ForecastCategoryBlock label={`Food trucks (${dayFoodTrucks.length})`}>
                     {dayFoodTrucks.length === 0 ? (
                       <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
                         No food trucks
@@ -407,7 +499,7 @@ export function BreweriesEventsUpcomingByDate({
                         />
                       ))
                     )}
-                  </AdminColumnScrollBody>
+                  </ForecastCategoryBlock>
                 </div>
               </div>
             )
