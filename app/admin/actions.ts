@@ -363,3 +363,135 @@ export async function addTaplistItemToReleases(item: TaplistItem) {
   revalidateBreweriesEvents()
   return { ok: true }
 }
+
+const BREWERY_IMAGES_BUCKET = 'brewery-images'
+const TAP_IMAGES_BUCKET = 'Tap Images'
+
+function formText(formData: FormData, key: string): string {
+  return String(formData.get(key) ?? '').trim()
+}
+
+function formBool(formData: FormData, key: string): boolean {
+  const raw = formData.get(key)
+  return raw === 'true' || raw === 'on' || raw === '1'
+}
+
+function formOptionalNumber(formData: FormData, key: string): number | null {
+  const raw = formText(formData, key)
+  if (!raw) return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function fileExt(file: File): string {
+  const fromName = file.name.split('.').pop()?.toLowerCase()
+  if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName === 'jpeg' ? 'jpg' : fromName
+  if (file.type === 'image/png') return 'png'
+  if (file.type === 'image/webp') return 'webp'
+  if (file.type === 'image/gif') return 'gif'
+  return 'jpg'
+}
+
+async function uploadBreweryImage(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  bucket: string,
+  breweryId: string,
+  file: File,
+  prefix: string
+): Promise<{ publicUrl: string | null; error?: string }> {
+  const ext = fileExt(file)
+  const path = `${breweryId}/${prefix}-${Date.now()}.${ext}`
+  const bytes = Buffer.from(await file.arrayBuffer())
+  const { error } = await admin.storage.from(bucket).upload(path, bytes, {
+    contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+    upsert: true,
+  })
+  if (error) {
+    console.error(`Error uploading to ${bucket}:`, error)
+    return { publicUrl: null, error: error.message }
+  }
+  const { data } = admin.storage.from(bucket).getPublicUrl(path)
+  return { publicUrl: data.publicUrl }
+}
+
+/**
+ * Create a brewery row and optionally upload images to
+ * `brewery-images` (image_url) and `Tap Images` (tap_image).
+ * Expects multipart FormData from the admin BreweryFormModal.
+ */
+export async function createBrewery(formData: FormData) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false as const, error: configError }
+
+  const name = formText(formData, 'name')
+  const address = formText(formData, 'address')
+  const phone = formText(formData, 'phone')
+  const description = formText(formData, 'description')
+  const region = formText(formData, 'region')
+  const location = formText(formData, 'location') || region || null
+
+  if (!name) return { ok: false as const, error: 'Name is required' }
+  if (!address) return { ok: false as const, error: 'Address is required' }
+  if (!phone) return { ok: false as const, error: 'Phone is required' }
+  if (!description) return { ok: false as const, error: 'Description is required' }
+  if (!region) return { ok: false as const, error: 'Region is required' }
+
+  const breweryId = crypto.randomUUID()
+  let imageUrl: string | null = null
+  let tapImage: string | null = null
+
+  const breweryImage = formData.get('brewery_image')
+  if (breweryImage instanceof File && breweryImage.size > 0) {
+    const uploaded = await uploadBreweryImage(
+      admin!,
+      BREWERY_IMAGES_BUCKET,
+      breweryId,
+      breweryImage,
+      'brewery'
+    )
+    if (uploaded.error) return { ok: false as const, error: `Brewery image: ${uploaded.error}` }
+    imageUrl = uploaded.publicUrl
+  }
+
+  const tapImageFile = formData.get('tap_image')
+  if (tapImageFile instanceof File && tapImageFile.size > 0) {
+    const uploaded = await uploadBreweryImage(
+      admin!,
+      TAP_IMAGES_BUCKET,
+      breweryId,
+      tapImageFile,
+      'tap'
+    )
+    if (uploaded.error) return { ok: false as const, error: `Tap image: ${uploaded.error}` }
+    tapImage = uploaded.publicUrl
+  }
+
+  const { error } = await admin!.from('breweries').insert({
+    id: breweryId,
+    name,
+    address,
+    phone,
+    description,
+    is_pet_friendly: formBool(formData, 'is_pet_friendly'),
+    has_outdoor_seating: formBool(formData, 'has_outdoor_seating'),
+    has_food_trucks: formBool(formData, 'has_food_trucks'),
+    has_wifi: formBool(formData, 'has_wifi'),
+    has_na_beer: formBool(formData, 'has_na_beer'),
+    image_url: imageUrl,
+    tap_image: tapImage,
+    latitude: formOptionalNumber(formData, 'latitude'),
+    longitude: formOptionalNumber(formData, 'longitude'),
+    location,
+    Region: region,
+  })
+
+  if (error) {
+    console.error('Error creating brewery:', error)
+    return { ok: false as const, error: error.message }
+  }
+
+  revalidateBreweriesEvents()
+  revalidatePath('/breweries')
+  revalidatePath('/')
+  return { ok: true as const, id: breweryId }
+}

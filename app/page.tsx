@@ -2,10 +2,24 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 import { getTonightCarouselEvents } from '@/lib/events'
-import { getBreweryCardContext, getBreweryCardContextMap, mergeBreweryCardContext } from '@/lib/breweryCardContext'
+import {
+  getBreweryCardContext,
+  getBreweryCardContextMap,
+  mergeBreweryCardContext,
+  type BreweryCardContext,
+} from '@/lib/breweryCardContext'
 import { matchBreweryEventIcon } from '@/lib/breweryCardStatus'
 import { getTonightCarouselCitySortOrder } from '@/lib/seoCities'
 import { TodayBreweriesCarousel } from '@/components/TodayBreweriesCarousel'
+
+/** Prefer cards with more live activity: event + release + food truck. */
+function tonightActivityScore(context: BreweryCardContext): number {
+  let score = 0
+  if (context.todayEventTitle) score += 1
+  if (context.hasNewRelease) score += 1
+  if (context.hasFoodTruckToday) score += 1
+  return score
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -26,17 +40,12 @@ export default async function Home() {
     getBreweryCardContextMap(),
   ])
   const carouselItems = todaysEvents
-    .sort((a, b) => {
-      const cityA = getTonightCarouselCitySortOrder(a.breweries.Region, a.breweries.location)
-      const cityB = getTonightCarouselCitySortOrder(b.breweries.Region, b.breweries.location)
-      if (cityA !== cityB) return cityA - cityB
-      const tA = a.start_time ?? ''
-      const tB = b.start_time ?? ''
-      if (tA !== tB) return tA.localeCompare(tB)
-      return a.breweries.name.localeCompare(b.breweries.name) || a.title.localeCompare(b.title)
-    })
     .map((event) => {
       const baseContext = getBreweryCardContext(breweryCardContext, event.brewery_id)
+      const context = mergeBreweryCardContext(baseContext, {
+        todayEventIcon: matchBreweryEventIcon(event.title, event.description),
+        todayEventTitle: event.title,
+      })
       return {
         id: `${event.id}-${event.event_date}`,
         breweryName: event.breweries.name,
@@ -44,12 +53,20 @@ export default async function Home() {
         imageUrl: event.breweries.image_url ?? null,
         latitude: event.breweries.latitude ?? null,
         longitude: event.breweries.longitude ?? null,
-        context: mergeBreweryCardContext(baseContext, {
-          todayEventIcon: matchBreweryEventIcon(event.title, event.description),
-          todayEventTitle: event.title,
-        }),
+        context,
+        cityOrder: getTonightCarouselCitySortOrder(event.breweries.Region, event.breweries.location),
+        startTime: event.start_time ?? '',
+        eventTitle: event.title,
       }
     })
+    .sort((a, b) => {
+      const activityDiff = tonightActivityScore(b.context) - tonightActivityScore(a.context)
+      if (activityDiff !== 0) return activityDiff
+      if (a.cityOrder !== b.cityOrder) return a.cityOrder - b.cityOrder
+      if (a.startTime !== b.startTime) return a.startTime.localeCompare(b.startTime)
+      return a.breweryName.localeCompare(b.breweryName) || a.eventTitle.localeCompare(b.eventTitle)
+    })
+    .map(({ cityOrder: _cityOrder, startTime: _startTime, eventTitle: _eventTitle, ...item }) => item)
 
   const siteJsonLd = {
     '@context': 'https://schema.org',
@@ -100,7 +117,7 @@ export default async function Home() {
           className="text-2xl font-bold text-center mb-6"
           style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
         >
-          Events Tonight
+          Brewery Hoppenings Tonight
         </h2>
 
         <TodayBreweriesCarousel items={carouselItems} />

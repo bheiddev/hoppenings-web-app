@@ -22,6 +22,7 @@ export function RegionAdminPanel({
       <BreweriesEventsRegionContent
         regionBreweries={regionBreweries}
         sectionHeading={sectionHeading}
+        regionLabel={regionLabel}
       />
     </div>
   )

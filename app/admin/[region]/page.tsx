@@ -69,6 +69,7 @@ export default async function BreweriesEventsRegionPage({
         <BreweriesEventsRegionContent
           regionBreweries={regionBreweries}
           sectionHeading={bucket.sectionHeading}
+          regionLabel={bucket.displayLabel}
         />
       </div>
     </div>
