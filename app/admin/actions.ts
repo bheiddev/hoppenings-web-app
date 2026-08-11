@@ -495,3 +495,162 @@ export async function createBrewery(formData: FormData) {
   revalidatePath('/')
   return { ok: true as const, id: breweryId }
 }
+
+/**
+ * Update an existing brewery. Optional image files replace image_url / tap_image.
+ * FormData must include brewery_id.
+ */
+export async function updateBrewery(formData: FormData) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false as const, error: configError }
+
+  const breweryId = formText(formData, 'brewery_id')
+  const name = formText(formData, 'name')
+  const address = formText(formData, 'address')
+  const phone = formText(formData, 'phone')
+  const description = formText(formData, 'description')
+  const region = formText(formData, 'region')
+  const location = formText(formData, 'location') || region || null
+
+  if (!breweryId) return { ok: false as const, error: 'Brewery id is required' }
+  if (!name) return { ok: false as const, error: 'Name is required' }
+  if (!address) return { ok: false as const, error: 'Address is required' }
+  if (!phone) return { ok: false as const, error: 'Phone is required' }
+  if (!description) return { ok: false as const, error: 'Description is required' }
+
+  const patch: Record<string, unknown> = {
+    name,
+    address,
+    phone,
+    description,
+    is_pet_friendly: formBool(formData, 'is_pet_friendly'),
+    has_outdoor_seating: formBool(formData, 'has_outdoor_seating'),
+    has_food_trucks: formBool(formData, 'has_food_trucks'),
+    has_wifi: formBool(formData, 'has_wifi'),
+    has_na_beer: formBool(formData, 'has_na_beer'),
+    latitude: formOptionalNumber(formData, 'latitude'),
+    longitude: formOptionalNumber(formData, 'longitude'),
+    location,
+  }
+  if (region) patch.Region = region
+
+  const breweryImage = formData.get('brewery_image')
+  if (breweryImage instanceof File && breweryImage.size > 0) {
+    const uploaded = await uploadBreweryImage(
+      admin!,
+      BREWERY_IMAGES_BUCKET,
+      breweryId,
+      breweryImage,
+      'brewery'
+    )
+    if (uploaded.error) return { ok: false as const, error: `Brewery image: ${uploaded.error}` }
+    patch.image_url = uploaded.publicUrl
+  }
+
+  const tapImageFile = formData.get('tap_image')
+  if (tapImageFile instanceof File && tapImageFile.size > 0) {
+    const uploaded = await uploadBreweryImage(
+      admin!,
+      TAP_IMAGES_BUCKET,
+      breweryId,
+      tapImageFile,
+      'tap'
+    )
+    if (uploaded.error) return { ok: false as const, error: `Tap image: ${uploaded.error}` }
+    patch.tap_image = uploaded.publicUrl
+  }
+
+  const { error } = await admin!.from('breweries').update(patch).eq('id', breweryId)
+  if (error) {
+    console.error('Error updating brewery:', error)
+    return { ok: false as const, error: error.message }
+  }
+
+  revalidateBreweriesEvents()
+  revalidatePath('/breweries')
+  revalidatePath('/')
+  return { ok: true as const }
+}
+
+export type BreweryHoursPayload = {
+  monday_open: string | null
+  monday_close: string | null
+  tuesday_open: string | null
+  tuesday_close: string | null
+  wednesday_open: string | null
+  wednesday_close: string | null
+  thursday_open: string | null
+  thursday_close: string | null
+  friday_open: string | null
+  friday_close: string | null
+  saturday_open: string | null
+  saturday_close: string | null
+  sunday_open: string | null
+  sunday_close: string | null
+}
+
+function normalizeTimeValue(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null
+  const t = raw.trim()
+  // Accept HH:MM or HH:MM:SS from <input type="time"> / Postgres
+  const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return null
+  const hh = String(Math.min(23, Number(m[1]))).padStart(2, '0')
+  const mm = String(Math.min(59, Number(m[2]))).padStart(2, '0')
+  const ss = m[3] ? String(Math.min(59, Number(m[3]))).padStart(2, '0') : '00'
+  return `${hh}:${mm}:${ss}`
+}
+
+/** Insert or update brewery_hours for a brewery. */
+export async function upsertBreweryHours(breweryId: string, hours: BreweryHoursPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false as const, error: configError }
+  if (!breweryId.trim()) return { ok: false as const, error: 'Brewery id is required' }
+
+  const row = {
+    brewery_id: breweryId,
+    monday_open: normalizeTimeValue(hours.monday_open),
+    monday_close: normalizeTimeValue(hours.monday_close),
+    tuesday_open: normalizeTimeValue(hours.tuesday_open),
+    tuesday_close: normalizeTimeValue(hours.tuesday_close),
+    wednesday_open: normalizeTimeValue(hours.wednesday_open),
+    wednesday_close: normalizeTimeValue(hours.wednesday_close),
+    thursday_open: normalizeTimeValue(hours.thursday_open),
+    thursday_close: normalizeTimeValue(hours.thursday_close),
+    friday_open: normalizeTimeValue(hours.friday_open),
+    friday_close: normalizeTimeValue(hours.friday_close),
+    saturday_open: normalizeTimeValue(hours.saturday_open),
+    saturday_close: normalizeTimeValue(hours.saturday_close),
+    sunday_open: normalizeTimeValue(hours.sunday_open),
+    sunday_close: normalizeTimeValue(hours.sunday_close),
+  }
+
+  const { data: existing, error: lookupError } = await admin!
+    .from('brewery_hours')
+    .select('id')
+    .eq('brewery_id', breweryId)
+    .maybeSingle()
+
+  if (lookupError && lookupError.code !== 'PGRST116') {
+    console.error('Error looking up brewery hours:', lookupError)
+    return { ok: false as const, error: lookupError.message }
+  }
+
+  if (existing?.id) {
+    const { error } = await admin!.from('brewery_hours').update(row).eq('id', existing.id)
+    if (error) {
+      console.error('Error updating brewery hours:', error)
+      return { ok: false as const, error: error.message }
+    }
+  } else {
+    const { error } = await admin!.from('brewery_hours').insert(row)
+    if (error) {
+      console.error('Error inserting brewery hours:', error)
+      return { ok: false as const, error: error.message }
+    }
+  }
+
+  revalidateBreweriesEvents()
+  revalidatePath('/breweries')
+  return { ok: true as const }
+}

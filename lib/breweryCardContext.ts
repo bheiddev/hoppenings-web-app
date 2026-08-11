@@ -49,11 +49,8 @@ function getFoodTruckForBrewery(
   const breweryTrucks = trucks.filter((truck) => truck.brewery_id === breweryId)
   if (breweryTrucks.length === 0) return null
 
-  const todayTruck = breweryTrucks.find((truck) => foodTruckShowsOnDate(truck, today))
-  if (todayTruck) return todayTruck.name?.trim() || 'Food truck'
-
-  const permanentTruck = breweryTrucks.find((truck) => truck.permanent === true)
-  if (permanentTruck) return permanentTruck.name?.trim() || 'Food truck'
+  const showing = breweryTrucks.find((truck) => foodTruckShowsOnDate(truck, today))
+  if (showing) return showing.name?.trim() || 'Food truck'
 
   return null
 }

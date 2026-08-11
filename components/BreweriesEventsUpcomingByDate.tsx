@@ -27,7 +27,7 @@ import {
   updateProposedEvent,
 } from '@/app/admin/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
-import { foodTruckShowsOnDate, isDateSpecificFoodTruck } from '@/lib/foodTrucks'
+import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import {
   formatEventDateShort,
   formatRelativeEventDateHeading,
@@ -140,7 +140,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
         })
       }
     }
-    for (const truck of foodTrucks.filter(isDateSpecificFoodTruck)) {
+    for (const truck of foodTrucks) {
       for (const d of dates) {
         if (foodTruckShowsOnDate(truck, d)) {
           foodTrucksByDay.get(d)!.push({

@@ -2,13 +2,15 @@ import {
   getAllBreweriesWithSlugs,
   getBreweryEvents,
   getBreweryFoodTrucks,
+  getBreweryHoursByBreweryIds,
   getBreweryReleases,
   getProposedEventsByBreweryId,
 } from '@/lib/breweries'
-import { Event, BeerRelease, FoodTruck, ProposedEvent } from '@/types/supabase'
+import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent } from '@/types/supabase'
 
 export type BreweryWithData = {
-  brewery: { id: string; name: string; region: string | null }
+  brewery: Brewery
+  hours: BreweryHours | null
   events: Event[]
   proposedEvents: ProposedEvent[]
   releases: BeerRelease[]
@@ -53,7 +55,7 @@ export type RegionBucket = {
 export function buildRegionBuckets(breweriesWithData: BreweryWithData[]): RegionBucket[] {
   const labelByNorm = new Map<string, string>()
   for (const row of breweriesWithData) {
-    const { normKey, displayLabel } = bucketForRegion(row.brewery.region)
+    const { normKey, displayLabel } = bucketForRegion(row.brewery.Region ?? null)
     if (!labelByNorm.has(normKey)) labelByNorm.set(normKey, displayLabel)
   }
   const keys = [...labelByNorm.keys()].sort((a, b) => {
@@ -77,7 +79,7 @@ export function buildRegionBuckets(breweriesWithData: BreweryWithData[]): Region
 export function groupByRegion(breweriesWithData: BreweryWithData[]): Map<string, BreweryWithData[]> {
   const map = new Map<string, BreweryWithData[]>()
   for (const row of breweriesWithData) {
-    const { normKey } = bucketForRegion(row.brewery.region)
+    const { normKey } = bucketForRegion(row.brewery.Region ?? null)
     if (!map.has(normKey)) map.set(normKey, [])
     map.get(normKey)!.push(row)
   }
@@ -94,7 +96,8 @@ export function findRegionBucketBySlug(
 export async function getRegionBucketsFromBreweries(): Promise<RegionBucket[]> {
   const breweries = await getAllBreweriesWithSlugs()
   const light: BreweryWithData[] = breweries.map((brewery) => ({
-    brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
+    brewery,
+    hours: null,
     events: [],
     proposedEvents: [],
     releases: [],
@@ -112,7 +115,8 @@ export async function getBreweriesWithEvents(options?: {
   if (options?.regionSlug) {
     const buckets = buildRegionBuckets(
       breweries.map((brewery) => ({
-        brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
+        brewery,
+        hours: null,
         events: [],
         proposedEvents: [],
         releases: [],
@@ -126,9 +130,12 @@ export async function getBreweriesWithEvents(options?: {
     )
   }
 
+  const hoursByBrewery = await getBreweryHoursByBreweryIds(scoped.map((b) => b.id))
+
   return Promise.all(
     scoped.map(async (brewery) => ({
-      brewery: { id: brewery.id, name: brewery.name, region: brewery.Region ?? null },
+      brewery,
+      hours: hoursByBrewery.get(brewery.id) ?? null,
       events: await getBreweryEvents(brewery.id),
       proposedEvents: await getProposedEventsByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),

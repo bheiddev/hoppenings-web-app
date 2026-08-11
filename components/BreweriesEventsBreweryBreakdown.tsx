@@ -9,6 +9,7 @@ interface BreweryBreakdownRow {
   breweryId: string
   breweryName: string
   events: number
+  proposed: number
   releases: number
 }
 
@@ -43,10 +44,20 @@ function BreweryBreakdownEntry({ row }: { row: BreweryBreakdownRow }) {
       >
         {row.breweryId}
       </div>
-      <div className="mt-1.5 flex gap-3 text-xs tabular-nums" style={{ color: Colors.textDark }}>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums" style={{ color: Colors.textDark }}>
         <span>
           <span style={{ color: Colors.textSecondary }}>Events </span>
           {row.events}
+        </span>
+        <span
+          style={
+            row.proposed > 0
+              ? { color: Colors.primaryDark, fontWeight: 600 }
+              : undefined
+          }
+        >
+          <span style={{ color: Colors.textSecondary, fontWeight: 400 }}>Proposed </span>
+          {row.proposed}
         </span>
         <span>
           <span style={{ color: Colors.textSecondary }}>Releases </span>
@@ -66,6 +77,7 @@ export function BreweriesEventsBreweryBreakdown({
       breweryId: row.brewery.id,
       breweryName: row.brewery.name,
       events: row.events.length,
+      proposed: row.proposedEvents.length,
       releases: row.releases.length,
     }))
 
@@ -77,7 +89,7 @@ export function BreweriesEventsBreweryBreakdown({
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
       <p className="text-sm font-semibold mb-4" style={{ color: Colors.textDark }}>
-        Events &amp; releases by brewery
+        Events, proposed &amp; releases by brewery
       </p>
       {rows.length === 0 ? (
         <p className="text-sm" style={{ color: Colors.textSecondary }}>

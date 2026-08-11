@@ -1,6 +1,7 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
 import { AddBreweryControl } from '@/components/AddBreweryControl'
+import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
 import { ProposedEventsTable } from '@/components/ProposedEventsTable'
 import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
@@ -38,7 +39,7 @@ export function BreweriesEventsRegionContent({
           No breweries in this region yet. Use Add brewery to create one.
         </p>
       ) : (
-        sorted.map(({ brewery, events, proposedEvents, releases, foodTrucks }) => (
+        sorted.map(({ brewery, hours, events, proposedEvents, releases, foodTrucks }) => (
           <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-4 scroll-mt-24">
             <h3
               className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
@@ -53,6 +54,9 @@ export function BreweriesEventsRegionContent({
                 {brewery.id}
               </span>
             </h3>
+
+            <BreweryAdminDetails brewery={brewery} hours={hours} />
+
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start overflow-x-hidden">
               <div className="min-w-0">
                 <EventsTableWithDelete

@@ -453,7 +453,7 @@ export function FoodTruckAdminCard({
           </p>
         )}
         <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
-          {formatCardEventDate(foodTruck.date)}
+          {foodTruck.permanent ? 'Permanent' : formatCardEventDate(foodTruck.date)}
         </p>
         <p className="text-sm font-semibold break-words" style={{ color: Colors.textDark }}>
           {foodTruck.name || '—'}

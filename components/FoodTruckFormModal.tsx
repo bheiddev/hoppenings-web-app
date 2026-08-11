@@ -44,6 +44,7 @@ export function FoodTruckFormModal({
 }) {
   const [name, setName] = useState(foodTruck?.name ?? '')
   const [breweryIdField, setBreweryIdField] = useState(foodTruck?.brewery_id ?? defaultBreweryId)
+  const [permanent, setPermanent] = useState(foodTruck?.permanent === true)
   const [date, setDate] = useState(foodTruck ? dateForInput(foodTruck.date) : '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,8 +63,8 @@ export function FoodTruckFormModal({
       setError('Brewery ID is required')
       return
     }
-    if (!trimmedDate) {
-      setError('Date is required')
+    if (!permanent && !trimmedDate) {
+      setError('Date is required for one-day food trucks')
       return
     }
     setSaving(true)
@@ -71,9 +72,9 @@ export function FoodTruckFormModal({
       const payload: UpdateFoodTruckPayload = {
         name: trimmedName,
         brewery_id: breweryId,
-        date: trimmedDate,
-        permanent: false,
-        closed: null,
+        date: permanent ? null : trimmedDate,
+        permanent,
+        closed: permanent ? (foodTruck?.closed ?? null) : null,
       }
       const result = await onSave(payload)
       if (!result?.ok) setError(result?.error ?? 'Failed to save')
@@ -125,22 +126,32 @@ export function FoodTruckFormModal({
               }}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
-              Date
-            </label>
+          <label className="flex items-center gap-2 text-sm" style={{ color: Colors.textDark }}>
             <input
-              type="date"
-              value={date}
-              onChange={(ev) => setDate(ev.target.value)}
-              className="w-full px-3 py-2 border rounded"
-              style={{
-                borderColor: Colors.dividerLight,
-                color: Colors.textDark,
-                backgroundColor: Colors.surface,
-              }}
+              type="checkbox"
+              checked={permanent}
+              onChange={(ev) => setPermanent(ev.target.checked)}
             />
-          </div>
+            Permanent food truck
+          </label>
+          {!permanent && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(ev) => setDate(ev.target.value)}
+                className="w-full px-3 py-2 border rounded"
+                style={{
+                  borderColor: Colors.dividerLight,
+                  color: Colors.textDark,
+                  backgroundColor: Colors.surface,
+                }}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
               brewery_id

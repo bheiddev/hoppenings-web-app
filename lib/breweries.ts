@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, TaplistItem } from '@/types/supabase'
-import { filterUpcomingFoodTrucks, foodTruckShowsOnDate } from '@/lib/foodTrucks'
+import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
@@ -92,6 +92,34 @@ export async function getBreweryHours(breweryId: string): Promise<BreweryHours |
     console.error('Error fetching brewery hours:', error)
     return null
   }
+}
+
+/** Batch-fetch hours for many breweries (admin region loads). */
+export async function getBreweryHoursByBreweryIds(
+  breweryIds: string[]
+): Promise<Map<string, BreweryHours>> {
+  const map = new Map<string, BreweryHours>()
+  if (breweryIds.length === 0) return map
+
+  try {
+    const { data, error } = await supabase
+      .from('brewery_hours')
+      .select('*')
+      .in('brewery_id', breweryIds)
+
+    if (error) {
+      console.error('Error fetching brewery hours batch:', error)
+      return map
+    }
+
+    for (const row of data ?? []) {
+      if (row.brewery_id) map.set(row.brewery_id, row as BreweryHours)
+    }
+  } catch (error) {
+    console.error('Error fetching brewery hours batch:', error)
+  }
+
+  return map
 }
 
 /**
@@ -228,7 +256,7 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
 }
 
 /**
- * Get upcoming date-specific food trucks at a brewery, sorted chronologically.
+ * Food trucks shown under a brewery: permanent trucks + upcoming date-specific ones.
  */
 export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck[]> {
   try {
@@ -255,7 +283,7 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
       closed: row.closed,
     })) as FoodTruck[]
 
-    return filterUpcomingFoodTrucks(trucks)
+    return filterBreweryFoodTrucksForDisplay(trucks)
   } catch (error) {
     console.error('Error fetching brewery food trucks:', error)
     return []
@@ -296,25 +324,15 @@ export async function getBreweryTonightFood(
         closed: row.closed,
       })) as FoodTruck[]
 
-      const todayTruck = trucks.find(
-        (truck) => !truck.closed && foodTruckShowsOnDate(truck, today)
-      )
-      if (todayTruck) {
+      const tonightTruck = trucks.find((truck) => foodTruckShowsOnDate(truck, today))
+      if (tonightTruck) {
+        const isPermanent = tonightTruck.permanent === true
         return {
           active: true,
-          label: todayTruck.name?.trim() || 'Food truck tonight',
-          detail: 'Food truck',
-        }
-      }
-
-      const permanentTruck = trucks.find(
-        (truck) => truck.permanent === true && !truck.closed
-      )
-      if (permanentTruck) {
-        return {
-          active: true,
-          label: permanentTruck.name?.trim() || 'Food available',
-          detail: 'On site',
+          label:
+            tonightTruck.name?.trim() ||
+            (isPermanent ? 'Food available' : 'Food truck tonight'),
+          detail: isPermanent ? 'On site' : 'Food truck',
         }
       }
     }
