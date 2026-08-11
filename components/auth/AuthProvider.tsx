@@ -106,12 +106,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const alreadyLoaded = profileLoadedForUserRef.current === nextUser.id
-      if (opts?.skipProfileIfLoaded && alreadyLoaded) {
+      // Once we have a profile for this user, never flip global loading back
+      // on — that unmounts RequireAuth children (e.g. admin tabs) on token
+      // refresh / tab focus. Refresh the profile quietly in the background.
+      if (alreadyLoaded) {
         setIsLoading(false)
+        if (!opts?.skipProfileIfLoaded && !cancelled) {
+          void loadProfile(nextUser.id)
+        }
         return
       }
 
-      // Keep loading true until profile is fetched so RequireAuth doesn't
+      // Keep loading true until the first profile fetch so RequireAuth doesn't
       // treat a missing profile as "not admin" and bounce the user.
       setIsLoading(true)
       try {

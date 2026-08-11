@@ -8,6 +8,9 @@ import { Colors } from '@/lib/colors'
 /**
  * Client gate for protected routes. Auth is browser/localStorage-based,
  * so this is the access control surface for admin UI.
+ *
+ * Once the user has passed the gate, keep children mounted across brief
+ * auth revalidations so UI state (e.g. admin tabs) is not wiped.
  */
 export function RequireAuth({
   children,
@@ -20,9 +23,18 @@ export function RequireAuth({
   const pathname = usePathname()
   const { isLoading, isAuthenticated, profile } = useAuth()
   const redirectingRef = useRef(false)
+  const unlockedRef = useRef(false)
 
   // Authenticated but profile not loaded yet — don't treat as non-admin.
   const waitingOnProfile = isAuthenticated && profile === null
+  const isAuthorized =
+    isAuthenticated && (!requireAdmin || Boolean(profile?.admin))
+
+  if (isAuthorized) {
+    unlockedRef.current = true
+  } else if (!isLoading && !waitingOnProfile && !isAuthenticated) {
+    unlockedRef.current = false
+  }
 
   useEffect(() => {
     if (isLoading || waitingOnProfile) return
@@ -30,6 +42,7 @@ export function RequireAuth({
 
     if (!isAuthenticated) {
       redirectingRef.current = true
+      unlockedRef.current = false
       const next = encodeURIComponent(pathname || '/admin')
       router.replace(`/auth/sign-in?next=${next}`)
       return
@@ -37,6 +50,7 @@ export function RequireAuth({
 
     if (requireAdmin && !profile?.admin) {
       redirectingRef.current = true
+      unlockedRef.current = false
       router.replace('/profile')
     }
   }, [
@@ -48,6 +62,11 @@ export function RequireAuth({
     router,
     pathname,
   ])
+
+  // Already unlocked: keep the UI up during quiet rechecks.
+  if (unlockedRef.current) {
+    return <>{children}</>
+  }
 
   if (isLoading || waitingOnProfile) {
     return (
