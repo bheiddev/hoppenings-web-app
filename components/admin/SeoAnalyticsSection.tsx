@@ -1,4 +1,5 @@
 import { Colors } from '@/lib/colors'
+import { AnalyticsRefreshButton } from '@/components/admin/AnalyticsRefreshButton'
 import type { SeoAnalyticsResult, SeoRow } from '@/lib/gsc'
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -138,11 +139,14 @@ export function SeoAnalyticsSection({ result }: { result: SeoAnalyticsResult }) 
             pages are driving traffic. Search Console data typically lags 2–3 days.
           </p>
         </div>
-        {result.ok ? (
-          <p className="text-xs" style={{ color: Colors.textMuted }}>
-            {result.data.rangeLabel}
-          </p>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {result.ok ? (
+            <p className="text-xs" style={{ color: Colors.textMuted }}>
+              {result.data.rangeLabel}
+            </p>
+          ) : null}
+          <AnalyticsRefreshButton />
+        </div>
       </div>
 
       {!result.ok ? (

@@ -4,6 +4,7 @@ import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/f
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
+import { ensureFreshBreweryImages } from './storageUrls'
 
 export interface BreweryWithSlug extends Brewery {
   slug: string
@@ -28,25 +29,28 @@ export async function getAllBreweriesWithSlugs(): Promise<BreweryWithSlug[]> {
 
     if (!data) return []
 
-    // Generate slugs for each brewery
-    const breweriesWithSlugs: BreweryWithSlug[] = data.map((brewery: any) => {
-      const slug = generateBrewerySlug(
-        brewery.name,
-        brewery.location,
-        brewery.id
-      )
-      const legacySlug = generateLegacyBrewerySlug(
-        brewery.name,
-        brewery.location,
-        brewery.id
-      )
+    // Refresh signed storage URLs (brewery-images is private; tokens expire ~yearly).
+    const breweriesWithSlugs: BreweryWithSlug[] = await Promise.all(
+      data.map(async (brewery: Brewery) => {
+        const withFreshImages = await ensureFreshBreweryImages(brewery)
+        const slug = generateBrewerySlug(
+          withFreshImages.name,
+          withFreshImages.location,
+          withFreshImages.id
+        )
+        const legacySlug = generateLegacyBrewerySlug(
+          withFreshImages.name,
+          withFreshImages.location,
+          withFreshImages.id
+        )
 
-      return {
-        ...brewery,
-        slug,
-        legacySlug,
-      }
-    })
+        return {
+          ...withFreshImages,
+          slug,
+          legacySlug,
+        }
+      })
+    )
 
     return breweriesWithSlugs
   } catch (error) {

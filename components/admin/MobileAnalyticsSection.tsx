@@ -1,4 +1,5 @@
 import { Colors } from '@/lib/colors'
+import { AnalyticsRefreshButton } from '@/components/admin/AnalyticsRefreshButton'
 import type { BreakdownRow, MobileAnalyticsResult } from '@/lib/ga4'
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -126,11 +127,14 @@ export function MobileAnalyticsSection({ result }: { result: MobileAnalyticsResu
             rolling windows; sessions, events, cities, and dates are for the last 7 days unless noted.
           </p>
         </div>
-        {result.ok ? (
-          <p className="text-xs" style={{ color: Colors.textMuted }}>
-            GA4 · {result.data.rangeLabel}
-          </p>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {result.ok ? (
+            <p className="text-xs" style={{ color: Colors.textMuted }}>
+              GA4 · {result.data.rangeLabel}
+            </p>
+          ) : null}
+          <AnalyticsRefreshButton />
+        </div>
       </div>
 
       {!result.ok ? (

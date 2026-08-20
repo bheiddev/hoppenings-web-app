@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
-import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs } from '@/lib/events'
+import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs, eventIsRecurring } from '@/lib/events'
 import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
 import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
@@ -11,6 +11,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BackLink } from '@/components/BackLink'
 import { TextWithLinks } from '@/components/TextWithLinks'
+import { ensureFreshBreweryImages } from '@/lib/storageUrls'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -119,8 +120,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const event = await getEventBySlug(slug)
 
   if (!event) {
-    const expiredEvent = await getEventBySlugIncludingExpired(slug)
-    if (expiredEvent) {
+    // Past one-offs → listing. Past dated URLs for a still-running recurring series →
+    // next upcoming occurrence (keeps ranked links useful).
+    const expiredOrSeries = await getEventBySlugIncludingExpired(slug)
+    if (expiredOrSeries) {
+      if (eventIsRecurring(expiredOrSeries)) {
+        permanentRedirect(eventCanonicalPath(expiredOrSeries))
+      }
       permanentRedirect(EXPIRED_EVENT_REDIRECT)
     }
     notFound()
@@ -139,7 +145,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       .select('*')
       .eq('id', event.brewery_id)
       .single()
-    brewery = data
+    brewery = data ? await ensureFreshBreweryImages(data) : null
   } catch (error) {
     console.error('Error fetching brewery:', error)
   }

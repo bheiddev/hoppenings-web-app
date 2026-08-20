@@ -3,7 +3,9 @@
  *
  * Strategy:
  * - Sitemap only lists "indexable" URLs (releases/events within the window).
- * - When a user or crawler hits an expired URL, we 301 redirect to the listing page.
+ * - Expired one-off event URLs 301 to the listing page.
+ * - Expired / past dated URLs for a recurring series 301 to the next upcoming
+ *   occurrence of that series (so ranked weekly event links stay useful).
  * - We never 404 for content that "existed but expired" – only for truly invalid slugs.
  *
  * As time moves forward, content ages out of the indexable window and drops off the

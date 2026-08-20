@@ -411,7 +411,16 @@ async function uploadBreweryImage(
     return { publicUrl: null, error: error.message }
   }
   const { data } = admin.storage.from(bucket).getPublicUrl(path)
-  return { publicUrl: data.publicUrl }
+  // brewery-images / Tap Images are private — public URLs 404. Persist a long-lived signed URL.
+  const { data: signed, error: signError } = await admin.storage
+    .from(bucket)
+    .createSignedUrl(path, 60 * 60 * 24 * 365)
+  if (signError || !signed?.signedUrl) {
+    console.error(`Error signing uploaded ${bucket} object:`, signError)
+    // Fall back to public URL shape (works if the bucket is later made public).
+    return { publicUrl: data.publicUrl }
+  }
+  return { publicUrl: signed.signedUrl }
 }
 
 /**

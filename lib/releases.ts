@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { BeerRelease } from '@/types/supabase'
 import { generateReleaseSlug, generateLegacyReleaseSlug } from './slug'
 import { isReleaseInIndexableWindow } from './contentExpiry'
+import { ensureFreshBreweryImages } from './storageUrls'
 
 export interface BeerReleaseWithSlug extends BeerRelease {
   slug: string
@@ -225,7 +226,7 @@ export async function getReleaseBreweries(release: BeerRelease): Promise<any[]> 
       return []
     }
 
-    return data || []
+    return Promise.all((data || []).map((b) => ensureFreshBreweryImages(b)))
   } catch (error) {
     console.error('Error fetching release breweries:', error)
     return []

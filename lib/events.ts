@@ -1,8 +1,9 @@
 import { supabase } from './supabase'
 import { Event } from '@/types/supabase'
 import { expandRecurringEvents, getTodayMountainDateString, normalizeEventDateToMountainTime } from './utils'
-import { generateEventSlug, generateLegacyEventSlug } from './slug'
+import { generateEventSlug, generateLegacyEventSlug, generateSlug } from './slug'
 import { isEventInIndexableWindow } from './contentExpiry'
+import { ensureFreshStorageUrl } from './storageUrls'
 
 export interface EventWithSlug extends Event {
   slug: string
@@ -139,7 +140,8 @@ export async function fetchEventsBaseRows(options?: {
 /** Expanded upcoming events for listing pages (/events, city pages). */
 export async function getExpandedEventsForListing(): Promise<Event[]> {
   const rows = await fetchEventsBaseRows()
-  return expandRecurringEvents(rows)
+  const expanded = expandRecurringEvents(rows)
+  return withFreshBreweryImages(expanded)
 }
 
 /** Events happening today (Mountain Time) for the home page carousel. */
@@ -150,12 +152,44 @@ export async function getTonightCarouselEvents(): Promise<EventWithSlug[]> {
   const todaysEvents = expanded.filter(
     (event) => normalizeEventDateToMountainTime(event.event_date) === today
   )
-  return attachSlugs(todaysEvents)
+  const withImages = await withFreshBreweryImages(todaysEvents)
+  return attachSlugs(withImages)
 }
 
 /** Strip trailing YYYY-MM-DD from a slug (undated recurring URLs). */
-function stripDateSuffixFromSlug(slug: string): string {
+export function stripDateSuffixFromSlug(slug: string): string {
   return slug.replace(/-\d{4}-\d{2}-\d{2}$/, '')
+}
+
+function extractIsoDateFromSlug(slug: string): string | null {
+  const m = slug.match(/-(\d{4}-\d{2}-\d{2})$/)
+  return m?.[1] ?? null
+}
+
+function titleBrewerySlugPrefix(event: EventWithSlug): string {
+  return `${generateSlug(event.title, 40)}-${generateSlug(event.breweries.name, 30)}`
+}
+
+/**
+ * Find expanded instances in the same recurring series as this URL.
+ * Matches exact base slug, or title+brewery when the city segment drifted
+ * (e.g. north-cos vs colorado-springs).
+ */
+function findSeriesInstances(slug: string, allEvents: EventWithSlug[]): EventWithSlug[] {
+  const base = stripDateSuffixFromSlug(slug)
+  const exact = allEvents.filter((e) => stripDateSuffixFromSlug(e.slug) === base)
+  if (exact.length > 0) return exact
+
+  // Undated legacy URL equals base already handled above; also match by prefix.
+  return allEvents.filter((e) => {
+    const prefix = titleBrewerySlugPrefix(e)
+    if (!prefix) return false
+    const eventBase = stripDateSuffixFromSlug(e.slug)
+    return (
+      (base === prefix || base.startsWith(`${prefix}-`)) &&
+      (eventBase === prefix || eventBase.startsWith(`${prefix}-`))
+    )
+  })
 }
 
 function pickNextUpcomingEvent(events: EventWithSlug[]): EventWithSlug | null {
@@ -177,15 +211,35 @@ function buildEventSlugMap(events: EventWithSlug[]): Map<string, EventWithSlug> 
   return map
 }
 
+function isRecurringEvent(event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>): boolean {
+  return Boolean(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
+}
+
+/**
+ * Resolve a public event URL slug to an expanded occurrence.
+ * Past dated URLs for a still-active recurring series resolve to the next upcoming
+ * occurrence so Google-ranked old links stay useful.
+ */
 function resolveEventBySlug(slug: string, allEvents: EventWithSlug[]): EventWithSlug | null {
   const map = buildEventSlugMap(allEvents)
   const direct = map.get(slug)
   if (direct) return direct
 
-  // Legacy undated recurring URL — all instances share the same base slug
-  const instances = allEvents.filter((e) => stripDateSuffixFromSlug(e.slug) === slug)
-  return pickNextUpcomingEvent(instances)
+  const series = findSeriesInstances(slug, allEvents)
+  if (series.length === 0) return null
+
+  const requestedDate = extractIsoDateFromSlug(slug)
+  if (requestedDate) {
+    const exactDate = series.find(
+      (e) => normalizeEventDateToMountainTime(e.event_date) === requestedDate
+    )
+    if (exactDate) return exactDate
+  }
+
+  // Undated legacy URL, or past date no longer in the expansion window → next occurrence.
+  return pickNextUpcomingEvent(series)
 }
+
 
 function attachSlugs(events: Event[]): EventWithSlug[] {
   return events.map((event) => {
@@ -211,6 +265,18 @@ function attachSlugs(events: Event[]): EventWithSlug[] {
   })
 }
 
+async function withFreshBreweryImages(events: Event[]): Promise<Event[]> {
+  return Promise.all(
+    events.map(async (event) => ({
+      ...event,
+      breweries: {
+        ...event.breweries,
+        image_url: await ensureFreshStorageUrl(event.breweries.image_url),
+      },
+    }))
+  )
+}
+
 /**
  * Fetch all events with brewery data and generate slugs
  * Used for static page generation
@@ -219,7 +285,8 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
   try {
     const events = await fetchEventsBaseRows()
     const expandedEvents = expandRecurringEvents(events, false)
-    const eventsWithSlugs = attachSlugs(expandedEvents)
+    const withImages = await withFreshBreweryImages(expandedEvents)
+    const eventsWithSlugs = attachSlugs(withImages)
     return eventsWithSlugs.filter((event) => isEventInIndexableWindow(event.event_date))
   } catch (error) {
     console.error('Error fetching events with slugs:', error)
@@ -232,7 +299,8 @@ async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
   try {
     const events = await fetchEventsBaseRows({ minNonRecurringDate: '1970-01-01' })
     const expanded = expandRecurringEvents(events, false)
-    return attachSlugs(expanded)
+    const withImages = await withFreshBreweryImages(expanded)
+    return attachSlugs(withImages)
   } catch (error) {
     console.error('Error fetching unfiltered events with slugs:', error)
     return []
@@ -248,9 +316,16 @@ export async function getEventBySlug(slug: string): Promise<EventWithSlug | null
 }
 
 /**
- * Get event by slug even if past indexable window (for redirecting expired URLs)
+ * Get event by slug even if past indexable window (for redirecting expired URLs).
+ * For recurring series, prefers the next upcoming occurrence when the dated URL is stale.
  */
 export async function getEventBySlugIncludingExpired(slug: string): Promise<EventWithSlug | null> {
   const allEvents = await getAllEventsWithSlugsUnfiltered()
   return resolveEventBySlug(slug, allEvents)
+}
+
+export function eventIsRecurring(
+  event: Pick<Event, 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'>
+): boolean {
+  return isRecurringEvent(event)
 }
