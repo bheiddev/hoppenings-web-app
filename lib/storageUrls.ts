@@ -66,7 +66,6 @@ const ensureFreshStorageUrlCached = cache(async (url: string): Promise<string> =
   if (!parsed) return url
 
   // Public URLs only work if the bucket is public; brewery-images is private.
-  // Always mint a signed URL for storage objects we control.
   if (url.includes('/object/sign/') && signedUrlStillFresh(url)) {
     return url
   }
@@ -87,13 +86,41 @@ export async function ensureFreshStorageUrl(
   return ensureFreshStorageUrlCached(url)
 }
 
+/** Best-effort write of refreshed signed URLs back to breweries (helps ISR + mobile). */
+function persistRefreshedBreweryImages(
+  breweryId: string,
+  patch: { image_url?: string; tap_image?: string }
+) {
+  const admin = getSupabaseAdmin()
+  if (!admin || Object.keys(patch).length === 0) return
+  void admin
+    .from('breweries')
+    .update(patch)
+    .eq('id', breweryId)
+    .then(({ error }) => {
+      if (error) console.error('Failed to persist refreshed brewery image URLs:', error.message)
+    })
+}
+
 export async function ensureFreshBreweryImages<
-  T extends { image_url?: string | null; tap_image?: string | null },
+  T extends { id?: string; image_url?: string | null; tap_image?: string | null },
 >(brewery: T): Promise<T> {
+  const oldImage = brewery.image_url ?? null
+  const oldTap = brewery.tap_image ?? null
   const [image_url, tap_image] = await Promise.all([
-    ensureFreshStorageUrl(brewery.image_url),
-    ensureFreshStorageUrl(brewery.tap_image ?? null),
+    ensureFreshStorageUrl(oldImage),
+    ensureFreshStorageUrl(oldTap),
   ])
+
+  if (brewery.id) {
+    const patch: { image_url?: string; tap_image?: string } = {}
+    if (image_url && image_url !== oldImage) patch.image_url = image_url
+    if (brewery.tap_image !== undefined && tap_image && tap_image !== oldTap) {
+      patch.tap_image = tap_image
+    }
+    persistRefreshedBreweryImages(brewery.id, patch)
+  }
+
   return {
     ...brewery,
     image_url,

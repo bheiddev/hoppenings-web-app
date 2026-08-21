@@ -33,8 +33,10 @@ export async function generateStaticParams() {
   }))
 }
 
-// Revalidate every hour to pick up new data
-export const revalidate = 3600
+// Always render on request so signed brewery image URLs can be refreshed.
+// ISR was embedding expired Supabase tokens into the hero for up to an hour.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
