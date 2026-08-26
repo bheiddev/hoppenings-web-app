@@ -36,7 +36,6 @@ import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import {
   formatEventDateShort,
-  formatRelativeEventDateHeading,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
@@ -94,8 +93,6 @@ function normalizeReleaseDate(releaseDate: string | null): string | null {
 }
 
 function forecastDayHeading(ymd: string): string {
-  const relative = formatRelativeEventDateHeading(ymd)
-  if (relative === 'Today' || relative === 'Tomorrow') return relative
   return formatEventDateShort(ymd)
 }
 
@@ -115,6 +112,94 @@ function ForecastCategoryBlock({
       <AdminColumnScrollBody>{children}</AdminColumnScrollBody>
     </div>
   )
+}
+
+function BreweryPairSection({
+  breweryName,
+  left,
+  right,
+}: {
+  breweryName: string
+  left: ReactNode
+  right: ReactNode
+}) {
+  return (
+    <div
+      className="border rounded-lg overflow-hidden"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <div
+        className="px-3 py-2 border-b"
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
+      >
+        <h4
+          className="text-sm font-semibold leading-snug"
+          style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          {breweryName}
+        </h4>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:divide-x" style={{ borderColor: Colors.dividerLight }}>
+        <div className="min-w-0 border-b sm:border-b-0" style={{ borderColor: Colors.dividerLight }}>
+          {left}
+        </div>
+        <div className="min-w-0">{right}</div>
+      </div>
+    </div>
+  )
+}
+
+function PairColumn({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col min-h-0">
+      <div
+        className="px-3 py-1.5 border-b text-xs font-semibold"
+        style={{
+          borderColor: Colors.dividerLight,
+          color: Colors.textSecondary,
+          backgroundColor: Colors.surfaceMedium,
+        }}
+      >
+        {label}
+      </div>
+      <AdminColumnScrollBody>{children}</AdminColumnScrollBody>
+    </div>
+  )
+}
+
+type WithBrewery = { breweryId: string; breweryName: string }
+
+function groupByBrewery<T extends WithBrewery>(
+  items: T[]
+): { breweryId: string; breweryName: string; items: T[] }[] {
+  const map = new Map<string, { breweryId: string; breweryName: string; items: T[] }>()
+  for (const item of items) {
+    const existing = map.get(item.breweryId)
+    if (existing) {
+      existing.items.push(item)
+    } else {
+      map.set(item.breweryId, {
+        breweryId: item.breweryId,
+        breweryName: item.breweryName || 'Unknown brewery',
+        items: [item],
+      })
+    }
+  }
+  return [...map.values()].sort((a, b) => a.breweryName.localeCompare(b.breweryName))
+}
+
+function breweryIdsUnion(
+  ...groups: { breweryId: string; breweryName: string }[][]
+): { breweryId: string; breweryName: string }[] {
+  const map = new Map<string, string>()
+  for (const group of groups) {
+    for (const row of group) {
+      if (!map.has(row.breweryId)) map.set(row.breweryId, row.breweryName)
+    }
+  }
+  return [...map.entries()]
+    .map(([breweryId, breweryName]) => ({ breweryId, breweryName }))
+    .sort((a, b) => a.breweryName.localeCompare(b.breweryName))
 }
 
 function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
@@ -200,6 +285,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
       }
     }
     for (const truck of foodTrucks) {
+      if (truck.permanent === true) continue
       for (const d of dates) {
         if (foodTruckShowsOnDate(truck, d)) {
           foodTrucksByDay.get(d)!.push({
@@ -515,97 +601,155 @@ export function BreweriesEventsUpcomingByDate({
                   className="flex-1 flex flex-col gap-3 p-3"
                   style={{ backgroundColor: Colors.surfaceMedium }}
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-                    <ForecastCategoryBlock label={`Proposed events (${dayProposed.length})`}>
-                      {dayProposed.length === 0 ? (
-                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                          No proposed events
-                        </p>
-                      ) : (
-                        dayProposed.map((p) => (
-                          <ProposedEventAdminCard
-                            key={p.id}
-                            proposed={p}
-                            breweryName={p.breweryName}
-                            showBreweryName
-                            onEdit={() => setEditingProposed({ ...p })}
-                            onAccept={() => handleAcceptProposed(p)}
-                            onReject={() => handleRejectProposed(p.id)}
-                            actionsDisabled={pendingKey !== null}
-                            acceptLoading={pendingKey === acceptProposedKey(p.id)}
-                            rejectLoading={pendingKey === rejectProposedKey(p.id)}
-                          />
-                        ))
-                      )}
-                    </ForecastCategoryBlock>
+                  {(() => {
+                    const proposedByBrewery = groupByBrewery(dayProposed)
+                    const eventsByBrewery = groupByBrewery(dayEvents)
+                    const proposedMap = new Map(proposedByBrewery.map((g) => [g.breweryId, g.items]))
+                    const eventsMap = new Map(eventsByBrewery.map((g) => [g.breweryId, g.items]))
+                    const eventBreweries = breweryIdsUnion(proposedByBrewery, eventsByBrewery)
 
-                    <ForecastCategoryBlock label={`Events (${dayEvents.length})`}>
-                      {dayEvents.length === 0 ? (
-                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                          No events
+                    if (eventBreweries.length === 0) {
+                      return (
+                        <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
+                          No proposed or live events
                         </p>
-                      ) : (
-                        dayEvents.map((e) => (
-                          <EventAdminCard
-                            key={`${e.id}-${e.event_date}`}
-                            event={e}
-                            breweryName={e.breweryName}
-                            showBreweryName
-                            onEdit={() => setEditing({ ...e })}
-                            onDelete={() => handleDeleteEvent(e.id)}
-                            actionsDisabled={pendingKey !== null}
-                            deleteLoading={pendingKey === `delete:event:${e.id}`}
-                          />
-                        ))
-                      )}
-                    </ForecastCategoryBlock>
-                  </div>
+                      )
+                    }
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-                    <ForecastCategoryBlock label={`Proposed beers (${dayProposedBeers.length})`}>
-                      {dayProposedBeers.length === 0 ? (
-                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                          No proposed beer releases
-                        </p>
-                      ) : (
-                        dayProposedBeers.map((p) => (
-                          <ProposedBeerReleaseAdminCard
-                            key={p.id}
-                            proposed={p}
-                            breweryName={p.breweryName}
-                            showBreweryName
-                            onEdit={() => setEditingProposedBeer({ ...p })}
-                            onAccept={() => handleAcceptProposedBeer(p)}
-                            onReject={() => handleRejectProposedBeer(p.id)}
-                            actionsDisabled={pendingKey !== null}
-                            acceptLoading={pendingKey === acceptProposedBeerKey(p.id)}
-                            rejectLoading={pendingKey === rejectProposedBeerKey(p.id)}
-                          />
-                        ))
-                      )}
-                    </ForecastCategoryBlock>
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {eventBreweries.map(({ breweryId, breweryName }) => {
+                          const proposed = proposedMap.get(breweryId) ?? []
+                          const events = eventsMap.get(breweryId) ?? []
+                          return (
+                            <BreweryPairSection
+                              key={`events-${breweryId}`}
+                              breweryName={breweryName}
+                              left={
+                                <PairColumn label={`Proposed (${proposed.length})`}>
+                                  {proposed.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    proposed.map((p) => (
+                                      <ProposedEventAdminCard
+                                        key={p.id}
+                                        proposed={p}
+                                        breweryName={p.breweryName}
+                                        onEdit={() => setEditingProposed({ ...p })}
+                                        onAccept={() => handleAcceptProposed(p)}
+                                        onReject={() => handleRejectProposed(p.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        acceptLoading={pendingKey === acceptProposedKey(p.id)}
+                                        rejectLoading={pendingKey === rejectProposedKey(p.id)}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                              right={
+                                <PairColumn label={`Events (${events.length})`}>
+                                  {events.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    events.map((e) => (
+                                      <EventAdminCard
+                                        key={`${e.id}-${e.event_date}`}
+                                        event={e}
+                                        breweryName={e.breweryName}
+                                        onEdit={() => setEditing({ ...e })}
+                                        onDelete={() => handleDeleteEvent(e.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        deleteLoading={pendingKey === `delete:event:${e.id}`}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                            />
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
 
-                    <ForecastCategoryBlock label={`Beer releases (${dayReleases.length})`}>
-                      {dayReleases.length === 0 ? (
-                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                          No beer releases
+                  {(() => {
+                    const proposedByBrewery = groupByBrewery(dayProposedBeers)
+                    const releasesByBrewery = groupByBrewery(dayReleases)
+                    const proposedMap = new Map(proposedByBrewery.map((g) => [g.breweryId, g.items]))
+                    const releasesMap = new Map(releasesByBrewery.map((g) => [g.breweryId, g.items]))
+                    const beerBreweries = breweryIdsUnion(proposedByBrewery, releasesByBrewery)
+
+                    if (beerBreweries.length === 0) {
+                      return (
+                        <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
+                          No proposed or live beer releases
                         </p>
-                      ) : (
-                        dayReleases.map((r) => (
-                          <BeerReleaseAdminCard
-                            key={r.id}
-                            release={r}
-                            breweryName={r.breweryName}
-                            showBreweryName
-                            onEdit={() => setEditingRelease({ ...r })}
-                            onDelete={() => handleDeleteRelease(r.id)}
-                            actionsDisabled={pendingKey !== null}
-                            deleteLoading={pendingKey === `delete:release:${r.id}`}
-                          />
-                        ))
-                      )}
-                    </ForecastCategoryBlock>
-                  </div>
+                      )
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {beerBreweries.map(({ breweryId, breweryName }) => {
+                          const proposed = proposedMap.get(breweryId) ?? []
+                          const releases = releasesMap.get(breweryId) ?? []
+                          return (
+                            <BreweryPairSection
+                              key={`beers-${breweryId}`}
+                              breweryName={breweryName}
+                              left={
+                                <PairColumn label={`Proposed beers (${proposed.length})`}>
+                                  {proposed.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    proposed.map((p) => (
+                                      <ProposedBeerReleaseAdminCard
+                                        key={p.id}
+                                        proposed={p}
+                                        breweryName={p.breweryName}
+                                        onEdit={() => setEditingProposedBeer({ ...p })}
+                                        onAccept={() => handleAcceptProposedBeer(p)}
+                                        onReject={() => handleRejectProposedBeer(p.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        acceptLoading={pendingKey === acceptProposedBeerKey(p.id)}
+                                        rejectLoading={pendingKey === rejectProposedBeerKey(p.id)}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                              right={
+                                <PairColumn label={`Beer releases (${releases.length})`}>
+                                  {releases.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    releases.map((r) => (
+                                      <BeerReleaseAdminCard
+                                        key={r.id}
+                                        release={r}
+                                        breweryName={r.breweryName}
+                                        onEdit={() => setEditingRelease({ ...r })}
+                                        onDelete={() => handleDeleteRelease(r.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        deleteLoading={pendingKey === `delete:release:${r.id}`}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                            />
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
 
                   <ForecastCategoryBlock label={`Food trucks (${dayFoodTrucks.length})`}>
                     {dayFoodTrucks.length === 0 ? (

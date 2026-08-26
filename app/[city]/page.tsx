@@ -19,14 +19,17 @@ import {
   filterReleasesForCity,
 } from '@/lib/seoCities'
 import {
+  formatEventDateShort,
   formatReleaseDate,
   formatTime12Hour,
+  getMountainDateRangeFromToday,
   isEventInPast,
-  isEventToday,
+  normalizeEventDateToMountainTime,
 } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 const TEASER_LIMIT = 5
+const EVENT_DAY_HORIZON = 14
 
 export async function generateStaticParams() {
   return Object.keys(CITY_CONFIG).map((city) => ({ city }))
@@ -94,10 +97,6 @@ export default async function CityLandingPage({
     cityBreweries.map((brewery) => [brewery.id, brewery.image_url || brewery.tap_image || null])
   )
 
-  const todayEvents = cityEvents
-    .filter((event) => isEventToday(event.event_date))
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
-
   const upcomingEvents = cityEvents
     .filter((event) => !isEventInPast(event.event_date))
     .sort((a, b) => {
@@ -105,6 +104,18 @@ export default async function CityLandingPage({
       if (byDate !== 0) return byDate
       return (a.start_time || '').localeCompare(b.start_time || '')
     })
+
+  const eventDayPages = getMountainDateRangeFromToday(EVENT_DAY_HORIZON).map((ymd) => {
+    const dayEvents = cityEvents
+      .filter((event) => normalizeEventDateToMountainTime(event.event_date) === ymd)
+      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+    const dateLabel = formatEventDateShort(ymd)
+    return {
+      dateLabel,
+      items: dayEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+      emptyMessage: `No events listed for ${dateLabel} in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
+    }
+  })
 
   const breweryTeasers: ExploreTeaserItem[] = cityBreweries
     .slice()
@@ -142,9 +153,12 @@ export default async function CityLandingPage({
       id: 'events',
       label: 'Events',
       href: `/${citySlug}/events`,
-      panelLabel: `Today in ${cityConfig.name}`,
-      emptyMessage: `No events listed for today in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
-      items: todayEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+      panelLabel: eventDayPages[0]?.dateLabel ?? 'Events',
+      emptyMessage:
+        eventDayPages[0]?.emptyMessage ??
+        `No events listed in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
+      items: eventDayPages[0]?.items ?? [],
+      dayPages: eventDayPages,
     },
     {
       id: 'breweries',

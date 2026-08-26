@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
@@ -15,6 +15,12 @@ export type ExploreTeaserItem = {
   imageUrl?: string | null
 }
 
+export type ExploreDayPage = {
+  dateLabel: string
+  items: ExploreTeaserItem[]
+  emptyMessage: string
+}
+
 export type ExploreSection = {
   id: string
   label: string
@@ -22,6 +28,8 @@ export type ExploreSection = {
   panelLabel: string
   emptyMessage: string
   items: ExploreTeaserItem[]
+  /** When set (Events), enable day cycling with chevrons. */
+  dayPages?: ExploreDayPage[]
 }
 
 type RegionExploreLandingProps = {
@@ -33,6 +41,43 @@ type RegionExploreLandingProps = {
 
 const TEASER_LIMIT = 5
 
+function ChevronButton({
+  direction,
+  onClick,
+  disabled,
+  label,
+}: {
+  direction: 'prev' | 'next'
+  onClick: () => void
+  disabled: boolean
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center transition-opacity hover:opacity-80 disabled:opacity-30"
+      style={{ color: Colors.accent }}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+        {direction === 'prev' ? (
+          <path
+            d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+            fill="currentColor"
+          />
+        ) : (
+          <path
+            d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
+            fill="currentColor"
+          />
+        )}
+      </svg>
+    </button>
+  )
+}
+
 export function RegionExploreLanding({
   cityName,
   subtitle,
@@ -40,8 +85,19 @@ export function RegionExploreLanding({
   children,
 }: RegionExploreLandingProps) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
+  const [dayIndex, setDayIndex] = useState(0)
   const active = sections.find((section) => section.id === activeId) ?? sections[0]
-  const teasers = active?.items.slice(0, TEASER_LIMIT) ?? []
+  const dayPages = active?.dayPages
+  const hasDayPages = Boolean(dayPages && dayPages.length > 0)
+  const currentDay = hasDayPages ? dayPages![Math.min(dayIndex, dayPages!.length - 1)] : null
+
+  useEffect(() => {
+    setDayIndex(0)
+  }, [activeId])
+
+  const panelLabel = currentDay?.dateLabel ?? active?.panelLabel ?? ''
+  const emptyMessage = currentDay?.emptyMessage ?? active?.emptyMessage ?? ''
+  const teasers = (currentDay?.items ?? active?.items ?? []).slice(0, TEASER_LIMIT)
 
   return (
     <div
@@ -61,12 +117,7 @@ export function RegionExploreLanding({
             `,
           }}
         />
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          }}
-        />
+        <div className="hop-posh-noise" />
         <div
           className="absolute -left-1/4 top-1/3 h-[50vh] w-[70vw] rounded-full opacity-30 blur-3xl"
           style={{ background: `radial-gradient(circle, ${Colors.accent}33 0%, transparent 70%)` }}
@@ -130,21 +181,41 @@ export function RegionExploreLanding({
 
         <div className="flex flex-col justify-center px-6 pb-14 pt-2 sm:px-10 lg:px-8 lg:py-16">
           {active ? (
-            <div key={active.id} className="hop-explore-panel">
+            <div key={`${active.id}-${currentDay?.dateLabel ?? 'static'}`} className="hop-explore-panel">
               <div className="mb-6 flex items-end justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p
                     className="mb-1 text-[11px] font-semibold uppercase tracking-[0.28em] sm:text-xs"
                     style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
                   >
                     {active.label}
                   </p>
-                  <h2
-                    className="text-xl font-bold uppercase tracking-wide sm:text-2xl"
-                    style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-                  >
-                    {active.panelLabel}
-                  </h2>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {hasDayPages ? (
+                      <ChevronButton
+                        direction="prev"
+                        label="Previous day"
+                        disabled={dayIndex <= 0}
+                        onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
+                      />
+                    ) : null}
+                    <h2
+                      className="text-xl font-bold uppercase tracking-wide sm:text-2xl"
+                      style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                    >
+                      {panelLabel}
+                    </h2>
+                    {hasDayPages ? (
+                      <ChevronButton
+                        direction="next"
+                        label="Next day"
+                        disabled={dayIndex >= (dayPages?.length ?? 1) - 1}
+                        onClick={() =>
+                          setDayIndex((i) => Math.min((dayPages?.length ?? 1) - 1, i + 1))
+                        }
+                      />
+                    ) : null}
+                  </div>
                 </div>
                 <Link
                   href={active.href}
@@ -160,7 +231,7 @@ export function RegionExploreLanding({
                   className="text-base leading-relaxed"
                   style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
-                  {active.emptyMessage}
+                  {emptyMessage}
                 </p>
               ) : (
                 <ul className="flex flex-col">

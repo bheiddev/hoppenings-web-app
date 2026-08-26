@@ -209,14 +209,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
             aria-hidden
           />
         ) : null}
-        <div
-          className="absolute inset-0 z-[1]"
-          style={{
-            background:
-              'linear-gradient(to right, rgba(58,21,21,0.88) 0%, rgba(58,21,21,0.45) 48%, rgba(58,21,21,0.2) 100%), linear-gradient(to top, rgba(58,21,21,0.85) 0%, transparent 40%)',
-          }}
-          aria-hidden
-        />
 
         <a
           href="/"
@@ -264,7 +256,11 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-start gap-2.5 text-sm transition-opacity hover:opacity-90 sm:text-base"
-                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                  style={{
+                    color: Colors.textOnDark,
+                    fontFamily: 'var(--font-be-vietnam-pro)',
+                    textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+                  }}
                 >
                   <svg
                     width="16"
@@ -283,7 +279,11 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                 <a
                   href={`tel:${brewery.phone.replace(/\D/g, '')}`}
                   className="inline-flex items-center gap-2.5 text-sm transition-opacity hover:opacity-90 sm:text-base"
-                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                  style={{
+                    color: Colors.textOnDark,
+                    fontFamily: 'var(--font-be-vietnam-pro)',
+                    textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+                  }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden>
                     <path d="M6.62 10.79a15.15 15.15 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.85 21 3 13.15 3 3a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z" />
@@ -431,7 +431,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           <>
             <HappyHourDeals />
             <MugClubCta />
-            <HoppeningsAppPromo />
+            <HoppeningsAppPromo region={city} />
           </>
         ) : null}
       </div>
