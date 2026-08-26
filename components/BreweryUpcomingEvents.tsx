@@ -1,0 +1,71 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Colors } from '@/lib/colors'
+import { PoshSectionTitle } from '@/components/PoshPageShell'
+
+export type BreweryUpcomingEventItem = {
+  key: string
+  href: string
+  title: string
+  meta: string
+}
+
+const PAGE_SIZE = 4
+
+export function BreweryUpcomingEvents({ events }: { events: BreweryUpcomingEventItem[] }) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  if (events.length === 0) return null
+
+  const visible = events.slice(0, visibleCount)
+  const hasMore = visibleCount < events.length
+
+  return (
+    <section className="mb-14">
+      <PoshSectionTitle>Upcoming Events</PoshSectionTitle>
+      <ul className="flex flex-col">
+        {visible.map((event) => (
+          <li key={event.key}>
+            <Link
+              href={event.href}
+              className="block border-t border-white/10 py-4 transition-opacity hover:opacity-85"
+            >
+              <span
+                className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
+                style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                {event.title}
+              </span>
+              <span
+                className="mt-1 block text-xs uppercase tracking-[0.14em]"
+                style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+              >
+                {event.meta}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      {hasMore ? (
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((count) => Math.min(count + PAGE_SIZE, events.length))}
+            className="text-sm font-bold uppercase tracking-[0.16em] transition-opacity hover:opacity-85"
+            style={{
+              color: Colors.primaryDark,
+              backgroundColor: Colors.accent,
+              fontFamily: 'var(--font-fjalla-one)',
+              padding: '0.7rem 1.15rem',
+            }}
+          >
+            View More
+          </button>
+        </div>
+      ) : null}
+    </section>
+  )
+}

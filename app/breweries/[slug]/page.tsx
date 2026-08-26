@@ -24,6 +24,7 @@ import { HoppeningTonight } from '@/components/HoppeningTonight'
 import { MugClubCta } from '@/components/breweryDemo/MugClubCta'
 import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
 import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
+import { BreweryUpcomingEvents } from '@/components/BreweryUpcomingEvents'
 import { PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
@@ -352,44 +353,29 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         ) : null}
 
         {chronologicalEvents.length > 0 ? (
-          <section className="mb-14">
-            <PoshSectionTitle>Upcoming Events</PoshSectionTitle>
-            <ul className="flex flex-col">
-              {chronologicalEvents.map((event) => {
-                const eventSlug = generateEventSlug(
-                  event.title,
-                  event.breweries.name,
-                  event.breweries.location || null,
-                  event.event_date,
-                  event.id,
-                  Boolean(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
-                )
-                return (
-                  <li key={`${event.id}-${event.event_date}`}>
-                    <Link
-                      href={`/events/${eventSlug}`}
-                      className="block border-t border-white/10 py-4 transition-opacity hover:opacity-85"
-                    >
-                      <span
-                        className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
-                        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-                      >
-                        {event.title}
-                      </span>
-                      <span
-                        className="mt-1 block text-xs uppercase tracking-[0.14em]"
-                        style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                      >
-                        {[formatEventDate(event.event_date), event.start_time ? formatTime12Hour(event.start_time) : null]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
+          <BreweryUpcomingEvents
+            events={chronologicalEvents.map((event) => {
+              const eventSlug = generateEventSlug(
+                event.title,
+                event.breweries.name,
+                event.breweries.location || null,
+                event.event_date,
+                event.id,
+                Boolean(event.is_recurring || event.is_recurring_biweekly || event.is_recurring_monthly)
+              )
+              return {
+                key: `${event.id}-${event.event_date}`,
+                href: `/events/${eventSlug}`,
+                title: event.title,
+                meta: [
+                  formatEventDate(event.event_date),
+                  event.start_time ? formatTime12Hour(event.start_time) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+              }
+            })}
+          />
         ) : null}
 
         {releases.length > 0 ? (
