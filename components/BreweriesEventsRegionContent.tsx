@@ -4,6 +4,7 @@ import { AddBreweryControl } from '@/components/AddBreweryControl'
 import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
 import { ProposedEventsTable } from '@/components/ProposedEventsTable'
+import { ProposedBeerReleasesTable } from '@/components/ProposedBeerReleasesTable'
 import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
 import { FoodTrucksTableWithActions } from '@/components/FoodTrucksTableWithActions'
 
@@ -39,55 +40,75 @@ export function BreweriesEventsRegionContent({
           No breweries in this region yet. Use Add brewery to create one.
         </p>
       ) : (
-        sorted.map(({ brewery, hours, events, proposedEvents, releases, foodTrucks }) => (
-          <div key={brewery.id} id={breweryAnchorId(brewery.id)} className="space-y-4 scroll-mt-24">
-            <h3
-              className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
-              style={{ color: Colors.textPrimary }}
+        sorted.map(
+          ({
+            brewery,
+            hours,
+            events,
+            proposedEvents,
+            proposedBeerReleases,
+            releases,
+            foodTrucks,
+          }) => (
+            <div
+              key={brewery.id}
+              id={breweryAnchorId(brewery.id)}
+              className="space-y-4 scroll-mt-24"
             >
-              <span>{brewery.name}</span>
-              <span
-                className="text-xs font-mono font-normal shrink-0"
-                style={{ color: Colors.textSecondary }}
-                title="Brewery UUID"
+              <h3
+                className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+                style={{ color: Colors.textPrimary }}
               >
-                {brewery.id}
-              </span>
-            </h3>
+                <span>{brewery.name}</span>
+                <span
+                  className="text-xs font-mono font-normal shrink-0"
+                  style={{ color: Colors.textSecondary }}
+                  title="Brewery UUID"
+                >
+                  {brewery.id}
+                </span>
+              </h3>
 
-            <BreweryAdminDetails brewery={brewery} hours={hours} />
+              <BreweryAdminDetails brewery={brewery} hours={hours} />
 
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start overflow-x-hidden">
-              <div className="min-w-0">
-                <EventsTableWithDelete
-                  events={events}
-                  title="Events (events_base)"
-                  breweryId={brewery.id}
-                />
-              </div>
-              <div className="min-w-0">
-                <ProposedEventsTable
-                  proposed={proposedEvents}
-                  title="Proposed events (proposed_events)"
-                />
-              </div>
-              <div className="min-w-0">
-                <BeerReleasesTableWithActions
-                  releases={releases}
-                  title="Beer releases"
-                  breweryId={brewery.id}
-                />
-              </div>
-              <div className="min-w-0">
-                <FoodTrucksTableWithActions
-                  foodTrucks={foodTrucks}
-                  title="Food trucks"
-                  breweryId={brewery.id}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start overflow-x-hidden">
+                <div className="min-w-0">
+                  <EventsTableWithDelete
+                    events={events}
+                    title="Events (events_base)"
+                    breweryId={brewery.id}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <ProposedEventsTable
+                    proposed={proposedEvents}
+                    title="Proposed events (proposed_events)"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <BeerReleasesTableWithActions
+                    releases={releases}
+                    title="Beer releases"
+                    breweryId={brewery.id}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <ProposedBeerReleasesTable
+                    proposed={proposedBeerReleases}
+                    title="Proposed beers (proposed_beer_releases)"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <FoodTrucksTableWithActions
+                    foodTrucks={foodTrucks}
+                    title="Food trucks"
+                    breweryId={brewery.id}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          )
+        )
       )}
     </div>
   )

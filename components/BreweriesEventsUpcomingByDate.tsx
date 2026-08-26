@@ -13,18 +13,24 @@ import {
   BeerReleaseAdminCard,
   EventAdminCard,
   FoodTruckAdminCard,
+  ProposedBeerReleaseAdminCard,
   ProposedEventAdminCard,
 } from '@/components/breweriesEventsAdminCards'
 import {
+  acceptProposedBeerRelease,
   acceptProposedEvent,
   deleteBeerReleaseFromBase,
   deleteEventFromEventsBase,
   deleteFoodTruck,
+  rejectProposedBeerRelease,
   rejectProposedEvent,
   updateBeerReleaseInBase,
   updateEventInEventsBase,
   updateFoodTruck,
+  updateProposedBeerRelease,
   updateProposedEvent,
+  type UpdateBeerReleasePayload,
+  type UpdateProposedBeerReleasePayload,
 } from '@/app/admin/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
@@ -34,15 +40,16 @@ import {
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
-import { BeerRelease, Event, FoodTruck, ProposedEvent } from '@/types/supabase'
+import { BeerRelease, Event, FoodTruck, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
 
 /** Days shown in one carousel page. */
-const VISIBLE_DAY_COUNT = 5
+const VISIBLE_DAY_COUNT = 2
 /** How far ahead the carousel can page. */
 const FORECAST_HORIZON_DAYS = 60
 
 type EventRow = Event & { breweryName: string; breweryId: string }
 type ProposedRow = ProposedEvent & { breweryName: string; breweryId: string }
+type ProposedBeerRow = ProposedBeerRelease & { breweryName: string; breweryId: string }
 type ReleaseRow = BeerRelease & { breweryName: string; breweryId: string }
 type FoodTruckRow = FoodTruck & { breweryName: string; breweryId: string }
 
@@ -52,6 +59,33 @@ function acceptProposedKey(id: number) {
 
 function rejectProposedKey(id: number) {
   return `reject:proposed:${id}`
+}
+
+function acceptProposedBeerKey(id: number) {
+  return `accept:proposed-beer:${id}`
+}
+
+function rejectProposedBeerKey(id: number) {
+  return `reject:proposed-beer:${id}`
+}
+
+function proposedBeerAsReleaseShape(proposed: ProposedBeerRelease) {
+  return {
+    id: String(proposed.id),
+    created_at: proposed.created_at,
+    beer_name: proposed.beer_name ?? '',
+    ABV: proposed.ABV,
+    Type: proposed.Type,
+    description: proposed.description,
+    brewery_id: proposed.brewery_id ?? '',
+    brewery_id2: proposed.brewery_id2,
+    brewery_id3: proposed.brewery_id3,
+    release_date: proposed.release_date,
+    breweries: {
+      id: proposed.brewery_id ?? '',
+      name: '',
+    },
+  }
 }
 
 function normalizeReleaseDate(releaseDate: string | null): string | null {
@@ -93,18 +127,28 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
   )
   const eventsByDay = new Map<string, EventRow[]>()
   const proposedByDay = new Map<string, ProposedRow[]>()
+  const proposedBeersByDay = new Map<string, ProposedBeerRow[]>()
   const releasesByDay = new Map<string, ReleaseRow[]>()
   const foodTrucksByDay = new Map<string, FoodTruckRow[]>()
   for (const d of dates) {
     eventsByDay.set(d, [])
     proposedByDay.set(d, [])
+    proposedBeersByDay.set(d, [])
     releasesByDay.set(d, [])
     foodTrucksByDay.set(d, [])
   }
 
   const seenProposedIds = new Set<number>()
+  const seenProposedBeerIds = new Set<number>()
 
-  for (const { brewery, events, proposedEvents, releases, foodTrucks } of regionBreweries) {
+  for (const {
+    brewery,
+    events,
+    proposedEvents,
+    proposedBeerReleases,
+    releases,
+    foodTrucks,
+  } of regionBreweries) {
     for (const event of events) {
       const d = normalizeEventDateToMountainTime(event.event_date)
       if (d >= weekStart && d <= weekEnd) {
@@ -124,6 +168,21 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
         const breweryId =
           proposed.brewery_id ?? proposed.brewery_id2 ?? proposed.brewery_id3 ?? brewery.id
         proposedByDay.get(d)!.push({
+          ...proposed,
+          breweryName: breweryNameById.get(breweryId) ?? brewery.name,
+          breweryId,
+        })
+      }
+    }
+    for (const proposed of proposedBeerReleases) {
+      if (seenProposedBeerIds.has(proposed.id)) continue
+      if (!proposed.release_date?.trim()) continue
+      const d = normalizeReleaseDate(proposed.release_date)
+      if (d && d >= weekStart && d <= weekEnd && proposedBeersByDay.has(d)) {
+        seenProposedBeerIds.add(proposed.id)
+        const breweryId =
+          proposed.brewery_id ?? proposed.brewery_id2 ?? proposed.brewery_id3 ?? brewery.id
+        proposedBeersByDay.get(d)!.push({
           ...proposed,
           breweryName: breweryNameById.get(breweryId) ?? brewery.name,
           breweryId,
@@ -168,6 +227,13 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
       return (a.title ?? '').localeCompare(b.title ?? '')
     })
   }
+  for (const list of proposedBeersByDay.values()) {
+    list.sort((a, b) => {
+      const breweryCmp = a.breweryName.localeCompare(b.breweryName)
+      if (breweryCmp !== 0) return breweryCmp
+      return (a.beer_name ?? '').localeCompare(b.beer_name ?? '')
+    })
+  }
   for (const list of releasesByDay.values()) {
     list.sort((a, b) => {
       const breweryCmp = a.breweryName.localeCompare(b.breweryName)
@@ -183,7 +249,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     })
   }
 
-  return { dates, eventsByDay, proposedByDay, releasesByDay, foodTrucksByDay }
+  return { dates, eventsByDay, proposedByDay, proposedBeersByDay, releasesByDay, foodTrucksByDay }
 }
 
 export function BreweriesEventsUpcomingByDate({
@@ -198,15 +264,20 @@ export function BreweriesEventsUpcomingByDate({
   const router = useRouter()
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [editingProposed, setEditingProposed] = useState<ProposedRow | null>(null)
+  const [editingProposedBeer, setEditingProposedBeer] = useState<ProposedBeerRow | null>(null)
   const [editingRelease, setEditingRelease] = useState<ReleaseRow | null>(null)
   const [editingFoodTruck, setEditingFoodTruck] = useState<FoodTruckRow | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [windowStart, setWindowStart] = useState(0)
-  const { dates, eventsByDay, proposedByDay, releasesByDay, foodTrucksByDay } = useMemo(
-    () => collectUpcomingByDate(regionBreweries),
-    [regionBreweries]
-  )
+  const {
+    dates,
+    eventsByDay,
+    proposedByDay,
+    proposedBeersByDay,
+    releasesByDay,
+    foodTrucksByDay,
+  } = useMemo(() => collectUpcomingByDate(regionBreweries), [regionBreweries])
 
   const maxWindowStart = Math.max(0, dates.length - VISIBLE_DAY_COUNT)
   const safeWindowStart = Math.min(windowStart, maxWindowStart)
@@ -242,6 +313,34 @@ export function BreweriesEventsUpcomingByDate({
     setPendingKey(rejectProposedKey(id))
     try {
       const result = await rejectProposedEvent(id)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to reject')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Reject failed')
+    }
+  }
+
+  async function handleAcceptProposedBeer(proposed: ProposedBeerRelease) {
+    setActionError(null)
+    setPendingKey(acceptProposedBeerKey(proposed.id))
+    try {
+      const result = await acceptProposedBeerRelease(proposed)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to accept')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Accept failed')
+    }
+  }
+
+  async function handleRejectProposedBeer(id: number) {
+    setActionError(null)
+    setPendingKey(rejectProposedBeerKey(id))
+    try {
+      const result = await rejectProposedBeerRelease(id)
       setPendingKey(null)
       if (result?.ok) router.refresh()
       else setActionError(result?.error ?? 'Failed to reject')
@@ -314,7 +413,7 @@ export function BreweriesEventsUpcomingByDate({
                 className="text-xl font-bold"
                 style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
               >
-                5-day forecast
+                2-day forecast
               </h2>
             )}
             {subtitle ? (
@@ -336,7 +435,7 @@ export function BreweriesEventsUpcomingByDate({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              aria-label="Previous 5 days"
+              aria-label="Previous 2 days"
               disabled={!canGoPrev}
               onClick={() => shiftWindow(-VISIBLE_DAY_COUNT)}
               className="px-3 py-1.5 text-sm font-semibold border disabled:opacity-40"
@@ -351,7 +450,7 @@ export function BreweriesEventsUpcomingByDate({
             </button>
             <button
               type="button"
-              aria-label="Next 5 days"
+              aria-label="Next 2 days"
               disabled={!canGoNext}
               onClick={() => shiftWindow(VISIBLE_DAY_COUNT)}
               className="px-3 py-1.5 text-sm font-semibold border disabled:opacity-40"
@@ -383,10 +482,11 @@ export function BreweriesEventsUpcomingByDate({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {visibleDates.map((ymd) => {
             const dayEvents = eventsByDay.get(ymd) ?? []
             const dayProposed = proposedByDay.get(ymd) ?? []
+            const dayProposedBeers = proposedBeersByDay.get(ymd) ?? []
             const dayReleases = releasesByDay.get(ymd) ?? []
             const dayFoodTrucks = foodTrucksByDay.get(ymd) ?? []
 
@@ -415,70 +515,97 @@ export function BreweriesEventsUpcomingByDate({
                   className="flex-1 flex flex-col gap-3 p-3"
                   style={{ backgroundColor: Colors.surfaceMedium }}
                 >
-                  <ForecastCategoryBlock label={`Proposed (${dayProposed.length})`}>
-                    {dayProposed.length === 0 ? (
-                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                        No proposed events
-                      </p>
-                    ) : (
-                      dayProposed.map((p) => (
-                        <ProposedEventAdminCard
-                          key={p.id}
-                          proposed={p}
-                          breweryName={p.breweryName}
-                          showBreweryName
-                          onEdit={() => setEditingProposed({ ...p })}
-                          onAccept={() => handleAcceptProposed(p)}
-                          onReject={() => handleRejectProposed(p.id)}
-                          actionsDisabled={pendingKey !== null}
-                          acceptLoading={pendingKey === acceptProposedKey(p.id)}
-                          rejectLoading={pendingKey === rejectProposedKey(p.id)}
-                        />
-                      ))
-                    )}
-                  </ForecastCategoryBlock>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                    <ForecastCategoryBlock label={`Proposed events (${dayProposed.length})`}>
+                      {dayProposed.length === 0 ? (
+                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                          No proposed events
+                        </p>
+                      ) : (
+                        dayProposed.map((p) => (
+                          <ProposedEventAdminCard
+                            key={p.id}
+                            proposed={p}
+                            breweryName={p.breweryName}
+                            showBreweryName
+                            onEdit={() => setEditingProposed({ ...p })}
+                            onAccept={() => handleAcceptProposed(p)}
+                            onReject={() => handleRejectProposed(p.id)}
+                            actionsDisabled={pendingKey !== null}
+                            acceptLoading={pendingKey === acceptProposedKey(p.id)}
+                            rejectLoading={pendingKey === rejectProposedKey(p.id)}
+                          />
+                        ))
+                      )}
+                    </ForecastCategoryBlock>
 
-                  <ForecastCategoryBlock label={`Events (${dayEvents.length})`}>
-                    {dayEvents.length === 0 ? (
-                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                        No events
-                      </p>
-                    ) : (
-                      dayEvents.map((e) => (
-                        <EventAdminCard
-                          key={`${e.id}-${e.event_date}`}
-                          event={e}
-                          breweryName={e.breweryName}
-                          showBreweryName
-                          onEdit={() => setEditing({ ...e })}
-                          onDelete={() => handleDeleteEvent(e.id)}
-                          actionsDisabled={pendingKey !== null}
-                          deleteLoading={pendingKey === `delete:event:${e.id}`}
-                        />
-                      ))
-                    )}
-                  </ForecastCategoryBlock>
+                    <ForecastCategoryBlock label={`Events (${dayEvents.length})`}>
+                      {dayEvents.length === 0 ? (
+                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                          No events
+                        </p>
+                      ) : (
+                        dayEvents.map((e) => (
+                          <EventAdminCard
+                            key={`${e.id}-${e.event_date}`}
+                            event={e}
+                            breweryName={e.breweryName}
+                            showBreweryName
+                            onEdit={() => setEditing({ ...e })}
+                            onDelete={() => handleDeleteEvent(e.id)}
+                            actionsDisabled={pendingKey !== null}
+                            deleteLoading={pendingKey === `delete:event:${e.id}`}
+                          />
+                        ))
+                      )}
+                    </ForecastCategoryBlock>
+                  </div>
 
-                  <ForecastCategoryBlock label={`Beer releases (${dayReleases.length})`}>
-                    {dayReleases.length === 0 ? (
-                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                        No beer releases
-                      </p>
-                    ) : (
-                      dayReleases.map((r) => (
-                        <BeerReleaseAdminCard
-                          key={r.id}
-                          release={r}
-                          breweryName={r.breweryName}
-                          showBreweryName
-                          onEdit={() => setEditingRelease({ ...r })}
-                          onDelete={() => handleDeleteRelease(r.id)}
-                          actionsDisabled={pendingKey !== null}
-                          deleteLoading={pendingKey === `delete:release:${r.id}`}
-                        />
-                      ))
-                    )}
-                  </ForecastCategoryBlock>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                    <ForecastCategoryBlock label={`Proposed beers (${dayProposedBeers.length})`}>
+                      {dayProposedBeers.length === 0 ? (
+                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                          No proposed beer releases
+                        </p>
+                      ) : (
+                        dayProposedBeers.map((p) => (
+                          <ProposedBeerReleaseAdminCard
+                            key={p.id}
+                            proposed={p}
+                            breweryName={p.breweryName}
+                            showBreweryName
+                            onEdit={() => setEditingProposedBeer({ ...p })}
+                            onAccept={() => handleAcceptProposedBeer(p)}
+                            onReject={() => handleRejectProposedBeer(p.id)}
+                            actionsDisabled={pendingKey !== null}
+                            acceptLoading={pendingKey === acceptProposedBeerKey(p.id)}
+                            rejectLoading={pendingKey === rejectProposedBeerKey(p.id)}
+                          />
+                        ))
+                      )}
+                    </ForecastCategoryBlock>
+
+                    <ForecastCategoryBlock label={`Beer releases (${dayReleases.length})`}>
+                      {dayReleases.length === 0 ? (
+                        <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                          No beer releases
+                        </p>
+                      ) : (
+                        dayReleases.map((r) => (
+                          <BeerReleaseAdminCard
+                            key={r.id}
+                            release={r}
+                            breweryName={r.breweryName}
+                            showBreweryName
+                            onEdit={() => setEditingRelease({ ...r })}
+                            onDelete={() => handleDeleteRelease(r.id)}
+                            actionsDisabled={pendingKey !== null}
+                            deleteLoading={pendingKey === `delete:release:${r.id}`}
+                          />
+                        ))
+                      )}
+                    </ForecastCategoryBlock>
+                  </div>
 
                   <ForecastCategoryBlock label={`Food trucks (${dayFoodTrucks.length})`}>
                     {dayFoodTrucks.length === 0 ? (
@@ -535,6 +662,33 @@ export function BreweriesEventsUpcomingByDate({
             return result
           }}
           onClose={() => setEditingProposed(null)}
+        />
+      )}
+
+      {editingProposedBeer && (
+        <BeerReleaseFormModal
+          modalTitle="Edit proposed beer release"
+          release={proposedBeerAsReleaseShape(editingProposedBeer)}
+          defaultBreweryId={editingProposedBeer.breweryId}
+          onSave={async (data: UpdateBeerReleasePayload) => {
+            const payload: UpdateProposedBeerReleasePayload = {
+              beer_name: data.beer_name,
+              description: data.description,
+              brewery_id: data.brewery_id,
+              ABV: data.ABV,
+              Type: data.Type,
+              release_date: data.release_date,
+              brewery_id2: data.brewery_id2,
+              brewery_id3: data.brewery_id3,
+            }
+            const result = await updateProposedBeerRelease(editingProposedBeer.id, payload)
+            if (result.ok) {
+              setEditingProposedBeer(null)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setEditingProposedBeer(null)}
         />
       )}
 

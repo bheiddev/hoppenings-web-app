@@ -2,7 +2,7 @@
 
 import { Colors } from '@/lib/colors'
 import { formatEventDate, formatReleaseDate, formatTime12Hour } from '@/lib/utils'
-import { BeerRelease, Event, FoodTruck, ProposedEvent } from '@/types/supabase'
+import { BeerRelease, Event, FoodTruck, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 
 type RecurrenceFields = {
@@ -375,6 +375,79 @@ export function ProposedEventAdminCard({
         cost={proposed.cost}
         recurrenceLabel={recurrenceLabel}
       />
+    </div>
+  )
+}
+
+export function ProposedBeerReleaseAdminCard({
+  proposed,
+  breweryName,
+  showBreweryName = false,
+  onEdit,
+  onAccept,
+  onReject,
+  actionsDisabled,
+  acceptLoading,
+  rejectLoading,
+}: {
+  proposed: ProposedBeerRelease
+  breweryName?: string
+  showBreweryName?: boolean
+  onEdit: () => void
+  onAccept: () => void
+  onReject: () => void
+  actionsDisabled?: boolean
+  acceptLoading?: boolean
+  rejectLoading?: boolean
+}) {
+  const meta = [proposed.Type, proposed.ABV ? `${proposed.ABV}% ABV` : null]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <div
+      className="p-3 flex flex-col gap-2"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <div className="min-w-0">
+        {showBreweryName && breweryName && (
+          <p className="text-xs font-medium truncate" style={{ color: Colors.textSecondary }}>
+            {breweryName}
+          </p>
+        )}
+        <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+          {formatCardReleaseDate(proposed.release_date)}
+        </p>
+        <p className="text-sm font-semibold break-words" style={{ color: Colors.textDark }}>
+          {proposed.beer_name || '—'}
+        </p>
+        {meta ? (
+          <p className="text-xs mt-0.5" style={{ color: Colors.textSecondary }}>
+            {meta}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        <AdminButton variant="edit" onClick={onEdit} disabled={actionsDisabled}>
+          Edit
+        </AdminButton>
+        <AdminButton
+          variant="accept"
+          onClick={onAccept}
+          disabled={actionsDisabled}
+          loading={acceptLoading}
+        >
+          Approve
+        </AdminButton>
+        <AdminButton
+          variant="reject"
+          onClick={onReject}
+          disabled={actionsDisabled}
+          loading={rejectLoading}
+        >
+          Reject
+        </AdminButton>
+      </div>
     </div>
   )
 }

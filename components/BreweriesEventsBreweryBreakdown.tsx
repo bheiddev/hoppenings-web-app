@@ -11,6 +11,7 @@ interface BreweryBreakdownRow {
   events: number
   proposed: number
   releases: number
+  proposedBeers: number
 }
 
 const COLUMN_COUNT = 4
@@ -63,6 +64,16 @@ function BreweryBreakdownEntry({ row }: { row: BreweryBreakdownRow }) {
           <span style={{ color: Colors.textSecondary }}>Releases </span>
           {row.releases}
         </span>
+        <span
+          style={
+            row.proposedBeers > 0
+              ? { color: Colors.primaryDark, fontWeight: 600 }
+              : undefined
+          }
+        >
+          <span style={{ color: Colors.textSecondary, fontWeight: 400 }}>Prop. beers </span>
+          {row.proposedBeers}
+        </span>
       </div>
     </div>
   )
@@ -79,6 +90,7 @@ export function BreweriesEventsBreweryBreakdown({
       events: row.events.length,
       proposed: row.proposedEvents.length,
       releases: row.releases.length,
+      proposedBeers: row.proposedBeerReleases.length,
     }))
 
   const columns = splitIntoColumns(rows, COLUMN_COUNT)

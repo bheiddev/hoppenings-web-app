@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, TaplistItem } from '@/types/supabase'
+import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
 import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
@@ -439,6 +439,50 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
       .filter((event) => !event.event_date?.trim() || !isEventInPast(event.event_date)) as ProposedEvent[]
   } catch (error) {
     console.error('Error fetching proposed events:', error)
+    return []
+  }
+}
+
+/**
+ * Get proposed beer releases for a brewery from proposed_beer_releases table
+ */
+export async function getProposedBeerReleasesByBreweryId(
+  breweryId: string
+): Promise<ProposedBeerRelease[]> {
+  try {
+    const { data, error } = await supabase
+      .from('proposed_beer_releases')
+      .select(
+        'id, created_at, beer_name, description, brewery_id, "ABV", "Type", release_date, brewery_id2, brewery_id3'
+      )
+      .or(`brewery_id.eq.${breweryId},brewery_id2.eq.${breweryId},brewery_id3.eq.${breweryId}`)
+      .order('release_date', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching proposed beer releases:', error)
+      return []
+    }
+
+    if (!data) return []
+
+    return data
+      .map((row: any) => ({
+        id: row.id,
+        created_at: row.created_at,
+        beer_name: row.beer_name ?? null,
+        description: row.description ?? null,
+        brewery_id: row.brewery_id ?? null,
+        ABV: row.ABV ?? null,
+        Type: row.Type ?? null,
+        release_date: row.release_date ?? null,
+        brewery_id2: row.brewery_id2 ?? null,
+        brewery_id3: row.brewery_id3 ?? null,
+      }))
+      .filter(
+        (release) => !release.release_date?.trim() || !isEventInPast(release.release_date)
+      ) as ProposedBeerRelease[]
+  } catch (error) {
+    console.error('Error fetching proposed beer releases:', error)
     return []
   }
 }

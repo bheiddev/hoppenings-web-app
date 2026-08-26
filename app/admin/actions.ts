@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { ProposedEvent, TaplistItem } from '@/types/supabase'
+import { ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
 
 const ADMIN_PATH = '/admin'
 
@@ -129,6 +129,99 @@ export async function updateProposedEvent(id: number, data: UpdateProposedEventP
 
   if (error) {
     console.error('Error updating proposed event:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function rejectProposedBeerRelease(id: number) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!.from('proposed_beer_releases').delete().eq('id', id)
+
+  if (error) {
+    console.error('Error rejecting proposed beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function acceptProposedBeerRelease(proposed: ProposedBeerRelease) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  if (!proposed.brewery_id) {
+    return { ok: false, error: 'Proposed beer release is missing brewery_id' }
+  }
+  if (!proposed.beer_name?.trim()) {
+    return { ok: false, error: 'Proposed beer release is missing beer_name' }
+  }
+
+  const { error: insertError } = await admin!.from('beer_releases_base').insert({
+    beer_name: proposed.beer_name.trim(),
+    description: proposed.description,
+    brewery_id: proposed.brewery_id,
+    ABV: proposed.ABV,
+    Type: proposed.Type,
+    release_date: proposed.release_date,
+    brewery_id2: proposed.brewery_id2,
+    brewery_id3: proposed.brewery_id3,
+  })
+
+  if (insertError) {
+    console.error('Error accepting proposed beer release (insert):', insertError)
+    return { ok: false, error: insertError.message }
+  }
+
+  const { error: deleteError } = await admin!
+    .from('proposed_beer_releases')
+    .delete()
+    .eq('id', proposed.id)
+
+  if (deleteError) {
+    console.error('Error accepting proposed beer release (delete from proposed):', deleteError)
+    return { ok: false, error: deleteError.message }
+  }
+
+  revalidateBreweriesEvents()
+  revalidatePath('/releases')
+  return { ok: true }
+}
+
+export type UpdateProposedBeerReleasePayload = {
+  beer_name: string | null
+  description: string | null
+  brewery_id: string | null
+  ABV: string | null
+  Type: string | null
+  release_date: string | null
+  brewery_id2: string | null
+  brewery_id3: string | null
+}
+
+export async function updateProposedBeerRelease(
+  id: number,
+  data: UpdateProposedBeerReleasePayload
+) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('proposed_beer_releases')
+    .update({
+      beer_name: data.beer_name,
+      description: data.description,
+      brewery_id: data.brewery_id,
+      ABV: data.ABV,
+      Type: data.Type,
+      release_date: data.release_date,
+      brewery_id2: data.brewery_id2,
+      brewery_id3: data.brewery_id3,
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error updating proposed beer release:', error)
     return { ok: false, error: error.message }
   }
   revalidateBreweriesEvents()

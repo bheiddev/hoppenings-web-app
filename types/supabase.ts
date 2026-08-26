@@ -101,6 +101,20 @@ export interface ProposedEvent {
   is_recurring_monthly: boolean | null;
 }
 
+/** Staging beer releases awaiting Content Admin accept/reject. */
+export interface ProposedBeerRelease {
+  id: number;
+  created_at: string;
+  beer_name: string | null;
+  description: string | null;
+  brewery_id: string | null;
+  ABV: string | null;
+  Type: string | null;
+  release_date: string | null;
+  brewery_id2: string | null;
+  brewery_id3: string | null;
+}
+
 export interface FoodTruck {
   id: number;
   created_at: string;

@@ -4,15 +4,25 @@ import {
   getBreweryFoodTrucks,
   getBreweryHoursByBreweryIds,
   getBreweryReleases,
+  getProposedBeerReleasesByBreweryId,
   getProposedEventsByBreweryId,
 } from '@/lib/breweries'
-import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent } from '@/types/supabase'
+import {
+  Brewery,
+  BreweryHours,
+  Event,
+  BeerRelease,
+  FoodTruck,
+  ProposedEvent,
+  ProposedBeerRelease,
+} from '@/types/supabase'
 
 export type BreweryWithData = {
   brewery: Brewery
   hours: BreweryHours | null
   events: Event[]
   proposedEvents: ProposedEvent[]
+  proposedBeerReleases: ProposedBeerRelease[]
   releases: BeerRelease[]
   foodTrucks: FoodTruck[]
 }
@@ -100,6 +110,7 @@ export async function getRegionBucketsFromBreweries(): Promise<RegionBucket[]> {
     hours: null,
     events: [],
     proposedEvents: [],
+    proposedBeerReleases: [],
     releases: [],
     foodTrucks: [],
   }))
@@ -119,6 +130,7 @@ export async function getBreweriesWithEvents(options?: {
         hours: null,
         events: [],
         proposedEvents: [],
+        proposedBeerReleases: [],
         releases: [],
         foodTrucks: [],
       }))
@@ -138,6 +150,7 @@ export async function getBreweriesWithEvents(options?: {
       hours: hoursByBrewery.get(brewery.id) ?? null,
       events: await getBreweryEvents(brewery.id),
       proposedEvents: await getProposedEventsByBreweryId(brewery.id),
+      proposedBeerReleases: await getProposedBeerReleasesByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),
       foodTrucks: await getBreweryFoodTrucks(brewery.id),
     }))
