@@ -1,26 +1,32 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Colors } from '@/lib/colors'
-import { EventCard } from '@/components/EventCard'
-import { BreweryCard } from '@/components/BreweryCard'
-import { BeerReleaseCard } from '@/components/BeerReleaseCard'
-import { CardCarousel } from '@/components/CardCarousel'
+import {
+  RegionExploreLanding,
+  type ExploreSection,
+  type ExploreTeaserItem,
+} from '@/components/RegionExploreLanding'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
-import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import {
   ACTIVITY_CONFIG,
+  ActivitySlug,
   CITY_CONFIG,
   CitySlug,
   filterBreweriesForCity,
+  filterEventsForActivity,
   filterEventsForCity,
   filterReleasesForCity,
 } from '@/lib/seoCities'
-import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading, isRelativeDayHeading } from '@/lib/utils'
+import {
+  formatReleaseDate,
+  formatTime12Hour,
+  isEventInPast,
+  isEventToday,
+} from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
+const TEASER_LIMIT = 5
 
 export async function generateStaticParams() {
   return Object.keys(CITY_CONFIG).map((city) => ({ city }))
@@ -44,9 +50,26 @@ export async function generateMetadata({
   }
 }
 
-// Weekly columns label "Today" from Mountain calendar date at request time, not build time
 export const dynamic = 'force-dynamic'
-export const revalidate = 0
+
+function eventTeaser(event: {
+  id: string
+  title: string
+  slug: string
+  start_time: string | null
+  event_date: string
+  breweries: { name: string; image_url?: string | null }
+}): ExploreTeaserItem {
+  const time = formatTime12Hour(event.start_time)
+  return {
+    id: event.id,
+    title: event.title,
+    subtitle: event.breweries.name,
+    meta: time || undefined,
+    href: `/events/${event.slug}`,
+    imageUrl: event.breweries.image_url ?? null,
+  }
+}
 
 export default async function CityLandingPage({
   params,
@@ -58,19 +81,100 @@ export default async function CityLandingPage({
   const citySlug = city as CitySlug
   const cityConfig = CITY_CONFIG[citySlug]
 
-  const [breweries, events, releases, breweryCardContext] = await Promise.all([
+  const [breweries, events, releases] = await Promise.all([
     getAllBreweriesWithSlugs(),
     getAllEventsWithSlugs(),
     getAllReleasesWithSlugs(),
-    getBreweryCardContextMap(),
   ])
 
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
   const cityEvents = filterEventsForCity(events, citySlug)
   const cityReleases = filterReleasesForCity(releases, citySlug)
+  const breweryImageById = new Map(
+    cityBreweries.map((brewery) => [brewery.id, brewery.image_url || brewery.tap_image || null])
+  )
 
-  const { weekDates, eventsInWeek: cityEventsThisWeek, eventsByMountainDay } =
-    bucketEventsByMountainWeekDays(cityEvents, 7)
+  const todayEvents = cityEvents
+    .filter((event) => isEventToday(event.event_date))
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+
+  const upcomingEvents = cityEvents
+    .filter((event) => !isEventInPast(event.event_date))
+    .sort((a, b) => {
+      const byDate = a.event_date.localeCompare(b.event_date)
+      if (byDate !== 0) return byDate
+      return (a.start_time || '').localeCompare(b.start_time || '')
+    })
+
+  const breweryTeasers: ExploreTeaserItem[] = cityBreweries
+    .slice()
+    .sort((a, b) => {
+      const aImg = a.image_url || a.tap_image ? 0 : 1
+      const bImg = b.image_url || b.tap_image ? 0 : 1
+      if (aImg !== bImg) return aImg - bImg
+      return a.name.localeCompare(b.name)
+    })
+    .slice(0, TEASER_LIMIT)
+    .map((brewery) => ({
+      id: brewery.id,
+      title: brewery.name,
+      subtitle: brewery.location || undefined,
+      href: `/breweries/${brewery.slug}`,
+      imageUrl: brewery.image_url || brewery.tap_image,
+    }))
+
+  const releaseTeasers: ExploreTeaserItem[] = cityReleases
+    .slice()
+    .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''))
+    .slice(0, TEASER_LIMIT)
+    .map((release) => ({
+      id: release.id,
+      title: release.beer_name,
+      subtitle: release.breweries.name,
+      meta: formatReleaseDate(release.release_date) || release.Type || undefined,
+      description: release.description?.trim() || undefined,
+      href: `/releases/${release.slug}`,
+      imageUrl: breweryImageById.get(release.brewery_id) ?? null,
+    }))
+
+  const sections: ExploreSection[] = [
+    {
+      id: 'events',
+      label: 'Events',
+      href: `/${citySlug}/events`,
+      panelLabel: `Today in ${cityConfig.name}`,
+      emptyMessage: `No events listed for today in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
+      items: todayEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+    },
+    {
+      id: 'breweries',
+      label: 'Breweries',
+      href: `/${citySlug}/breweries`,
+      panelLabel: `Taprooms in ${cityConfig.name}`,
+      emptyMessage: `No breweries currently listed in ${cityConfig.name}.`,
+      items: breweryTeasers,
+    },
+    {
+      id: 'releases',
+      label: 'Beer Releases',
+      href: `/${citySlug}/releases`,
+      panelLabel: 'Fresh on tap',
+      emptyMessage: `No beer releases listed right now in ${cityConfig.name}.`,
+      items: releaseTeasers,
+    },
+    ...(Object.keys(ACTIVITY_CONFIG) as ActivitySlug[]).map((activitySlug) => {
+      const activity = ACTIVITY_CONFIG[activitySlug]
+      const activityEvents = filterEventsForActivity(upcomingEvents, activitySlug)
+      return {
+        id: activitySlug,
+        label: activity.label,
+        href: `/${citySlug}/${activitySlug}`,
+        panelLabel: `Upcoming in ${cityConfig.name}`,
+        emptyMessage: `No upcoming ${activity.label.toLowerCase()} listed in ${cityConfig.name}.`,
+        items: activityEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+      }
+    }),
+  ]
 
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -96,125 +200,15 @@ export default async function CityLandingPage({
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
+    <RegionExploreLanding
+      cityName={cityConfig.name}
+      subtitle={`Select a category to preview what's on in ${cityConfig.name}, then open the full list.`}
+      sections={sections}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1
-          className="text-3xl font-bold mb-4"
-          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
-        >
-          Brewery Events in {cityConfig.name}, Colorado
-        </h1>
-        <p className="text-base mb-8 max-w-4xl" style={{ color: Colors.textPrimary }}>
-          Hoppenings tracks the local craft beer scene in {cityConfig.name}, including brewery events,
-          trivia nights, run clubs, live music, and new beer releases. Browse this week&apos;s happenings,
-          discover taprooms, and jump into activity-specific pages below for quick planning.
-        </p>
-
-        <div className="flex flex-wrap gap-3 mb-10">
-          {Object.entries(ACTIVITY_CONFIG).map(([slug, activity]) => (
-            <Link
-              key={slug}
-              href={`/${citySlug}/${slug}`}
-              className="px-4 py-2 rounded-full text-sm font-semibold"
-              style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
-            >
-              {activity.label}
-            </Link>
-          ))}
-          <Link
-            href={`/${citySlug}/releases`}
-            className="px-4 py-2 rounded-full text-sm font-semibold"
-            style={{ backgroundColor: Colors.primary, color: Colors.onPrimary }}
-          >
-            Beer Releases
-          </Link>
-        </div>
-
-        <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            Breweries in {cityConfig.name}
-          </h2>
-          <CardCarousel>
-            {cityBreweries.slice(0, 18).map((brewery) => (
-              <BreweryCard
-                key={brewery.id}
-                brewery={brewery}
-                context={getBreweryCardContext(breweryCardContext, brewery.id)}
-              />
-            ))}
-          </CardCarousel>
-        </section>
-
-        <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            Recent Beer Releases
-          </h2>
-          <CardCarousel>
-            {cityReleases.slice(0, 18).map((release) => (
-              <BeerReleaseCard key={release.id} beerRelease={release} />
-            ))}
-          </CardCarousel>
-        </section>
-
-        <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            This Week&apos;s Events
-          </h2>
-          {cityEventsThisWeek.length === 0 ? (
-            <p className="text-sm" style={{ color: Colors.textPrimary }}>
-              No events scheduled in {cityConfig.name} over the next seven days. See the full{' '}
-              <Link href="/events" className="underline font-semibold" style={{ color: Colors.primary }}>
-                events calendar
-              </Link>{' '}
-              for more.
-            </p>
-          ) : (
-            <div className="space-y-8">
-              {weekDates.map((ymd, index) => {
-                const dayEvents = eventsByMountainDay.get(ymd) ?? []
-                const dayHeading = formatMountainWeekDayHeading(ymd, index)
-                return (
-                  <div key={ymd} className="space-y-4">
-                    <div
-                      className="flex items-center justify-between pb-2 border-b-2"
-                      style={{ borderColor: Colors.dividerLight }}
-                    >
-                      <h3
-                        className="text-xl font-bold"
-                        style={{
-                          color: isRelativeDayHeading(dayHeading) ? Colors.textPrimary : Colors.primary,
-                          fontFamily: 'var(--font-fjalla-one)',
-                        }}
-                      >
-                        {dayHeading}
-                      </h3>
-                    </div>
-                    {dayEvents.length === 0 ? (
-                      <p className="text-sm" style={{ color: Colors.textPrimary }}>
-                        No events scheduled.
-                      </p>
-                    ) : (
-                      <CardCarousel>
-                        {dayEvents.map((event) => (
-                          <EventCard
-                            key={`${event.id}-${event.event_date}`}
-                            event={event}
-                            isFeatured={event.featured}
-                          />
-                        ))}
-                      </CardCarousel>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
+    </RegionExploreLanding>
   )
 }

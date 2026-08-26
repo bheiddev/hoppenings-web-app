@@ -32,10 +32,10 @@ type HoppeningTonightProps = {
 }
 
 const ICON_COLORS = {
-  release: '#2D5A27',
-  event: '#7C4D90',
-  food: '#D47C1E',
-  inactive: '#9A9188',
+  release: Colors.accent,
+  event: Colors.accent,
+  food: Colors.accent,
+  inactive: 'rgba(249, 247, 242, 0.35)',
 } as const
 
 function MaskIcon({
@@ -88,25 +88,25 @@ function TonightCard({
   const content = (
     <>
       <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: active ? `${iconColor}22` : Colors.surfaceLight }}
+        className="flex h-14 w-14 shrink-0 items-center justify-center"
+        style={{ backgroundColor: active ? 'rgba(248, 199, 1, 0.12)' : 'rgba(255,255,255,0.06)' }}
       >
         <MaskIcon src={iconSrc} color={active ? iconColor : ICON_COLORS.inactive} />
       </div>
       <div className="min-w-0 flex-1">
         <p
-          className="text-xs font-semibold uppercase tracking-wider mb-1"
+          className="mb-1 text-xs font-semibold uppercase tracking-wider"
           style={{
-            color: active ? iconColor : Colors.textSecondary,
+            color: active ? Colors.accent : 'rgba(249, 247, 242, 0.45)',
             fontFamily: 'var(--font-be-vietnam-pro)',
           }}
         >
           {eyebrow}
         </p>
         <p
-          className="text-lg font-bold leading-snug line-clamp-2"
+          className="line-clamp-2 text-lg font-bold leading-snug"
           style={{
-            color: active ? Colors.textDark : Colors.textSecondary,
+            color: active ? Colors.textOnDark : 'rgba(249, 247, 242, 0.45)',
             fontFamily: 'var(--font-fjalla-one)',
           }}
         >
@@ -114,8 +114,8 @@ function TonightCard({
         </p>
         {detail && (
           <p
-            className="text-sm mt-1 line-clamp-1"
-            style={{ color: Colors.textSecondary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            className="mt-1 line-clamp-1 text-sm"
+            style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
           >
             {detail}
           </p>
@@ -124,12 +124,8 @@ function TonightCard({
     </>
   )
 
-  const className =
-    'flex items-start gap-4 rounded-xl border p-5 h-full transition-opacity'
-  const style = {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-  }
+  const className = 'flex h-full items-start gap-4 border border-white/10 p-5 transition-colors'
+  const style = { backgroundColor: 'rgba(255,255,255,0.04)' }
 
   if (href && active) {
     const isExternal = /^https?:\/\//.test(href)
@@ -139,7 +135,7 @@ function TonightCard({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${className} hover:opacity-90`}
+          className={`${className} hover:border-white/25`}
           style={style}
         >
           {content}
@@ -147,7 +143,7 @@ function TonightCard({
       )
     }
     return (
-      <Link href={href} className={`${className} hover:opacity-90`} style={style}>
+      <Link href={href} className={`${className} hover:border-white/25`} style={style}>
         {content}
       </Link>
     )
@@ -162,15 +158,15 @@ function TonightCard({
 
 export function HoppeningTonight({ release, event, food }: HoppeningTonightProps) {
   return (
-    <section className="mb-10">
+    <section className="mb-12">
       <h2
-        className="text-2xl sm:text-3xl font-bold uppercase tracking-wide mb-5"
-        style={{ color: '#000000', fontFamily: 'var(--font-fjalla-one)' }}
+        className="mb-5 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
       >
         Hoppening Tonight
       </h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <TonightCard
           eyebrow="On Tap / New"
           title={release?.name ?? 'No new release'}

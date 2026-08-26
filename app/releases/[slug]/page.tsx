@@ -5,10 +5,11 @@ import { EXPIRED_RELEASE_REDIRECT } from '@/lib/contentExpiry'
 import { formatReleaseDate } from '@/lib/utils'
 import { generateBrewerySlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
-import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BackLink } from '@/components/BackLink'
+import { PoshCta, PoshEyebrow, PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
+
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
@@ -18,13 +19,12 @@ export async function generateStaticParams() {
   }))
 }
 
-// Revalidate every hour to pick up new releases
 export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const release = await getReleaseBySlug(slug)
-  
+
   if (!release) {
     return {
       title: 'Beer Release Not Found | Hoppenings',
@@ -35,8 +35,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const location = release.breweries.location || ''
   const city = location ? location.split(',')[0].trim() : 'Colorado'
   const releaseDate = release.release_date ? formatReleaseDate(release.release_date) : ''
-  const description = release.description 
-    ? `${release.description.substring(0, 155)}...` 
+  const description = release.description
+    ? `${release.description.substring(0, 155)}...`
     : `New ${release.beer_name}${release.Type ? ` ${release.Type}` : ''} release${releaseDate ? ` on ${releaseDate}` : ''} at ${breweryName}.`
 
   return {
@@ -70,8 +70,9 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
     permanentRedirect(`/releases/${release.slug}`)
   }
 
-  // Fetch all associated breweries (can have up to 3)
   const associatedBreweries = await getReleaseBreweries(release)
+  const heroBrewery = associatedBreweries[0] ?? null
+
   const releaseJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -90,118 +91,127 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
+    <PoshPageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(releaseJsonLd) }} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <BackLink
-            fallbackHref="/releases"
-            style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+
+      {heroBrewery?.image_url ? (
+        <div className="relative h-[42vh] min-h-[240px] w-full overflow-hidden sm:h-[48vh]">
+          <Image
+            src={heroBrewery.image_url}
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+            unoptimized
+            aria-hidden
           />
-          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            {release.beer_name}
-          </h1>
-          {release.Type && (
-            <p className="text-xl mb-2" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-              {release.Type}
-            </p>
-          )}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to top, rgba(58,21,21,0.95) 0%, rgba(58,21,21,0.45) 45%, rgba(58,21,21,0.25) 100%)',
+            }}
+            aria-hidden
+          />
+        </div>
+      ) : null}
+
+      <div
+        className={`mx-auto max-w-4xl px-6 sm:px-10 lg:px-12 lg:pb-14 ${
+          heroBrewery?.image_url ? 'py-10 lg:pt-14' : 'pb-10 pt-24 lg:pb-14 lg:pt-28'
+        }`}
+      >
+        <BackLink
+          fallbackHref="/releases"
+          style={{ color: 'rgba(249, 247, 242, 0.75)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+        />
+
+        <PoshEyebrow>{release.Type || 'Beer Release'}</PoshEyebrow>
+        <h1
+          className="hop-home-fade mb-6 font-bold uppercase leading-[0.95] tracking-wide text-[clamp(2rem,7vw,4.25rem)]"
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          {release.beer_name}
+        </h1>
+
+        <div className="mb-8 flex flex-wrap gap-x-6 gap-y-2">
+          {release.ABV ? (
+            <span
+              className="text-sm uppercase tracking-[0.14em]"
+              style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
+              ABV: {release.ABV}
+            </span>
+          ) : null}
+          {release.release_date ? (
+            <span
+              className="text-sm uppercase tracking-[0.14em]"
+              style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
+              {formatReleaseDate(release.release_date)}
+            </span>
+          ) : null}
         </div>
 
-        {/* Release Details Section */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            {release.description && (
-              <div className="flex-1">
-                <p className="text-base leading-relaxed" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                  {release.description}
-                </p>
-              </div>
-            )}
-            
-            <div className="flex flex-col gap-3 md:flex-shrink-0">
-              {release.ABV && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
-                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                    ABV: {release.ABV}
-                  </span>
-                </div>
-              )}
+        {release.description ? (
+          <p
+            className="mb-12 max-w-2xl text-base leading-relaxed sm:text-lg"
+            style={{ color: 'rgba(249, 247, 242, 0.82)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
+            {release.description}
+          </p>
+        ) : null}
 
-              {release.release_date && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
-                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                    {formatReleaseDate(release.release_date)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {associatedBreweries.length > 0 ? (
+          <div className="border-t border-white/10 pt-10">
+            <PoshSectionTitle>Available At</PoshSectionTitle>
+            <ul className="flex flex-col">
+              {associatedBreweries.map((brewery) => {
+                const brewerySlug = generateBrewerySlug(brewery.name, brewery.location, brewery.id)
+                return (
+                  <li key={brewery.id} className="border-t border-white/10 py-8">
+                    <Link href={`/breweries/${brewerySlug}`} className="group block">
+                      <h3
+                        className="mb-4 text-2xl font-bold uppercase tracking-wide transition-opacity group-hover:opacity-90 sm:text-3xl"
+                        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                      >
+                        {brewery.name}
+                      </h3>
+                    </Link>
 
-        {/* Available At Section */}
-        {associatedBreweries.length > 0 && (
-          <>
-            <div style={{ height: '1.5px', backgroundColor: Colors.divider, marginBottom: '2rem', opacity: 0.5 }} />
-            
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-                AVAILABLE AT
-              </h2>
+                    {brewery.image_url && associatedBreweries.length > 1 ? (
+                      <div className="relative mb-5 h-56 w-full overflow-hidden sm:h-72">
+                        <Image
+                          src={brewery.image_url}
+                          alt={brewery.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    ) : null}
 
-              <div className="space-y-8">
-                {associatedBreweries.map((brewery) => {
-                  const brewerySlug = generateBrewerySlug(brewery.name, brewery.location, brewery.id)
-                  return (
-                    <div key={brewery.id} className="mb-8">
-                      <Link href={`/breweries/${brewerySlug}`}>
-                        <h3 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-                          {brewery.name}
-                        </h3>
-                      </Link>
-
-                      {brewery.image_url && (
-                        <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
-                          <Image
-                            src={brewery.image_url}
-                            alt={brewery.name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      )}
-
-                      {brewery.description && (
-                      <p className="text-base leading-relaxed mb-6" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                        {brewery.description}
-                      </p>
-                      )}
-
-                      <Link
-                        href={`/breweries/${brewerySlug}`}
-                        className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
-                        style={{ 
-                          backgroundColor: Colors.primary,
-                          color: Colors.onPrimary,
-                          fontFamily: 'var(--font-fjalla-one)',
+                    {brewery.description ? (
+                      <p
+                        className="mb-6 max-w-2xl text-base leading-relaxed"
+                        style={{
+                          color: 'rgba(249, 247, 242, 0.72)',
+                          fontFamily: 'var(--font-be-vietnam-pro)',
                         }}
                       >
-                        VIEW BREWERY
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
-                        </svg>
-                      </Link>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </>
-        )}
+                        {brewery.description}
+                      </p>
+                    ) : null}
+
+                    <PoshCta href={`/breweries/${brewerySlug}`}>View Brewery</PoshCta>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </PoshPageShell>
   )
 }
-

@@ -67,7 +67,7 @@ function includesAny(haystack: string, needles: string[]): boolean {
   return needles.some((n) => haystack.includes(n))
 }
 
-function inferCityFromRegionOrLocation(
+export function inferCityFromRegionOrLocation(
   regionRaw: string | null | undefined,
   locationRaw: string | null | undefined
 ): CitySlug | null {
@@ -130,7 +130,7 @@ export function filterEventsForCity<T extends EventLikeForCity>(events: T[], cit
   )
 }
 
-export function filterReleasesForCity(releases: BeerRelease[], city: CitySlug): BeerRelease[] {
+export function filterReleasesForCity<T extends BeerRelease>(releases: T[], city: CitySlug): T[] {
   return releases.filter(
     (release) => inferCityFromRegionOrLocation(release.breweries.Region, release.breweries.location) === city
   )

@@ -74,7 +74,7 @@ export function BreweryCardDetails({ context }: { context: BreweryCardContext })
       <DetailCell
         src="/beer.svg"
         alt="Beer release"
-        label={hasBeer ? context.releaseName!.toUpperCase() : ''}
+        label={hasBeer ? context.releaseName!.toUpperCase() : 'N/A'}
         active={hasBeer}
       />
 

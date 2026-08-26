@@ -138,3 +138,131 @@ h4 {
   border-radius: var(--radius-md);
   box-shadow: 0 1px 3px var(--shadow);
 }
+
+/* Homepage region landing */
+@keyframes hop-home-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hop-home-fade {
+  animation: hop-home-fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hop-home-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.hop-home-delay-2 {
+  animation-delay: 0.22s;
+}
+
+.hop-home-delay-3 {
+  animation-delay: 0.34s;
+}
+
+.hop-home-region {
+  animation: hop-home-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hop-home-region-label {
+  color: #ffffff;
+  transition: color 0.2s ease;
+}
+
+.hop-home-region:hover .hop-home-region-label {
+  color: #f8c701;
+}
+
+/* Site header — shares posh atmosphere and fades into the page */
+.hop-site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  isolation: isolate;
+}
+
+.hop-site-nav-atmosphere {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 -2.75rem 0;
+  background:
+    radial-gradient(ellipse 90% 80% at 12% 0%, rgba(248, 199, 1, 0.16) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 90% at 95% 120%, rgba(93, 37, 37, 0.55) 0%, transparent 55%),
+    linear-gradient(
+      180deg,
+      #3a1515 0%,
+      #3a1515 42%,
+      rgba(58, 21, 21, 0.72) 72%,
+      rgba(58, 21, 21, 0.28) 88%,
+      rgba(58, 21, 21, 0) 100%
+    );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
+}
+
+.hop-site-nav-atmosphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes hop-explore-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hop-explore-panel {
+  animation: hop-explore-panel-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hop-brewery-marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes hop-brewery-marquee-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.hop-brewery-marquee {
+  animation-name: hop-brewery-marquee-up;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.hop-brewery-marquee-reverse {
+  animation-name: hop-brewery-marquee-down;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hop-brewery-marquee,
+  .hop-brewery-marquee-reverse {
+    animation: none;
+  }
+}
+

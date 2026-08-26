@@ -6,12 +6,16 @@ import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
 import { generateBrewerySlug, generateEventSlug } from '@/lib/slug'
-import { getBreweryEvents } from '@/lib/breweries'
+import {
+  filterEventsForCity,
+  inferCityFromRegionOrLocation,
+} from '@/lib/seoCities'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BackLink } from '@/components/BackLink'
 import { TextWithLinks } from '@/components/TextWithLinks'
 import { ensureFreshBreweryImages } from '@/lib/storageUrls'
+import { PoshCta, PoshEyebrow, PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -78,7 +82,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const event = await getEventBySlug(slug)
-  
+
   if (!event) {
     return {
       title: 'Event Not Found | Hoppenings',
@@ -112,7 +116,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 }
 
-// Revalidate every hour to pick up new events
 export const revalidate = 3600
 
 export default async function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -120,8 +123,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const event = await getEventBySlug(slug)
 
   if (!event) {
-    // Past one-offs → listing. Past dated URLs for a still-running recurring series →
-    // next upcoming occurrence (keeps ranked links useful).
     const expiredOrSeries = await getEventBySlugIncludingExpired(slug)
     if (expiredOrSeries) {
       if (eventIsRecurring(expiredOrSeries)) {
@@ -137,7 +138,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     permanentRedirect(canonicalPath)
   }
 
-  // Fetch full brewery data for the detail page
   let brewery = null
   try {
     const { data } = await supabase
@@ -152,9 +152,30 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
   const isPastEvent = isEventInPast(event.event_date)
   const city = cityFromLocation(event.breweries.location)
-  const relatedFromBrewery = (await getBreweryEvents(event.brewery_id))
-    .filter((e) => e.id !== event.id)
-    .slice(0, 3)
+  const citySlug = inferCityFromRegionOrLocation(
+    brewery?.Region ?? event.breweries.Region,
+    event.breweries.location
+  )
+
+  const allUpcoming = await getAllEventsWithSlugs()
+  const relatedEvents = (
+    citySlug
+      ? filterEventsForCity(allUpcoming, citySlug)
+      : allUpcoming.filter((e) => e.brewery_id === event.brewery_id)
+  )
+    .filter((e) => e.id !== event.id && !isEventInPast(e.event_date))
+    .sort((a, b) => {
+      const byDate = a.event_date.localeCompare(b.event_date)
+      if (byDate !== 0) return byDate
+      return (a.start_time || '').localeCompare(b.start_time || '')
+    })
+    .slice(0, 4)
+
+  const breweryName = brewery?.name || event.breweries.name
+  const breweryLocation = brewery?.location || event.breweries.location
+  const breweryId = brewery?.id || event.brewery_id
+  const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
+
   const eventJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -188,178 +209,173 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
+    <PoshPageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Previous Event Banner */}
-        {isPastEvent && (
-          <div 
-            className="mb-6 p-4 rounded-lg border-2"
-            style={{ 
-              backgroundColor: Colors.surface,
-              borderColor: Colors.textSecondary,
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: Colors.textSecondary }}>
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
-              </svg>
-              <p 
-                className="text-sm font-medium"
-                style={{ 
-                  color: Colors.textSecondary,
-                  fontFamily: 'var(--font-be-vietnam-pro)'
-                }}
-              >
-                This is a previous event that has already occurred.
-              </p>
-            </div>
-          </div>
-        )}
 
-        {/* Header */}
-        <div className="mb-8">
-          <BackLink
-            fallbackHref="/events"
-            style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+      {brewery?.image_url ? (
+        <div className="relative h-[42vh] min-h-[240px] w-full overflow-hidden sm:h-[48vh]">
+          <Image
+            src={brewery.image_url}
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+            unoptimized
+            aria-hidden
           />
-          <h1 className="text-3xl font-bold mb-2" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-            {event.title}
-          </h1>
-          <p className="text-xl" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-            {formatEventDate(event.event_date)}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to top, rgba(58,21,21,0.95) 0%, rgba(58,21,21,0.45) 45%, rgba(58,21,21,0.25) 100%)',
+            }}
+            aria-hidden
+          />
+        </div>
+      ) : null}
+
+      <div
+        className={`mx-auto max-w-4xl px-6 sm:px-10 lg:px-12 lg:pb-14 ${
+          brewery?.image_url ? 'py-10 lg:pt-14' : 'pb-10 pt-24 lg:pb-14 lg:pt-28'
+        }`}
+      >
+        <BackLink
+          fallbackHref="/events"
+          style={{ color: 'rgba(249, 247, 242, 0.75)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+        />
+
+        {isPastEvent ? (
+          <p
+            className="mb-6 mt-4 text-sm"
+            style={{ color: 'rgba(249, 247, 242, 0.55)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
+            This is a previous event that has already occurred.
           </p>
+        ) : null}
+
+        <PoshEyebrow>{formatEventDate(event.event_date)}</PoshEyebrow>
+        <h1
+          className="hop-home-fade mb-6 font-bold uppercase leading-[0.95] tracking-wide text-[clamp(2rem,7vw,4.25rem)]"
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          {event.title}
+        </h1>
+
+        <div className="mb-8 flex flex-wrap gap-x-6 gap-y-2">
+          {event.start_time ? (
+            <span
+              className="text-sm uppercase tracking-[0.14em]"
+              style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
+              {formatTime12Hour(event.start_time)}
+            </span>
+          ) : null}
+          {event.cost !== null ? (
+            <span
+              className="text-sm uppercase tracking-[0.14em]"
+              style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
+              ${event.cost.toFixed(2)}
+            </span>
+          ) : null}
+          {event.is_recurring && event.recurrence_pattern ? (
+            <span
+              className="text-sm"
+              style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
+              {event.recurrence_pattern}
+            </span>
+          ) : null}
         </div>
 
-        <div style={{ height: '1px', backgroundColor: Colors.textPrimary, marginBottom: '2rem' }} />
+        {event.description ? (
+          <p
+            className="mb-10 max-w-2xl text-base leading-relaxed sm:text-lg"
+            style={{ color: 'rgba(249, 247, 242, 0.82)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
+            <TextWithLinks text={event.description} style={{ color: Colors.accent }} />
+          </p>
+        ) : null}
 
-        {/* Event Details Section */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            {event.description && (
-              <div className="flex-1">
-                <p className="text-base leading-relaxed" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                  <TextWithLinks text={event.description} />
-                </p>
-              </div>
-            )}
-            
-            <div className="flex flex-col gap-3 md:flex-shrink-0">
-              {event.start_time && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
-                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                    {formatTime12Hour(event.start_time)}
-                  </span>
-                </div>
-              )}
+        <div className="border-t border-white/10 pt-10">
+          <PoshEyebrow>At</PoshEyebrow>
+          <Link href={`/breweries/${brewerySlug}`} className="group inline-block">
+            <h2
+              className="mb-4 text-3xl font-bold uppercase tracking-wide transition-colors group-hover:opacity-90 sm:text-4xl"
+              style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+            >
+              {breweryName}
+            </h2>
+          </Link>
 
-              {event.cost !== null && (
-                <div className="flex items-center justify-center px-3 py-2 rounded-full" style={{ backgroundColor: Colors.surfaceLight }}>
-                  <span className="text-sm font-medium leading-none" style={{ color: Colors.textDark, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                    ${event.cost.toFixed(2)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {event.is_recurring && event.recurrence_pattern && (
-            <div className="mb-4">
-              <p className="text-sm" style={{ color: Colors.textPrimary, fontFamily: 'var(--font-be-vietnam-pro)' }}>
-                {event.recurrence_pattern}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Brewery Section */}
-        <div>
-          {(() => {
-            const breweryName = brewery?.name || event.breweries.name
-            const breweryLocation = brewery?.location || event.breweries.location
-            const breweryId = brewery?.id || event.brewery_id
-            const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
-            return (
-              <Link href={`/breweries/${brewerySlug}`}>
-                <h2 className="text-2xl font-bold mb-4 hover:underline cursor-pointer" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-                  {breweryName}
-                </h2>
-              </Link>
-            )
-          })()}
-
-          {brewery?.image_url && (
-            <div className="relative w-full h-96 mb-6 rounded-lg overflow-hidden" style={{ backgroundColor: Colors.surfaceDark }}>
-              <Image
-                src={brewery.image_url}
-                alt={brewery.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            </div>
-          )}
-
-          {brewery?.description && (
-            <p className="text-base leading-relaxed mb-6" style={{ color: Colors.textPrimary, lineHeight: '1.6', fontFamily: 'var(--font-be-vietnam-pro)' }}>
+          {brewery?.description ? (
+            <p
+              className="mb-8 max-w-2xl text-base leading-relaxed"
+              style={{ color: 'rgba(249, 247, 242, 0.72)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+            >
               {brewery.description}
             </p>
-          )}
+          ) : null}
 
-          {(() => {
-            const breweryName = brewery?.name || event.breweries.name
-            const breweryLocation = brewery?.location || event.breweries.location
-            const breweryId = brewery?.id || event.brewery_id
-            const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
-            return (
+          <PoshCta href={`/breweries/${brewerySlug}`}>View Brewery</PoshCta>
+        </div>
+
+        <div className="mt-14 border-t border-white/10 pt-10">
+          <PoshSectionTitle>Explore More</PoshSectionTitle>
+          <ul className="flex flex-col">
+            <li>
               <Link
-                href={`/breweries/${brewerySlug}`}
-                className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-colors hover:opacity-90"
-                style={{ 
-                  backgroundColor: Colors.primary,
-                  color: Colors.onPrimary,
-                  fontFamily: 'var(--font-fjalla-one)',
-                }}
+                href={cityPagePath(city)}
+                className="block border-t border-white/10 py-4 text-lg font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
+                style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
               >
-                VIEW BREWERY
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/>
-                </svg>
-              </Link>
-            )
-          })()}
-
-          <div className="mt-8 pt-6 border-t" style={{ borderColor: Colors.dividerLight }}>
-            <h3 className="text-lg font-bold mb-3" style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}>
-              Explore More
-            </h3>
-            <div className="flex flex-col gap-2 text-sm" style={{ color: Colors.textPrimary }}>
-              <Link href={cityPagePath(city)} className="underline" style={{ color: Colors.primary }}>
                 More events in {city}
               </Link>
-              <Link href={cityPagePath(city)} className="underline" style={{ color: Colors.primary }}>
-                More breweries in {city}
-              </Link>
-              {relatedFromBrewery.map((rel) => {
-                const relSlug = generateEventSlug(
-                  rel.title,
-                  rel.breweries.name,
-                  rel.breweries.location || null,
-                  rel.event_date,
-                  rel.id,
-                  rel.is_recurring || rel.is_recurring_biweekly || rel.is_recurring_monthly
-                )
-                return (
-                  <Link key={rel.id} href={`/events/${relSlug}`} className="underline" style={{ color: Colors.primary }}>
-                    {rel.title} ({formatEventDate(rel.event_date)})
+            </li>
+            {relatedEvents.map((rel) => {
+              const relSlug = generateEventSlug(
+                rel.title,
+                rel.breweries.name,
+                rel.breweries.location || null,
+                rel.event_date,
+                rel.id,
+                rel.is_recurring || rel.is_recurring_biweekly || rel.is_recurring_monthly
+              )
+              return (
+                <li key={`${rel.id}-${rel.event_date}`}>
+                  <Link
+                    href={`/events/${relSlug}`}
+                    className="block border-t border-white/10 py-4 transition-opacity hover:opacity-85"
+                  >
+                    <span
+                      className="block text-lg font-bold uppercase tracking-wide"
+                      style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                    >
+                      {rel.title}
+                    </span>
+                    <span
+                      className="mt-1 block truncate text-sm"
+                      style={{
+                        color: 'rgba(249, 247, 242, 0.72)',
+                        fontFamily: 'var(--font-be-vietnam-pro)',
+                      }}
+                    >
+                      {rel.breweries.name}
+                    </span>
+                    <span
+                      className="mt-1 block text-xs uppercase tracking-[0.14em]"
+                      style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                    >
+                      {formatEventDate(rel.event_date)}
+                    </span>
                   </Link>
-                )
-              })}
-            </div>
-          </div>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       </div>
-    </div>
+    </PoshPageShell>
   )
 }
-
