@@ -94,6 +94,18 @@ export function inferCityFromRegionOrLocation(
   return null
 }
 
+/** Full region label for UI copy (e.g. "Colorado Springs"). */
+export function getRegionDisplayName(
+  regionRaw: string | null | undefined,
+  locationRaw: string | null | undefined,
+  fallback = 'Colorado'
+): string {
+  const slug = inferCityFromRegionOrLocation(regionRaw, locationRaw)
+  if (slug) return CITY_CONFIG[slug].name
+  const fromLocation = (locationRaw || '').split(',')[0].trim()
+  return fromLocation || fallback
+}
+
 const TONIGHT_CAROUSEL_CITY_ORDER: CitySlug[] = [
   'colorado-springs',
   'fort-collins',

@@ -9,6 +9,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BackLink } from '@/components/BackLink'
 import { PoshCta, PoshEyebrow, PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
+import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
+import { getRegionDisplayName } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -72,6 +74,10 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
 
   const associatedBreweries = await getReleaseBreweries(release)
   const heroBrewery = associatedBreweries[0] ?? null
+  const regionName = getRegionDisplayName(
+    release.breweries.Region,
+    release.breweries.location
+  )
 
   const releaseJsonLd = {
     '@context': 'https://schema.org',
@@ -211,6 +217,8 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
             </ul>
           </div>
         ) : null}
+
+        <HoppeningsAppPromo region={regionName} />
       </div>
     </PoshPageShell>
   )

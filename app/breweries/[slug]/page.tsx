@@ -26,6 +26,7 @@ import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
 import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
 import { BreweryUpcomingEvents } from '@/components/BreweryUpcomingEvents'
 import { PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
+import { getRegionDisplayName } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -146,6 +147,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
       amenity.key !== 'has_wifi'
   )
   const city = brewery.location ? brewery.location.split(',')[0].trim() : 'Colorado'
+  const regionName = getRegionDisplayName(brewery.Region, brewery.location, city)
   const isDemoBrewery = brewery.slug === 'mash-mechanix-downtown'
   const hoppeningRelease = isDemoBrewery
     ? {
@@ -431,9 +433,10 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           <>
             <HappyHourDeals />
             <MugClubCta />
-            <HoppeningsAppPromo region={city} />
           </>
         ) : null}
+
+        <HoppeningsAppPromo region={regionName} />
       </div>
     </PoshPageShell>
   )

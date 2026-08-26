@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { generateBrewerySlug, generateEventSlug } from '@/lib/slug'
 import {
   filterEventsForCity,
+  getRegionDisplayName,
   inferCityFromRegionOrLocation,
 } from '@/lib/seoCities'
 import Image from 'next/image'
@@ -16,6 +17,7 @@ import { BackLink } from '@/components/BackLink'
 import { TextWithLinks } from '@/components/TextWithLinks'
 import { ensureFreshBreweryImages } from '@/lib/storageUrls'
 import { PoshCta, PoshEyebrow, PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
+import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -155,6 +157,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const citySlug = inferCityFromRegionOrLocation(
     brewery?.Region ?? event.breweries.Region,
     event.breweries.location
+  )
+  const regionName = getRegionDisplayName(
+    brewery?.Region ?? event.breweries.Region,
+    event.breweries.location,
+    city
   )
 
   const allUpcoming = await getAllEventsWithSlugs()
@@ -375,6 +382,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             })}
           </ul>
         </div>
+
+        <HoppeningsAppPromo region={regionName} />
       </div>
     </PoshPageShell>
   )
