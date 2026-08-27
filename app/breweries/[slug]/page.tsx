@@ -4,11 +4,12 @@ import {
   getBreweryBySlug,
   getAllBreweriesWithSlugs,
   getBreweryEvents,
+  getBreweryHappyHourDeals,
   getBreweryReleases,
   getBreweryTonightFood,
 } from '@/lib/breweries'
 import {
-  formatEventDate,
+  formatEventDateShort,
   formatReleaseDate,
   formatTime12Hour,
   isEventToday,
@@ -23,6 +24,7 @@ import Link from 'next/link'
 import { HoppeningTonight } from '@/components/HoppeningTonight'
 import { MugClubCta } from '@/components/breweryDemo/MugClubCta'
 import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
+import { CollectBreweryTapPromo } from '@/components/breweryDemo/CollectBreweryTapPromo'
 import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
 import { BreweryUpcomingEvents } from '@/components/BreweryUpcomingEvents'
 import { PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
@@ -85,10 +87,11 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     permanentRedirect(`/breweries/${brewery.slug}`)
   }
 
-  const [events, releases, tonightFood] = await Promise.all([
+  const [events, releases, tonightFood, happyHourDeals] = await Promise.all([
     getBreweryEvents(brewery.id),
     getBreweryReleases(brewery.id),
     getBreweryTonightFood(brewery.id, Boolean(brewery.has_food_trucks)),
+    getBreweryHappyHourDeals(brewery.id),
   ])
 
   const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
@@ -369,8 +372,9 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                 key: `${event.id}-${event.event_date}`,
                 href: `/events/${eventSlug}`,
                 title: event.title,
+                description: event.description?.trim() || undefined,
                 meta: [
-                  formatEventDate(event.event_date),
+                  formatEventDateShort(event.event_date),
                   event.start_time ? formatTime12Hour(event.start_time) : null,
                 ]
                   .filter(Boolean)
@@ -378,6 +382,10 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
               }
             })}
           />
+        ) : null}
+
+        {brewery.tap_image ? (
+          <CollectBreweryTapPromo tapImageUrl={brewery.tap_image} breweryName={brewery.name} />
         ) : null}
 
         {releases.length > 0 ? (
@@ -429,12 +437,9 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           </section>
         ) : null}
 
-        {isDemoBrewery ? (
-          <>
-            <HappyHourDeals />
-            <MugClubCta />
-          </>
-        ) : null}
+        <HappyHourDeals deals={happyHourDeals} />
+
+        {isDemoBrewery ? <MugClubCta /> : null}
 
         <HoppeningsAppPromo region={regionName} />
       </div>

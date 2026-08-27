@@ -419,6 +419,71 @@ export async function deleteFoodTruck(foodTruckId: number) {
   return { ok: true }
 }
 
+export type UpdateHappyHourDealPayload = {
+  brewery_id: string
+  day_of_week: string
+  time_start: number | null
+  time_end: number | null
+  title: string
+  description: string | null
+}
+
+export async function createHappyHourDeal(data: UpdateHappyHourDealPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!.from('happy_hour_deals').insert({
+    brewery_id: data.brewery_id,
+    day_of_week: data.day_of_week,
+    time_start: data.time_start,
+    time_end: data.time_end,
+    title: data.title,
+    description: data.description,
+  })
+
+  if (error) {
+    console.error('Error creating happy hour deal:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function updateHappyHourDeal(dealId: string, data: UpdateHappyHourDealPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!
+    .from('happy_hour_deals')
+    .update({
+      brewery_id: data.brewery_id,
+      day_of_week: data.day_of_week,
+      time_start: data.time_start,
+      time_end: data.time_end,
+      title: data.title,
+      description: data.description,
+    })
+    .eq('id', dealId)
+
+  if (error) {
+    console.error('Error updating happy hour deal:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function deleteHappyHourDeal(dealId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const { error } = await admin!.from('happy_hour_deals').delete().eq('id', dealId)
+
+  if (error) {
+    console.error('Error deleting happy hour deal:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export async function deleteBeerReleaseFromBase(releaseId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }

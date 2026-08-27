@@ -61,6 +61,7 @@ function eventTeaser(event: {
   slug: string
   start_time: string | null
   event_date: string
+  description?: string | null
   breweries: { name: string; image_url?: string | null }
 }): ExploreTeaserItem {
   const time = formatTime12Hour(event.start_time)
@@ -69,6 +70,7 @@ function eventTeaser(event: {
     title: event.title,
     subtitle: event.breweries.name,
     meta: time || undefined,
+    description: event.description?.trim() || undefined,
     href: `/events/${event.slug}`,
     imageUrl: event.breweries.image_url ?? null,
   }

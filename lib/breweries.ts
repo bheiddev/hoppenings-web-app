@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
-import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
+import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, HappyHourDeal, ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
 import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/foodTrucks'
+import { sortHappyHourDeals } from '@/lib/happyHourDeals'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
@@ -290,6 +291,44 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
     return filterBreweryFoodTrucksForDisplay(trucks)
   } catch (error) {
     console.error('Error fetching brewery food trucks:', error)
+    return []
+  }
+}
+
+/**
+ * Recurring happy hour / deals for a brewery.
+ */
+export async function getBreweryHappyHourDeals(breweryId: string): Promise<HappyHourDeal[]> {
+  try {
+    const { data, error } = await supabase
+      .from('happy_hour_deals')
+      .select(
+        'id, created_at, updated_at, brewery_id, day_of_week, time_start, time_end, title, description'
+      )
+      .eq('brewery_id', breweryId)
+
+    if (error) {
+      console.error('Error fetching brewery happy hour deals:', error)
+      return []
+    }
+
+    if (!data) return []
+
+    const deals = data.map((row) => ({
+      id: row.id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      brewery_id: row.brewery_id,
+      day_of_week: row.day_of_week,
+      time_start: row.time_start,
+      time_end: row.time_end,
+      title: row.title,
+      description: row.description,
+    })) as HappyHourDeal[]
+
+    return sortHappyHourDeals(deals)
+  } catch (error) {
+    console.error('Error fetching brewery happy hour deals:', error)
     return []
   }
 }

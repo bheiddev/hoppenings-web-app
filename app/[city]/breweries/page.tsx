@@ -8,12 +8,50 @@ import { Colors } from '@/lib/colors'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
 import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
 import {
+  BREWERY_EVENT_ICON_SRC,
   getBreweryHoursStatusLabel,
   isBreweryOpenIconStatus,
 } from '@/lib/breweryCardStatus'
 import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
+const STATUS_ICON_SIZE = 18
+
+function StatusIcon({
+  src,
+  active,
+  muted = false,
+}: {
+  src: string
+  active: boolean
+  muted?: boolean
+}) {
+  const color = muted
+    ? 'rgba(249, 247, 242, 0.35)'
+    : active
+      ? Colors.accent
+      : 'rgba(249, 247, 242, 0.45)'
+
+  return (
+    <span
+      className="shrink-0"
+      style={{
+        width: STATUS_ICON_SIZE,
+        height: STATUS_ICON_SIZE,
+        backgroundColor: color,
+        WebkitMaskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskImage: `url(${src})`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+      }}
+      aria-hidden
+    />
+  )
+}
 
 export async function generateStaticParams() {
   return Object.keys(CITY_CONFIG).map((city) => ({ city }))
@@ -94,12 +132,10 @@ export default async function CityBreweriesPage({
               const context = getBreweryCardContext(breweryCardContext, brewery.id)
               const hoursLabel = getBreweryHoursStatusLabel(context.hoursStatus)
               const isOpen = isBreweryOpenIconStatus(context.hoursStatus)
+              const hoursIcon = isOpen ? '/open.svg' : '/closed-sign.svg'
+              const hasRelease = Boolean(context.hasNewRelease && context.releaseName)
+              const hasEvent = Boolean(context.todayEventTitle)
               const imageSrc = brewery.image_url || brewery.tap_image
-              const metaBits = [
-                isOpen ? hoursLabel : null,
-                context.todayEventTitle,
-                context.hasNewRelease && context.releaseName ? context.releaseName : null,
-              ].filter(Boolean) as string[]
 
               return (
                 <li key={brewery.id}>
@@ -142,14 +178,49 @@ export default async function CityBreweriesPage({
                       </span>
                     ) : null}
 
-                    {metaBits.length > 0 ? (
-                      <span
-                        className="mt-2 block text-xs uppercase tracking-[0.14em] line-clamp-2"
-                        style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                      >
-                        {metaBits.join(' · ')}
+                    <span className="mt-3 flex flex-col gap-2">
+                      <span className="flex items-center gap-2">
+                        <StatusIcon src={hoursIcon} active={isOpen} muted={!isOpen} />
+                        <span
+                          className="text-xs font-semibold uppercase tracking-[0.14em]"
+                          style={{
+                            color: isOpen ? Colors.accent : 'rgba(249, 247, 242, 0.55)',
+                            fontFamily: 'var(--font-be-vietnam-pro)',
+                          }}
+                        >
+                          {hoursLabel}
+                        </span>
                       </span>
-                    ) : null}
+
+                      {hasRelease ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <StatusIcon src="/beer.svg" active />
+                          <span
+                            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+                            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                            title={context.releaseName ?? undefined}
+                          >
+                            {context.releaseName}
+                          </span>
+                        </span>
+                      ) : null}
+
+                      {hasEvent ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <StatusIcon
+                            src={BREWERY_EVENT_ICON_SRC[context.todayEventIcon]}
+                            active
+                          />
+                          <span
+                            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+                            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                            title={context.todayEventTitle ?? undefined}
+                          >
+                            {context.todayEventTitle}
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
                   </Link>
                 </li>
               )

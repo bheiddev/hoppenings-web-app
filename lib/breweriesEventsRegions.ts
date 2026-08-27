@@ -2,6 +2,7 @@ import {
   getAllBreweriesWithSlugs,
   getBreweryEvents,
   getBreweryFoodTrucks,
+  getBreweryHappyHourDeals,
   getBreweryHoursByBreweryIds,
   getBreweryReleases,
   getProposedBeerReleasesByBreweryId,
@@ -13,6 +14,7 @@ import {
   Event,
   BeerRelease,
   FoodTruck,
+  HappyHourDeal,
   ProposedEvent,
   ProposedBeerRelease,
 } from '@/types/supabase'
@@ -25,6 +27,7 @@ export type BreweryWithData = {
   proposedBeerReleases: ProposedBeerRelease[]
   releases: BeerRelease[]
   foodTrucks: FoodTruck[]
+  happyHourDeals: HappyHourDeal[]
 }
 
 /** Normalized key for breweries with no Region set (displayed as "Other") */
@@ -113,6 +116,7 @@ export async function getRegionBucketsFromBreweries(): Promise<RegionBucket[]> {
     proposedBeerReleases: [],
     releases: [],
     foodTrucks: [],
+    happyHourDeals: [],
   }))
   return buildRegionBuckets(light)
 }
@@ -133,6 +137,7 @@ export async function getBreweriesWithEvents(options?: {
         proposedBeerReleases: [],
         releases: [],
         foodTrucks: [],
+        happyHourDeals: [],
       }))
     )
     const bucket = findRegionBucketBySlug(options.regionSlug, buckets)
@@ -153,6 +158,7 @@ export async function getBreweriesWithEvents(options?: {
       proposedBeerReleases: await getProposedBeerReleasesByBreweryId(brewery.id),
       releases: await getBreweryReleases(brewery.id),
       foodTrucks: await getBreweryFoodTrucks(brewery.id),
+      happyHourDeals: await getBreweryHappyHourDeals(brewery.id),
     }))
   )
 }

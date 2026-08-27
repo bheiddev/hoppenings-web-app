@@ -15,6 +15,7 @@ interface BreweryBreakdownRow {
   proposed: number
   releases: number
   proposedBeers: number
+  deals: number
 }
 
 function BreweryBreakdownEntry({
@@ -72,6 +73,10 @@ function BreweryBreakdownEntry({
           <span style={{ color: Colors.textSecondary, fontWeight: 400 }}>Prop. beers </span>
           {row.proposedBeers}
         </span>
+        <span>
+          <span style={{ color: Colors.textSecondary }}>Deals </span>
+          {row.deals}
+        </span>
       </div>
     </div>
   )
@@ -94,6 +99,7 @@ export function BreweriesEventsBreweryBreakdown({
           proposed: row.proposedEvents.length,
           releases: row.releases.length,
           proposedBeers: row.proposedBeerReleases.length,
+          deals: row.happyHourDeals.length,
         })),
     [regionBreweries]
   )

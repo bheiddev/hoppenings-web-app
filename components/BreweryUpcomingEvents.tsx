@@ -10,6 +10,7 @@ export type BreweryUpcomingEventItem = {
   href: string
   title: string
   meta: string
+  description?: string
 }
 
 const PAGE_SIZE = 4
@@ -32,18 +33,31 @@ export function BreweryUpcomingEvents({ events }: { events: BreweryUpcomingEvent
               href={event.href}
               className="block border-t border-white/10 py-4 transition-opacity hover:opacity-85"
             >
-              <span
-                className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
-                style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-              >
-                {event.title}
+              <span className="flex items-baseline justify-between gap-3">
+                <span
+                  className="min-w-0 truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
+                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                >
+                  {event.title}
+                </span>
+                <span
+                  className="shrink-0 text-sm font-bold uppercase tracking-[0.08em] sm:text-base"
+                  style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                >
+                  {event.meta}
+                </span>
               </span>
-              <span
-                className="mt-1 block text-xs uppercase tracking-[0.14em]"
-                style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-              >
-                {event.meta}
-              </span>
+              {event.description ? (
+                <span
+                  className="mt-1.5 block text-sm leading-snug line-clamp-2"
+                  style={{
+                    color: 'rgba(249, 247, 242, 0.62)',
+                    fontFamily: 'var(--font-be-vietnam-pro)',
+                  }}
+                >
+                  {event.description}
+                </span>
+              ) : null}
             </Link>
           </li>
         ))}

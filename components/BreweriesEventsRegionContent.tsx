@@ -7,6 +7,7 @@ import { ProposedEventsTable } from '@/components/ProposedEventsTable'
 import { ProposedBeerReleasesTable } from '@/components/ProposedBeerReleasesTable'
 import { BeerReleasesTableWithActions } from '@/components/BeerReleasesTableWithActions'
 import { FoodTrucksTableWithActions } from '@/components/FoodTrucksTableWithActions'
+import { HappyHourDealsTableWithActions } from '@/components/HappyHourDealsTableWithActions'
 
 interface BreweriesEventsRegionContentProps {
   regionBreweries: BreweryWithData[]
@@ -49,6 +50,7 @@ export function BreweriesEventsRegionContent({
             proposedBeerReleases,
             releases,
             foodTrucks,
+            happyHourDeals,
           }) => (
             <div
               key={brewery.id}
@@ -71,7 +73,7 @@ export function BreweriesEventsRegionContent({
 
               <BreweryAdminDetails brewery={brewery} hours={hours} />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start overflow-x-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start overflow-x-hidden">
                 <div className="min-w-0">
                   <EventsTableWithDelete
                     events={events}
@@ -102,6 +104,13 @@ export function BreweriesEventsRegionContent({
                   <FoodTrucksTableWithActions
                     foodTrucks={foodTrucks}
                     title="Food trucks"
+                    breweryId={brewery.id}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <HappyHourDealsTableWithActions
+                    deals={happyHourDeals}
+                    title="Happy hour & deals"
                     breweryId={brewery.id}
                   />
                 </div>

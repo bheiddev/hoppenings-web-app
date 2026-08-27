@@ -125,6 +125,27 @@ export interface FoodTruck {
   closed: number[] | null;
 }
 
+export type HappyHourDayOfWeek =
+  | 'Sunday'
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday';
+
+export interface HappyHourDeal {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  brewery_id: string;
+  day_of_week: HappyHourDayOfWeek;
+  time_start: number | null;
+  time_end: number | null;
+  title: string;
+  description: string | null;
+}
+
 export interface TaplistItem {
   brewery_id: string;
   beer_name: string;

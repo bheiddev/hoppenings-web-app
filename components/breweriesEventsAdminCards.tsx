@@ -2,8 +2,9 @@
 
 import { Colors } from '@/lib/colors'
 import { formatEventDate, formatReleaseDate, formatTime12Hour } from '@/lib/utils'
-import { BeerRelease, Event, FoodTruck, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
+import { BeerRelease, Event, FoodTruck, HappyHourDeal, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import { formatHappyHourWindow } from '@/lib/happyHourDeals'
 
 type RecurrenceFields = {
   is_recurring: boolean | null
@@ -531,6 +532,56 @@ export function FoodTruckAdminCard({
         <p className="text-sm font-semibold break-words" style={{ color: Colors.textDark }}>
           {foodTruck.name || '—'}
         </p>
+      </div>
+      <AdminActionButtons
+        onEdit={onEdit}
+        onDelete={onDelete}
+        actionsDisabled={actionsDisabled}
+        deleteLoading={deleteLoading}
+      />
+    </div>
+  )
+}
+
+export function HappyHourDealAdminCard({
+  deal,
+  breweryName,
+  showBreweryName = false,
+  onEdit,
+  onDelete,
+  actionsDisabled,
+  deleteLoading,
+}: {
+  deal: HappyHourDeal
+  breweryName?: string
+  showBreweryName?: boolean
+  onEdit: () => void
+  onDelete: () => void
+  actionsDisabled?: boolean
+  deleteLoading?: boolean
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2 p-3"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <div className="min-w-0">
+        {showBreweryName && breweryName ? (
+          <p className="truncate text-xs font-medium" style={{ color: Colors.textSecondary }}>
+            {breweryName}
+          </p>
+        ) : null}
+        <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+          {deal.day_of_week} · {formatHappyHourWindow(deal.time_start, deal.time_end)}
+        </p>
+        <p className="break-words text-sm font-semibold" style={{ color: Colors.textDark }}>
+          {deal.title || '—'}
+        </p>
+        {deal.description ? (
+          <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: Colors.textSecondary }}>
+            {deal.description}
+          </p>
+        ) : null}
       </div>
       <AdminActionButtons
         onEdit={onEdit}

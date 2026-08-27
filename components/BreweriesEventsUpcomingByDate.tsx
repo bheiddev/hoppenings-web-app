@@ -6,6 +6,7 @@ import { Colors } from '@/lib/colors'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
 import { EventFormModal } from '@/components/EventFormModal'
 import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
+import { HappyHourDealFormModal } from '@/components/HappyHourDealFormModal'
 import { EditProposedEventModal } from '@/components/ProposedEventsTable'
 import {
   AdminColumnScrollBody,
@@ -13,6 +14,7 @@ import {
   BeerReleaseAdminCard,
   EventAdminCard,
   FoodTruckAdminCard,
+  HappyHourDealAdminCard,
   ProposedBeerReleaseAdminCard,
   ProposedEventAdminCard,
 } from '@/components/breweriesEventsAdminCards'
@@ -22,11 +24,13 @@ import {
   deleteBeerReleaseFromBase,
   deleteEventFromEventsBase,
   deleteFoodTruck,
+  deleteHappyHourDeal,
   rejectProposedBeerRelease,
   rejectProposedEvent,
   updateBeerReleaseInBase,
   updateEventInEventsBase,
   updateFoodTruck,
+  updateHappyHourDeal,
   updateProposedBeerRelease,
   updateProposedEvent,
   type UpdateBeerReleasePayload,
@@ -34,12 +38,20 @@ import {
 } from '@/app/admin/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
+import { happyHourDealShowsOnDate } from '@/lib/happyHourDeals'
 import {
   formatEventDateShort,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
-import { BeerRelease, Event, FoodTruck, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
+import {
+  BeerRelease,
+  Event,
+  FoodTruck,
+  HappyHourDeal,
+  ProposedBeerRelease,
+  ProposedEvent,
+} from '@/types/supabase'
 
 /** Days shown in one carousel page. */
 const VISIBLE_DAY_COUNT = 2
@@ -51,6 +63,7 @@ type ProposedRow = ProposedEvent & { breweryName: string; breweryId: string }
 type ProposedBeerRow = ProposedBeerRelease & { breweryName: string; breweryId: string }
 type ReleaseRow = BeerRelease & { breweryName: string; breweryId: string }
 type FoodTruckRow = FoodTruck & { breweryName: string; breweryId: string }
+type HappyHourDealRow = HappyHourDeal & { breweryName: string; breweryId: string }
 
 function acceptProposedKey(id: number) {
   return `accept:proposed:${id}`
@@ -215,12 +228,14 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
   const proposedBeersByDay = new Map<string, ProposedBeerRow[]>()
   const releasesByDay = new Map<string, ReleaseRow[]>()
   const foodTrucksByDay = new Map<string, FoodTruckRow[]>()
+  const happyHourDealsByDay = new Map<string, HappyHourDealRow[]>()
   for (const d of dates) {
     eventsByDay.set(d, [])
     proposedByDay.set(d, [])
     proposedBeersByDay.set(d, [])
     releasesByDay.set(d, [])
     foodTrucksByDay.set(d, [])
+    happyHourDealsByDay.set(d, [])
   }
 
   const seenProposedIds = new Set<number>()
@@ -233,6 +248,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     proposedBeerReleases,
     releases,
     foodTrucks,
+    happyHourDeals,
   } of regionBreweries) {
     for (const event of events) {
       const d = normalizeEventDateToMountainTime(event.event_date)
@@ -296,6 +312,17 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
         }
       }
     }
+    for (const deal of happyHourDeals) {
+      for (const d of dates) {
+        if (happyHourDealShowsOnDate(deal, d)) {
+          happyHourDealsByDay.get(d)!.push({
+            ...deal,
+            breweryName: brewery.name,
+            breweryId: brewery.id,
+          })
+        }
+      }
+    }
   }
 
   for (const list of eventsByDay.values()) {
@@ -334,8 +361,26 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
       return (a.name ?? '').localeCompare(b.name ?? '')
     })
   }
+  for (const list of happyHourDealsByDay.values()) {
+    list.sort((a, b) => {
+      const breweryCmp = a.breweryName.localeCompare(b.breweryName)
+      if (breweryCmp !== 0) return breweryCmp
+      const aStart = a.time_start ?? -1
+      const bStart = b.time_start ?? -1
+      if (aStart !== bStart) return aStart - bStart
+      return a.title.localeCompare(b.title)
+    })
+  }
 
-  return { dates, eventsByDay, proposedByDay, proposedBeersByDay, releasesByDay, foodTrucksByDay }
+  return {
+    dates,
+    eventsByDay,
+    proposedByDay,
+    proposedBeersByDay,
+    releasesByDay,
+    foodTrucksByDay,
+    happyHourDealsByDay,
+  }
 }
 
 export function BreweriesEventsUpcomingByDate({
@@ -353,6 +398,7 @@ export function BreweriesEventsUpcomingByDate({
   const [editingProposedBeer, setEditingProposedBeer] = useState<ProposedBeerRow | null>(null)
   const [editingRelease, setEditingRelease] = useState<ReleaseRow | null>(null)
   const [editingFoodTruck, setEditingFoodTruck] = useState<FoodTruckRow | null>(null)
+  const [editingHappyHourDeal, setEditingHappyHourDeal] = useState<HappyHourDealRow | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [windowStart, setWindowStart] = useState(0)
@@ -363,6 +409,7 @@ export function BreweriesEventsUpcomingByDate({
     proposedBeersByDay,
     releasesByDay,
     foodTrucksByDay,
+    happyHourDealsByDay,
   } = useMemo(() => collectUpcomingByDate(regionBreweries), [regionBreweries])
 
   const maxWindowStart = Math.max(0, dates.length - VISIBLE_DAY_COUNT)
@@ -479,6 +526,21 @@ export function BreweriesEventsUpcomingByDate({
     }
   }
 
+  async function handleDeleteHappyHourDeal(dealId: string) {
+    setActionError(null)
+    const loadingKey = `delete:happy-hour:${dealId}`
+    setPendingKey(loadingKey)
+    try {
+      const result = await deleteHappyHourDeal(dealId)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
   return (
     <>
       <section
@@ -575,6 +637,7 @@ export function BreweriesEventsUpcomingByDate({
             const dayProposedBeers = proposedBeersByDay.get(ymd) ?? []
             const dayReleases = releasesByDay.get(ymd) ?? []
             const dayFoodTrucks = foodTrucksByDay.get(ymd) ?? []
+            const dayHappyHourDeals = happyHourDealsByDay.get(ymd) ?? []
 
             return (
               <div
@@ -771,6 +834,27 @@ export function BreweriesEventsUpcomingByDate({
                       ))
                     )}
                   </ForecastCategoryBlock>
+
+                  <ForecastCategoryBlock label={`Happy hour & deals (${dayHappyHourDeals.length})`}>
+                    {dayHappyHourDeals.length === 0 ? (
+                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                        No happy hour / deals
+                      </p>
+                    ) : (
+                      dayHappyHourDeals.map((deal) => (
+                        <HappyHourDealAdminCard
+                          key={`${deal.id}-${ymd}`}
+                          deal={deal}
+                          breweryName={deal.breweryName}
+                          showBreweryName
+                          onEdit={() => setEditingHappyHourDeal({ ...deal })}
+                          onDelete={() => handleDeleteHappyHourDeal(deal.id)}
+                          actionsDisabled={pendingKey !== null}
+                          deleteLoading={pendingKey === `delete:happy-hour:${deal.id}`}
+                        />
+                      ))
+                    )}
+                  </ForecastCategoryBlock>
                 </div>
               </div>
             )
@@ -867,6 +951,23 @@ export function BreweriesEventsUpcomingByDate({
             return result
           }}
           onClose={() => setEditingFoodTruck(null)}
+        />
+      )}
+
+      {editingHappyHourDeal && (
+        <HappyHourDealFormModal
+          modalTitle="Edit happy hour / deal"
+          deal={editingHappyHourDeal}
+          defaultBreweryId={editingHappyHourDeal.breweryId}
+          onSave={async (data) => {
+            const result = await updateHappyHourDeal(editingHappyHourDeal.id, data)
+            if (result.ok) {
+              setEditingHappyHourDeal(null)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setEditingHappyHourDeal(null)}
         />
       )}
     </>
