@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation'
 import { CSSProperties, MouseEvent, useEffect, useState } from 'react'
 import { resolveBackLabel, canGoBackInHistory, pathToLabel } from '@/lib/backNavigation'
 
-function BackChevron() {
+function BackChevron({ size = 16 }: { size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor" />
     </svg>
   )
@@ -20,6 +20,9 @@ interface BackLinkProps {
   className?: string
   style?: CSSProperties
   showIcon?: boolean
+  /** When false, only the chevron is shown (label remains as aria-label). */
+  showLabel?: boolean
+  iconSize?: number
 }
 
 export function BackLink({
@@ -28,6 +31,8 @@ export function BackLink({
   className = 'inline-flex items-center gap-2 mb-4 text-sm font-medium hover:underline',
   style,
   showIcon = true,
+  showLabel = true,
+  iconSize = 16,
 }: BackLinkProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -48,9 +53,15 @@ export function BackLink({
   }
 
   return (
-    <Link href={fallbackHref} onClick={handleClick} className={className} style={style}>
-      {showIcon && <BackChevron />}
-      {label}
+    <Link
+      href={fallbackHref}
+      onClick={handleClick}
+      className={className}
+      style={style}
+      aria-label={label}
+    >
+      {showIcon ? <BackChevron size={iconSize} /> : null}
+      {showLabel ? label : null}
     </Link>
   )
 }

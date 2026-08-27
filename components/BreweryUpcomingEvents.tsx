@@ -41,7 +41,7 @@ export function BreweryUpcomingEvents({ events }: { events: BreweryUpcomingEvent
                   {event.title}
                 </span>
                 <span
-                  className="shrink-0 text-sm font-bold uppercase tracking-[0.08em] sm:text-base"
+                  className="shrink-0 text-xs font-bold uppercase tracking-[0.08em] sm:text-sm"
                   style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
                 >
                   {event.meta}

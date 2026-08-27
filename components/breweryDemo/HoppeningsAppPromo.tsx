@@ -57,30 +57,41 @@ export function HoppeningsAppPromo({ region }: { region: string }) {
         same data you see here.
       </p>
 
-      <div className="flex items-start gap-3 sm:gap-5">
-        <ul className="min-w-0 flex-1">
-          {BENEFITS.map((item) => (
-            <li key={item.title} className="border-t border-white/10 py-3 sm:py-4">
-              <p
-                className="text-sm font-bold uppercase tracking-wide sm:text-base"
-                style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-              >
-                {item.title}
-              </p>
-              <p
-                className="mt-1 text-xs sm:text-sm"
-                style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
-              >
-                {item.detail}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <div className="flex items-stretch gap-5 sm:gap-7 md:gap-8">
+        <div className="flex w-full max-w-[11.5rem] shrink-0 flex-col sm:max-w-[13rem] md:max-w-[15rem]">
+          <ul className="flex flex-col">
+            {BENEFITS.map((item) => (
+              <li key={item.title} className="border-t border-white/10 py-3 sm:py-4">
+                <p
+                  className="text-sm font-bold uppercase tracking-wide sm:text-base"
+                  style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                >
+                  {item.title}
+                </p>
+                <p
+                  className="mt-1 text-xs sm:text-sm"
+                  style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+                >
+                  {item.detail}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <PoshCta href={APP_STORE_URL} external>
+              App Store
+            </PoshCta>
+            <PoshCta href={PLAY_STORE_URL} external>
+              Google Play
+            </PoshCta>
+          </div>
+        </div>
 
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="w-[100px] shrink-0 cursor-zoom-in transition-opacity hover:opacity-90 sm:w-[140px] md:w-[180px] lg:w-[200px]"
+          className="flex w-[169px] shrink-0 cursor-zoom-in self-stretch transition-opacity hover:opacity-90 sm:w-[221px] md:w-[273px] lg:w-[312px]"
           aria-label="Expand Hoppenings app preview"
         >
           <Image
@@ -88,20 +99,11 @@ export function HoppeningsAppPromo({ region }: { region: string }) {
             alt="Hoppenings app on iPhone"
             width={1857}
             height={3096}
-            className="h-auto w-full"
-            sizes="(max-width: 640px) 100px, (max-width: 768px) 140px, 200px"
+            className="h-full w-full object-contain object-top"
+            sizes="(max-width: 640px) 169px, (max-width: 768px) 221px, 312px"
             priority={false}
           />
         </button>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <PoshCta href={APP_STORE_URL} external>
-          App Store
-        </PoshCta>
-        <PoshCta href={PLAY_STORE_URL} external>
-          Google Play
-        </PoshCta>
       </div>
 
       {expanded ? (

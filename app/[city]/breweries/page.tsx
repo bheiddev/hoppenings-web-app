@@ -16,29 +16,36 @@ import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 const STATUS_ICON_SIZE = 18
+const HOURS_ICON_SIZE = 28
 
 function StatusIcon({
   src,
   active,
   muted = false,
+  size = STATUS_ICON_SIZE,
+  color,
 }: {
   src: string
   active: boolean
   muted?: boolean
+  size?: number
+  color?: string
 }) {
-  const color = muted
-    ? 'rgba(249, 247, 242, 0.35)'
-    : active
-      ? Colors.accent
-      : 'rgba(249, 247, 242, 0.45)'
+  const fill =
+    color ??
+    (muted
+      ? 'rgba(249, 247, 242, 0.35)'
+      : active
+        ? Colors.accent
+        : 'rgba(249, 247, 242, 0.45)')
 
   return (
     <span
       className="shrink-0"
       style={{
-        width: STATUS_ICON_SIZE,
-        height: STATUS_ICON_SIZE,
-        backgroundColor: color,
+        width: size,
+        height: size,
+        backgroundColor: fill,
         WebkitMaskImage: `url(${src})`,
         WebkitMaskSize: 'contain',
         WebkitMaskRepeat: 'no-repeat',
@@ -99,12 +106,16 @@ export default async function CityBreweriesPage({
   return (
     <PoshPageShell>
       <div className="mx-auto max-w-7xl px-6 pb-16 pt-24 sm:px-10 lg:px-12 lg:pb-20 lg:pt-28">
-        <BackLink
-          fallbackHref={`/${citySlug}`}
-          style={{ color: 'rgba(249, 247, 242, 0.75)', fontFamily: 'var(--font-be-vietnam-pro)' }}
-        />
-
-        <PoshEyebrow>{cityName}</PoshEyebrow>
+        <div className="mb-3 flex items-center gap-2 [&_p]:mb-0">
+          <BackLink
+            fallbackHref={`/${citySlug}`}
+            showLabel={false}
+            iconSize={18}
+            className="inline-flex shrink-0 items-center"
+            style={{ color: Colors.accent }}
+          />
+          <PoshEyebrow>{cityName}</PoshEyebrow>
+        </div>
         <h1
           className="hop-home-fade mb-4 font-bold uppercase leading-[0.95] tracking-wide text-[clamp(2.25rem,8vw,5rem)]"
           style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
@@ -159,68 +170,68 @@ export default async function CityBreweriesPage({
                       <span className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
                     </span>
 
-                    <span
-                      className="block text-xl font-bold uppercase tracking-wide transition-colors duration-200 group-hover:text-[#f8c701] sm:text-2xl"
-                      style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-                    >
-                      {brewery.name}
+                    <span className="flex items-start justify-between gap-3">
+                      <span
+                        className="min-w-0 text-xl font-bold uppercase tracking-wide transition-colors duration-200 group-hover:text-[#f8c701] sm:text-2xl"
+                        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                      >
+                        {brewery.name}
+                      </span>
+                      <span
+                        className="relative mt-0.5 shrink-0"
+                        style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
+                        title={hoursLabel}
+                        aria-label={hoursLabel}
+                      >
+                        <Image
+                          src={hoursIcon}
+                          alt=""
+                          fill
+                          className="object-contain"
+                          style={{ filter: 'brightness(0) invert(1)' }}
+                          aria-hidden
+                        />
+                      </span>
                     </span>
 
-                    {brewery.location ? (
-                      <span
-                        className="mt-1 block truncate text-sm"
-                        style={{
-                          color: 'rgba(249, 247, 242, 0.7)',
-                          fontFamily: 'var(--font-be-vietnam-pro)',
-                        }}
-                      >
-                        {brewery.location}
+                    {hasRelease || hasEvent ? (
+                      <span className="mt-3 flex flex-col gap-2">
+                        {hasRelease ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <StatusIcon src="/beer.svg" active />
+                            <span
+                              className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+                              style={{
+                                color: Colors.accent,
+                                fontFamily: 'var(--font-be-vietnam-pro)',
+                              }}
+                              title={context.releaseName ?? undefined}
+                            >
+                              {context.releaseName}
+                            </span>
+                          </span>
+                        ) : null}
+
+                        {hasEvent ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <StatusIcon
+                              src={BREWERY_EVENT_ICON_SRC[context.todayEventIcon]}
+                              active
+                            />
+                            <span
+                              className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+                              style={{
+                                color: Colors.accent,
+                                fontFamily: 'var(--font-be-vietnam-pro)',
+                              }}
+                              title={context.todayEventTitle ?? undefined}
+                            >
+                              {context.todayEventTitle}
+                            </span>
+                          </span>
+                        ) : null}
                       </span>
                     ) : null}
-
-                    <span className="mt-3 flex flex-col gap-2">
-                      <span className="flex items-center gap-2">
-                        <StatusIcon src={hoursIcon} active={isOpen} muted={!isOpen} />
-                        <span
-                          className="text-xs font-semibold uppercase tracking-[0.14em]"
-                          style={{
-                            color: isOpen ? Colors.accent : 'rgba(249, 247, 242, 0.55)',
-                            fontFamily: 'var(--font-be-vietnam-pro)',
-                          }}
-                        >
-                          {hoursLabel}
-                        </span>
-                      </span>
-
-                      {hasRelease ? (
-                        <span className="flex min-w-0 items-center gap-2">
-                          <StatusIcon src="/beer.svg" active />
-                          <span
-                            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
-                            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                            title={context.releaseName ?? undefined}
-                          >
-                            {context.releaseName}
-                          </span>
-                        </span>
-                      ) : null}
-
-                      {hasEvent ? (
-                        <span className="flex min-w-0 items-center gap-2">
-                          <StatusIcon
-                            src={BREWERY_EVENT_ICON_SRC[context.todayEventIcon]}
-                            active
-                          />
-                          <span
-                            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
-                            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                            title={context.todayEventTitle ?? undefined}
-                          >
-                            {context.todayEventTitle}
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
                   </Link>
                 </li>
               )
