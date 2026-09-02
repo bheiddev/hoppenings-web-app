@@ -2,21 +2,25 @@ import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import {
   getBreweryBySlug,
+  getBreweryById,
   getAllBreweriesWithSlugs,
   getBreweryEvents,
+  getBreweryFoodTrucks,
   getBreweryHappyHourDeals,
   getBreweryReleases,
   getBreweryTonightFood,
 } from '@/lib/breweries'
+import { getSiblingBreweryId } from '@/lib/multiLocationBreweries'
 import {
   formatEventDateShort,
   formatReleaseDate,
   formatTime12Hour,
+  getMountainTimeNow,
   isEventToday,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
 import { getBreweryAmenities } from '@/lib/breweryUtils'
-import { matchBreweryEventIcon } from '@/lib/breweryCardStatus'
+import { matchBreweryEventIcon, BREWERY_EVENT_ICON_SRC } from '@/lib/breweryCardStatus'
 import { generateEventSlug, generateReleaseSlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
 import Image from 'next/image'
@@ -26,9 +30,16 @@ import { MugClubCta } from '@/components/breweryDemo/MugClubCta'
 import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
 import { CollectBreweryTapPromo } from '@/components/breweryDemo/CollectBreweryTapPromo'
 import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
+import { FoodTruckSchedule } from '@/components/breweryDemo/FoodTruckSchedule'
+import { OtherBreweryLocation } from '@/components/breweryDemo/OtherBreweryLocation'
 import { BreweryUpcomingEvents } from '@/components/BreweryUpcomingEvents'
-import { PoshPageShell, PoshSectionTitle } from '@/components/PoshPageShell'
+import { PoshPageShell } from '@/components/PoshPageShell'
 import { getRegionDisplayName } from '@/lib/seoCities'
+import {
+  formatHappyHourWindow,
+  getTodaysHappyHourDeals,
+  getUpcomingHappyHourStatus,
+} from '@/lib/happyHourDeals'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -87,22 +98,60 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     permanentRedirect(`/breweries/${brewery.slug}`)
   }
 
-  const [events, releases, tonightFood, happyHourDeals] = await Promise.all([
+  const siblingBreweryId = getSiblingBreweryId(brewery.id)
+
+  const [
+    events,
+    releases,
+    tonightFood,
+    happyHourDeals,
+    foodTrucks,
+    siblingBrewery,
+    siblingEvents,
+    siblingHappyHourDeals,
+  ] = await Promise.all([
     getBreweryEvents(brewery.id),
     getBreweryReleases(brewery.id),
     getBreweryTonightFood(brewery.id, Boolean(brewery.has_food_trucks)),
     getBreweryHappyHourDeals(brewery.id),
+    getBreweryFoodTrucks(brewery.id),
+    siblingBreweryId ? getBreweryById(siblingBreweryId) : Promise.resolve(null),
+    siblingBreweryId ? getBreweryEvents(siblingBreweryId) : Promise.resolve([]),
+    siblingBreweryId ? getBreweryHappyHourDeals(siblingBreweryId) : Promise.resolve([]),
   ])
 
   const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
+
+  const mountainNow = getMountainTimeNow()
+  const siblingTonightEvent =
+    siblingEvents.find((event) => isEventToday(event.event_date)) ?? null
+  const siblingEventStatus = siblingTonightEvent
+    ? [
+        siblingTonightEvent.title,
+        siblingTonightEvent.start_time
+          ? formatTime12Hour(siblingTonightEvent.start_time)
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : null
+  const siblingEventIconSrc = siblingTonightEvent
+    ? BREWERY_EVENT_ICON_SRC[
+        matchBreweryEventIcon(siblingTonightEvent.title, siblingTonightEvent.description)
+      ]
+    : null
+  const siblingHappyHourStatus = siblingBrewery
+    ? getUpcomingHappyHourStatus(siblingHappyHourDeals, mountainNow)
+    : null
 
   const latestRelease = releases[0] ?? null
   const hoppeningReleaseBase = latestRelease
     ? {
         name: latestRelease.beer_name,
-        detail: [latestRelease.Type, latestRelease.ABV ? `${latestRelease.ABV}% ABV` : null]
+        meta: [latestRelease.Type, latestRelease.ABV ? `${latestRelease.ABV} ABV` : null]
           .filter(Boolean)
           .join(' · ') || null,
+        description: latestRelease.description?.trim() || null,
         href: `/releases/${generateReleaseSlug(
           latestRelease.beer_name,
           latestRelease.Type,
@@ -116,7 +165,8 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   const hoppeningEvent = tonightEvent
     ? {
         title: tonightEvent.title,
-        detail: tonightEvent.start_time ? formatTime12Hour(tonightEvent.start_time) : null,
+        time: tonightEvent.start_time ? formatTime12Hour(tonightEvent.start_time) : null,
+        description: tonightEvent.description?.trim() || null,
         icon: matchBreweryEventIcon(tonightEvent.title, tonightEvent.description),
         href: `/events/${generateEventSlug(
           tonightEvent.title,
@@ -155,15 +205,15 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   const hoppeningRelease = isDemoBrewery
     ? {
         name: hoppeningReleaseBase?.name ?? 'View Full Tap Menu',
-        detail: hoppeningReleaseBase?.detail ?? 'Draft beer, seltzers & more',
+        meta: hoppeningReleaseBase?.meta ?? 'Draft beer, seltzers & more',
+        description: hoppeningReleaseBase?.description ?? null,
         href: 'https://www.mashmechanix.com/menu',
       }
     : hoppeningReleaseBase
   const foodForTonight =
-    isDemoBrewery
+    isDemoBrewery && tonightFood.active
       ? {
           ...tonightFood,
-          active: true,
           label: tonightFood.label?.toLowerCase().includes('smokehouse')
             ? tonightFood.label
             : 'Mash Smokehouse',
@@ -171,6 +221,16 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           href: 'https://www.mashmechanix.com/smokehouse',
         }
       : tonightFood
+
+  const hoppeningDeals = getTodaysHappyHourDeals(happyHourDeals, {
+    date: mountainNow.date,
+    hours: mountainNow.hours,
+  }).map((deal) => ({
+    key: deal.id,
+    title: deal.title,
+    window: formatHappyHourWindow(deal.time_start, deal.time_end),
+    detail: deal.description?.trim() || null,
+  }))
 
   const breweryJsonLd = {
     '@context': 'https://schema.org',
@@ -301,9 +361,14 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10 lg:px-12 lg:py-14">
-        <HoppeningTonight release={hoppeningRelease} event={hoppeningEvent} food={foodForTonight} />
+      <HoppeningTonight
+        release={hoppeningRelease}
+        event={hoppeningEvent}
+        food={foodForTonight}
+        deals={hoppeningDeals}
+      />
 
+      <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10 lg:px-12 lg:py-14">
         {amenities.length > 0 ? (
           <div className="mb-12 flex flex-wrap gap-6">
             {amenities.map((amenity) => (
@@ -373,73 +438,120 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
                 href: `/events/${eventSlug}`,
                 title: event.title,
                 description: event.description?.trim() || undefined,
+                iconSrc:
+                  BREWERY_EVENT_ICON_SRC[
+                    matchBreweryEventIcon(event.title, event.description)
+                  ],
                 meta: [
                   formatEventDateShort(event.event_date),
                   event.start_time ? formatTime12Hour(event.start_time) : null,
                 ]
                   .filter(Boolean)
-                  .join(' · '),
+                  .join(' '),
               }
             })}
           />
         ) : null}
+
+        <HappyHourDeals deals={happyHourDeals} />
 
         {brewery.tap_image ? (
           <CollectBreweryTapPromo tapImageUrl={brewery.tap_image} breweryName={brewery.name} />
         ) : null}
 
         {releases.length > 0 ? (
-          <section className="mb-14">
-            <PoshSectionTitle>New Releases</PoshSectionTitle>
-            <ul className="flex flex-col">
-              {releases.map((release) => {
-                const releaseSlug = generateReleaseSlug(
-                  release.beer_name,
-                  release.Type,
-                  release.breweries.name,
-                  release.breweries.location || null,
-                  release.id
-                )
-                return (
-                  <li key={release.id}>
-                    <Link
-                      href={`/releases/${releaseSlug}`}
-                      className="block border-t border-white/10 py-4 transition-opacity hover:opacity-85"
-                    >
-                      <span
-                        className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
-                        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+          <section className="relative left-1/2 mb-14 w-screen -translate-x-1/2 overflow-hidden py-10 sm:py-12">
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `
+                    radial-gradient(ellipse 85% 65% at 12% 15%, rgba(248, 199, 1, 0.16) 0%, transparent 55%),
+                    radial-gradient(ellipse 70% 55% at 92% 88%, rgba(93, 37, 37, 0.08) 0%, transparent 52%),
+                    linear-gradient(165deg, ${Colors.surface} 0%, ${Colors.background} 48%, ${Colors.surfaceLight} 100%)
+                  `,
+                }}
+              />
+              <div className="hop-posh-noise opacity-60" />
+              <div
+                className="absolute -right-1/4 bottom-0 h-[45%] w-[55vw] rounded-full opacity-40 blur-3xl"
+                style={{
+                  background: `radial-gradient(circle, ${Colors.primary}14 0%, transparent 70%)`,
+                }}
+              />
+            </div>
+
+            <div className="relative z-[1] mx-auto max-w-4xl px-6 sm:px-10 lg:px-12">
+              <h2
+                className="mb-6 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+                style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                New Beer Releases
+              </h2>
+              <ul className="flex flex-col">
+                {releases.map((release) => {
+                  const releaseSlug = generateReleaseSlug(
+                    release.beer_name,
+                    release.Type,
+                    release.breweries.name,
+                    release.breweries.location || null,
+                    release.id
+                  )
+                  return (
+                    <li key={release.id}>
+                      <Link
+                        href={`/releases/${releaseSlug}`}
+                        className="block border-t py-4 transition-opacity hover:opacity-85"
+                        style={{ borderColor: Colors.border }}
                       >
-                        {release.beer_name}
-                      </span>
-                      {release.description ? (
                         <span
-                          className="mt-1.5 block text-sm leading-snug line-clamp-2"
-                          style={{
-                            color: 'rgba(249, 247, 242, 0.62)',
-                            fontFamily: 'var(--font-be-vietnam-pro)',
-                          }}
+                          className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
+                          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
                         >
-                          {release.description}
+                          {release.beer_name}
                         </span>
-                      ) : null}
-                      <span
-                        className="mt-1.5 block text-xs uppercase tracking-[0.14em]"
-                        style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                      >
-                        {[release.Type, formatReleaseDate(release.release_date)].filter(Boolean).join(' · ')}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+                        {release.description ? (
+                          <span
+                            className="mt-1.5 block text-sm leading-snug line-clamp-2"
+                            style={{
+                              color: Colors.textSecondary,
+                              fontFamily: 'var(--font-be-vietnam-pro)',
+                            }}
+                          >
+                            {release.description}
+                          </span>
+                        ) : null}
+                        <span
+                          className="mt-1.5 block text-xs uppercase tracking-[0.14em]"
+                          style={{ color: Colors.primary, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                        >
+                          {[release.Type, formatReleaseDate(release.release_date)].filter(Boolean).join(' · ')}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           </section>
         ) : null}
 
-        <HappyHourDeals deals={happyHourDeals} />
+        <FoodTruckSchedule trucks={foodTrucks} />
 
         {isDemoBrewery ? <MugClubCta /> : null}
+
+        {siblingBrewery ? (
+          <OtherBreweryLocation
+            name={siblingBrewery.name}
+            locationLabel={siblingBrewery.location}
+            address={siblingBrewery.address}
+            href={`/breweries/${siblingBrewery.slug}`}
+            imageUrl={siblingBrewery.image_url}
+            eventStatus={siblingEventStatus}
+            eventIconSrc={siblingEventIconSrc}
+            happyHourStatus={siblingHappyHourStatus}
+          />
+        ) : null}
 
         <HoppeningsAppPromo region={regionName} />
       </div>

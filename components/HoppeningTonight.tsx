@@ -7,13 +7,16 @@ import {
 
 export type HoppeningTonightRelease = {
   name: string
-  detail: string | null
+  /** Style / ABV shown on the same row as the name. */
+  meta: string | null
+  description: string | null
   href: string | null
 } | null
 
 export type HoppeningTonightEvent = {
   title: string
-  detail: string | null
+  time: string | null
+  description: string | null
   icon: BreweryEventIcon
   href: string | null
 } | null
@@ -25,17 +28,28 @@ export type HoppeningTonightFood = {
   href?: string | null
 }
 
+type HoppeningTonightDeal = {
+  key: string
+  title: string
+  /** Time window shown on the same row as the title. */
+  window: string | null
+  detail: string | null
+}
+
 type HoppeningTonightProps = {
   release: HoppeningTonightRelease
   event: HoppeningTonightEvent
   food: HoppeningTonightFood
+  /** Today's happy hour / deal rows from the DB (exact objects). */
+  deals?: HoppeningTonightDeal[]
 }
 
 const ICON_COLORS = {
-  release: Colors.accent,
-  event: Colors.accent,
-  food: Colors.accent,
-  inactive: 'rgba(249, 247, 242, 0.35)',
+  release: Colors.primary,
+  event: Colors.primary,
+  food: Colors.primary,
+  deal: Colors.primary,
+  inactive: 'rgba(45, 41, 38, 0.28)',
 } as const
 
 function MaskIcon({
@@ -58,10 +72,12 @@ function MaskIcon({
         WebkitMaskSize: 'contain',
         WebkitMaskRepeat: 'no-repeat',
         WebkitMaskPosition: 'center',
+        WebkitMaskMode: 'alpha',
         maskImage: `url(${src})`,
         maskSize: 'contain',
         maskRepeat: 'no-repeat',
         maskPosition: 'center',
+        maskMode: 'alpha',
       }}
       aria-hidden
     />
@@ -69,63 +85,74 @@ function MaskIcon({
 }
 
 function TonightCard({
-  eyebrow,
   title,
+  meta,
   detail,
+  detailClamp = 2,
   iconSrc,
   iconColor,
   href,
   active,
 }: {
-  eyebrow: string
   title: string
+  meta?: string | null
   detail: string | null
+  /** null = no clamp (e.g. happy hour descriptions). */
+  detailClamp?: number | null
   iconSrc: string
   iconColor: string
   href: string | null
   active: boolean
 }) {
+  const iconSize = 40
+  const heading = meta ? `${title} ${meta}` : title
+  // Happy hour / deal titles (with timing) should wrap fully, not clamp.
+  const clampTitle = !meta
+
   const content = (
-    <>
-      <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center"
-        style={{ backgroundColor: active ? 'rgba(248, 199, 1, 0.12)' : 'rgba(255,255,255,0.06)' }}
-      >
-        <MaskIcon src={iconSrc} color={active ? iconColor : ICON_COLORS.inactive} />
-      </div>
-      <div className="min-w-0 flex-1">
+    <div className="min-w-0 flex-1">
+      <div className={`flex gap-3 sm:gap-4 ${clampTitle ? 'items-center' : 'items-start'}`}>
+        <span className="shrink-0">
+          <MaskIcon
+            src={iconSrc}
+            color={active ? iconColor : ICON_COLORS.inactive}
+            size={iconSize}
+          />
+        </span>
         <p
-          className="mb-1 text-xs font-semibold uppercase tracking-wider"
+          className={`min-w-0 text-lg font-bold leading-snug sm:text-xl ${clampTitle ? 'line-clamp-2' : ''}`}
           style={{
-            color: active ? Colors.accent : 'rgba(249, 247, 242, 0.45)',
-            fontFamily: 'var(--font-be-vietnam-pro)',
-          }}
-        >
-          {eyebrow}
-        </p>
-        <p
-          className="line-clamp-2 text-lg font-bold leading-snug"
-          style={{
-            color: active ? Colors.textOnDark : 'rgba(249, 247, 242, 0.45)',
+            color: active ? Colors.textPrimary : 'rgba(45, 41, 38, 0.4)',
             fontFamily: 'var(--font-fjalla-one)',
           }}
         >
-          {title}
+          {heading}
         </p>
-        {detail && (
-          <p
-            className="mt-1 line-clamp-1 text-sm"
-            style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
-          >
-            {detail}
-          </p>
-        )}
       </div>
-    </>
+      {detail ? (
+        <p
+          className="mt-2 text-sm"
+          style={{
+            color: Colors.textSecondary,
+            fontFamily: 'var(--font-be-vietnam-pro)',
+            paddingLeft: `calc(${iconSize}px + 0.75rem)`,
+            ...(detailClamp == null
+              ? {}
+              : {
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical' as const,
+                  WebkitLineClamp: detailClamp,
+                  overflow: 'hidden',
+                }),
+          }}
+        >
+          {detail}
+        </p>
+      ) : null}
+    </div>
   )
 
-  const className = 'flex h-full items-start gap-4 border border-white/10 p-5 transition-colors'
-  const style = { backgroundColor: 'rgba(255,255,255,0.04)' }
+  const className = 'block h-full p-5 transition-opacity'
 
   if (href && active) {
     const isExternal = /^https?:\/\//.test(href)
@@ -135,67 +162,128 @@ function TonightCard({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${className} hover:border-white/25`}
-          style={style}
+          className={`${className} hover:opacity-85`}
         >
           {content}
         </a>
       )
     }
     return (
-      <Link href={href} className={`${className} hover:border-white/25`} style={style}>
+      <Link href={href} className={`${className} hover:opacity-85`}>
         {content}
       </Link>
     )
   }
 
-  return (
-    <div className={className} style={style}>
-      {content}
-    </div>
-  )
+  return <div className={className}>{content}</div>
 }
 
-export function HoppeningTonight({ release, event, food }: HoppeningTonightProps) {
+export function HoppeningTonight({ release, event, food, deals = [] }: HoppeningTonightProps) {
+  const cards = [
+    release
+      ? {
+          key: 'release',
+          title: release.name,
+          meta: release.meta,
+          detail: release.description,
+          detailClamp: 3 as number | null,
+          iconSrc: '/beer.svg',
+          iconColor: ICON_COLORS.release,
+          href: release.href,
+        }
+      : null,
+    event
+      ? {
+          key: 'event',
+          title: event.title,
+          meta: event.time,
+          detail: event.description,
+          detailClamp: 2 as number | null,
+          iconSrc: BREWERY_EVENT_ICON_SRC[event.icon],
+          iconColor: ICON_COLORS.event,
+          href: event.href,
+        }
+      : null,
+    food.active
+      ? {
+          key: 'food',
+          title: food.label,
+          meta: null as string | null,
+          detail: food.detail,
+          detailClamp: 2 as number | null,
+          iconSrc: '/food-truck.svg',
+          iconColor: ICON_COLORS.food,
+          href: food.href ?? null,
+        }
+      : null,
+    ...deals.map((deal) => ({
+      key: deal.key,
+      title: deal.title,
+      meta: deal.window,
+      detail: deal.detail,
+      detailClamp: null as number | null,
+      iconSrc: '/happy-hour.svg',
+      iconColor: ICON_COLORS.deal,
+      href: null as string | null,
+    })),
+  ].filter((card): card is NonNullable<typeof card> => card != null)
+
+  if (cards.length === 0) return null
+
+  const gridCols =
+    cards.length === 1
+      ? 'grid-cols-1'
+      : cards.length === 2
+        ? 'grid-cols-1 sm:grid-cols-2'
+        : cards.length === 3
+          ? 'grid-cols-1 sm:grid-cols-3'
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+
   return (
-    <section className="mb-12">
-      <h2
-        className="mb-5 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
-        style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-      >
-        Hoppening Tonight
-      </h2>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <TonightCard
-          eyebrow="On Tap / New"
-          title={release?.name ?? 'No new release'}
-          detail={release?.detail ?? null}
-          iconSrc="/beer.svg"
-          iconColor={ICON_COLORS.release}
-          href={release?.href ?? null}
-          active={Boolean(release)}
+    <section className="relative mb-0 w-full overflow-hidden py-10 sm:py-12">
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 85% 65% at 12% 15%, rgba(248, 199, 1, 0.16) 0%, transparent 55%),
+              radial-gradient(ellipse 70% 55% at 92% 88%, rgba(93, 37, 37, 0.08) 0%, transparent 52%),
+              linear-gradient(165deg, ${Colors.surface} 0%, ${Colors.background} 48%, ${Colors.surfaceLight} 100%)
+            `,
+          }}
         />
-
-        <TonightCard
-          eyebrow="Event"
-          title={event?.title ?? 'No events tonight'}
-          detail={event?.detail ?? null}
-          iconSrc={BREWERY_EVENT_ICON_SRC[event?.icon ?? 'generic']}
-          iconColor={ICON_COLORS.event}
-          href={event?.href ?? null}
-          active={Boolean(event)}
+        <div className="hop-posh-noise opacity-60" />
+        <div
+          className="absolute -right-1/4 bottom-0 h-[45%] w-[55vw] rounded-full opacity-40 blur-3xl"
+          style={{
+            background: `radial-gradient(circle, ${Colors.primary}14 0%, transparent 70%)`,
+          }}
         />
+      </div>
 
-        <TonightCard
-          eyebrow="Food"
-          title={food.label}
-          detail={food.detail}
-          iconSrc="/food-truck.svg"
-          iconColor={ICON_COLORS.food}
-          href={food.href ?? null}
-          active={food.active}
-        />
+      <div className="relative z-[1] mx-auto max-w-4xl px-6 sm:px-10 lg:px-12">
+        <h2
+          className="mb-5 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          Hoppening Tonight
+        </h2>
+
+        <div className={`grid gap-3 sm:gap-4 ${gridCols}`}>
+          {cards.map((card) => (
+            <TonightCard
+              key={card.key}
+              title={card.title}
+              meta={card.meta}
+              detail={card.detail}
+              detailClamp={card.detailClamp}
+              iconSrc={card.iconSrc}
+              iconColor={card.iconColor}
+              href={card.href}
+              active
+            />
+          ))}
+        </div>
       </div>
     </section>
   )

@@ -11,6 +11,7 @@
   "dependencies": {
     "@google-analytics/data": "^6.1.0",
     "@supabase/supabase-js": "^2.86.0",
+    "@vis.gl/react-google-maps": "^1.9.0",
     "googleapis": "^174.0.0",
     "next": "^16.0.10",
     "react": "19.2.0",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/google.maps": "^3.66.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

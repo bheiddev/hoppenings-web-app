@@ -401,7 +401,7 @@ export function ProposedBeerReleaseAdminCard({
   acceptLoading?: boolean
   rejectLoading?: boolean
 }) {
-  const meta = [proposed.Type, proposed.ABV ? `${proposed.ABV}% ABV` : null]
+  const meta = [proposed.Type, proposed.ABV ? `${proposed.ABV} ABV` : null]
     .filter(Boolean)
     .join(' · ')
 

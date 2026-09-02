@@ -73,6 +73,55 @@ export async function getBreweryBySlug(slug: string): Promise<BreweryWithSlug | 
   return index.get(slug) || null
 }
 
+/** Get a single brewery by id (includes generated slug). */
+export async function getBreweryById(id: string): Promise<BreweryWithSlug | null> {
+  const allBreweries = await getAllBreweriesWithSlugs()
+  return allBreweries.find((brewery) => brewery.id === id) ?? null
+}
+
+export type BreweryMapPoint = {
+  id: string
+  name: string
+  slug: string
+  latitude: number
+  longitude: number
+  location: string | null
+}
+
+/** Lightweight brewery rows with coordinates for nearby-map UI (skips image refresh). */
+export async function getBreweriesForNearbyMap(): Promise<BreweryMapPoint[]> {
+  try {
+    const { data, error } = await supabase
+      .from('breweries')
+      .select('id, name, location, latitude, longitude')
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching breweries for map:', error)
+      return []
+    }
+
+    return (data ?? [])
+      .filter(
+        (row): row is typeof row & { latitude: number; longitude: number } =>
+          row.latitude != null && row.longitude != null
+      )
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        slug: generateBrewerySlug(row.name, row.location, row.id),
+        latitude: row.latitude,
+        longitude: row.longitude,
+        location: row.location ?? null,
+      }))
+  } catch (error) {
+    console.error('Error fetching breweries for map:', error)
+    return []
+  }
+}
+
 /**
  * Get brewery hours
  */
@@ -320,13 +369,19 @@ export async function getBreweryHappyHourDeals(breweryId: string): Promise<Happy
       updated_at: row.updated_at,
       brewery_id: row.brewery_id,
       day_of_week: row.day_of_week,
-      time_start: row.time_start,
-      time_end: row.time_end,
+      time_start: row.time_start == null ? null : Number(row.time_start),
+      time_end: row.time_end == null ? null : Number(row.time_end),
       title: row.title,
       description: row.description,
     })) as HappyHourDeal[]
 
-    return sortHappyHourDeals(deals)
+    return sortHappyHourDeals(
+      deals.map((deal) => ({
+        ...deal,
+        time_start: Number.isFinite(deal.time_start as number) ? deal.time_start : null,
+        time_end: Number.isFinite(deal.time_end as number) ? deal.time_end : null,
+      }))
+    )
   } catch (error) {
     console.error('Error fetching brewery happy hour deals:', error)
     return []
@@ -341,11 +396,11 @@ export type BreweryTonightFood = {
 }
 
 /**
- * Resolve tonight's food situation: scheduled truck, permanent truck, or kitchen flag.
+ * Resolve tonight's food truck: only active when a truck shows on today's Mountain date.
  */
 export async function getBreweryTonightFood(
   breweryId: string,
-  hasKitchenFood: boolean
+  _hasKitchenFood?: boolean
 ): Promise<BreweryTonightFood> {
   try {
     const today = getTodayMountainDateString()
@@ -356,35 +411,32 @@ export async function getBreweryTonightFood(
 
     if (error) {
       console.error('Error fetching brewery food for tonight:', error)
-    } else {
-      const trucks = (data ?? []).map((row) => ({
-        id: row.id,
-        created_at: row.created_at,
-        brewery_id: row.brewery_id,
-        name: row.name,
-        permanent: row.permanent,
-        date: row.date,
-        closed: row.closed,
-      })) as FoodTruck[]
-
-      const tonightTruck = trucks.find((truck) => foodTruckShowsOnDate(truck, today))
-      if (tonightTruck) {
-        const isPermanent = tonightTruck.permanent === true
-        return {
-          active: true,
-          label:
-            tonightTruck.name?.trim() ||
-            (isPermanent ? 'Food available' : 'Food truck tonight'),
-          detail: isPermanent ? 'On site' : 'Food truck',
-        }
+      return {
+        active: false,
+        label: 'No food tonight',
+        detail: null,
       }
     }
 
-    if (hasKitchenFood) {
+    const trucks = (data ?? []).map((row) => ({
+      id: row.id,
+      created_at: row.created_at,
+      brewery_id: row.brewery_id,
+      name: row.name,
+      permanent: row.permanent,
+      date: row.date,
+      closed: row.closed,
+    })) as FoodTruck[]
+
+    const tonightTruck = trucks.find((truck) => foodTruckShowsOnDate(truck, today))
+    if (tonightTruck) {
+      const isPermanent = tonightTruck.permanent === true
       return {
         active: true,
-        label: 'Kitchen open',
-        detail: 'Food available',
+        label:
+          tonightTruck.name?.trim() ||
+          (isPermanent ? 'Food available' : 'Food truck tonight'),
+        detail: isPermanent ? null : 'Food truck',
       }
     }
 

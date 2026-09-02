@@ -53,7 +53,7 @@ export function CollectBreweryTapPromo({
   }, [open])
 
   return (
-    <section className="mb-14 border-t border-white/10 pt-12">
+    <section className="mb-14 pt-12">
       <p
         className="mb-3 text-[11px] font-semibold uppercase tracking-[0.28em] sm:text-xs"
         style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}

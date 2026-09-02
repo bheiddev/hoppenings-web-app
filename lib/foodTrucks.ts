@@ -82,3 +82,66 @@ export function foodTruckShowsOnDate(truck: FoodTruck, ymd: string): boolean {
   if (isFoodTruckClosedOnDate(truck, ymd)) return false
   return getFoodTruckMountainDate(truck) === ymd
 }
+
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+export type FoodTruckDisplayItem = {
+  key: string
+  badge: string
+  title: string
+  detail: string | null
+}
+
+function formatClosedWeekdays(closed: number[] | null | undefined): string | null {
+  if (!Array.isArray(closed) || closed.length === 0) return null
+  const labels = [...new Set(closed)]
+    .filter((day) => day >= 0 && day <= 6)
+    .sort((a, b) => a - b)
+    .map((day) => WEEKDAY_ABBR[day])
+  if (labels.length === 0) return null
+  return `Closed ${labels.join(', ')}`
+}
+
+/** Display rows for brewery landing: permanent trucks, then upcoming dated trucks. */
+export function foodTrucksForDisplay(trucks: FoodTruck[]): FoodTruckDisplayItem[] {
+  return filterBreweryFoodTrucksForDisplay(trucks).map((truck) => {
+    if (isPermanentFoodTruck(truck)) {
+      const closedLabel = formatClosedWeekdays(truck.closed)
+      return {
+        key: `permanent-${truck.id}`,
+        badge: closedLabel ? `On site · ${closedLabel}` : 'On site',
+        title: truck.name?.trim() || 'Food available',
+        detail: null,
+      }
+    }
+
+    const ymd = getFoodTruckMountainDate(truck)
+    return {
+      key: `dated-${truck.id}-${ymd ?? truck.id}`,
+      badge: ymd ? formatFoodTruckDateBadge(ymd) : 'Upcoming',
+      title: truck.name?.trim() || 'Food truck',
+      detail: null,
+    }
+  })
+}
+
+function addDaysYmd(ymd: string, days: number): string {
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0))
+  return date.toISOString().slice(0, 10)
+}
+
+function formatFoodTruckDateBadge(ymd: string): string {
+  const today = getTodayMountainDateString()
+  if (ymd === today) return 'Today'
+  if (ymd === addDaysYmd(today, 1)) return 'Tomorrow'
+
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`)
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}

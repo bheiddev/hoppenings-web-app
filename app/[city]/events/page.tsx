@@ -1,15 +1,25 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
+import { BackLink } from '@/components/BackLink'
+import { PoshEyebrow, PoshPageShell } from '@/components/PoshPageShell'
 import { Colors } from '@/lib/colors'
-import { EventCard } from '@/components/EventCard'
-import { CardCarousel } from '@/components/CardCarousel'
+import {
+  BREWERY_EVENT_ICON_SRC,
+  matchBreweryEventIcon,
+} from '@/lib/breweryCardStatus'
 import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
 import { getAllEventsWithSlugs } from '@/lib/events'
-import { groupEventsByDate, groupEventsByRegion, isEventInPast, formatRelativeEventDateHeading, isRelativeDayHeading } from '@/lib/utils'
+import {
+  formatRelativeEventDateHeading,
+  formatTime12Hour,
+  groupEventsByDate,
+  isEventInPast,
+  isRelativeDayHeading,
+} from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
+const ICON_SIZE = 28
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -38,6 +48,28 @@ export async function generateMetadata({
   }
 }
 
+function EventIcon({ src }: { src: string }) {
+  return (
+    <span
+      className="mt-0.5 block shrink-0"
+      style={{
+        width: ICON_SIZE,
+        height: ICON_SIZE,
+        backgroundColor: Colors.accent,
+        WebkitMaskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskImage: `url(${src})`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+      }}
+      aria-hidden
+    />
+  )
+}
+
 export default async function CityEventsPage({
   params,
 }: {
@@ -61,69 +93,121 @@ export default async function CityEventsPage({
   })
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <BackLink
-          fallbackHref="/events"
-          showIcon={false}
-          className="underline text-sm"
-          style={{ color: Colors.primary }}
-        />
+    <PoshPageShell>
+      <div className="mx-auto max-w-7xl px-6 pb-16 pt-24 sm:px-10 lg:px-12 lg:pb-20 lg:pt-28">
+        <div className="mb-3 flex items-center gap-2 [&_p]:mb-0">
+          <BackLink
+            fallbackHref={`/${citySlug}`}
+            showLabel={false}
+            iconSize={18}
+            className="inline-flex shrink-0 items-center"
+            style={{ color: Colors.accent }}
+          />
+          <PoshEyebrow>{cityName}</PoshEyebrow>
+        </div>
         <h1
-          className="text-3xl font-bold mt-4 mb-4"
-          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="hop-home-fade mb-4 font-bold uppercase leading-[0.95] tracking-wide text-[clamp(2.25rem,8vw,5rem)]"
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
-          Brewery Events in {cityName}
+          Events
         </h1>
+        <p
+          className="hop-home-fade hop-home-delay-1 mb-12 max-w-xl text-base leading-relaxed sm:text-lg"
+          style={{ color: 'rgba(249, 247, 242, 0.78)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+        >
+          Trivia, live music, run clubs, and what&apos;s on at taprooms across {cityName}.
+        </p>
 
         {cityEvents.length === 0 ? (
-          <p style={{ color: Colors.textPrimary }}>No upcoming events found in {cityName}.</p>
+          <p
+            className="text-base"
+            style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
+            No upcoming events found in {cityName}.
+          </p>
         ) : (
-          <div className="space-y-8">
+          <div className="hop-home-fade hop-home-delay-2 space-y-12">
             {dateEntries.map(([dateLabel, dateEvents]) => {
               const dateHeading = formatRelativeEventDateHeading(dateEvents[0].event_date)
               return (
-              <div key={dateLabel} className="space-y-4">
-                <div
-                  className="flex items-center justify-between pb-2 border-b-2"
-                  style={{ borderColor: Colors.dividerLight }}
-                >
+                <section key={dateLabel}>
                   <h2
-                    className="text-2xl font-bold"
+                    className="mb-2 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
                     style={{
-                      color: isRelativeDayHeading(dateHeading) ? Colors.textPrimary : Colors.primary,
+                      color: isRelativeDayHeading(dateHeading) ? Colors.accent : Colors.textOnDark,
                       fontFamily: 'var(--font-fjalla-one)',
                     }}
                   >
                     {dateHeading}
                   </h2>
-                </div>
-                <div className="space-y-6">
-                  {Object.entries(groupEventsByRegion(dateEvents)).map(([region, regionEvents]) => (
-                    <section key={`${dateLabel}-${region}`} className="space-y-3">
-                      <h3
-                        className="text-lg font-bold"
-                        style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
-                      >
-                        {region}
-                      </h3>
-                      <CardCarousel>
-                        {regionEvents.map((event) => (
-                          <EventCard
-                            key={`${event.id}-${event.event_date}`}
-                            event={event}
-                            isFeatured={event.featured}
-                          />
-                        ))}
-                      </CardCarousel>
-                    </section>
-                  ))}
-                </div>
-              </div>
-            )})}
+                  <ul className="flex flex-col">
+                    {dateEvents.map((event) => {
+                      const icon =
+                        BREWERY_EVENT_ICON_SRC[
+                          matchBreweryEventIcon(event.title, event.description)
+                        ]
+                      const meta = [
+                        event.breweries?.name,
+                        event.start_time ? formatTime12Hour(event.start_time) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')
+
+                      return (
+                        <li key={`${event.id}-${event.event_date}`}>
+                          <Link
+                            href={`/events/${event.slug}`}
+                            className="flex items-start gap-3 border-t border-white/10 py-4 transition-opacity hover:opacity-85 sm:gap-4"
+                          >
+                            <EventIcon src={icon} />
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className="block truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
+                                style={{
+                                  color: Colors.textOnDark,
+                                  fontFamily: 'var(--font-fjalla-one)',
+                                }}
+                              >
+                                {event.title}
+                              </span>
+                              {meta ? (
+                                <span
+                                  className="mt-1 block text-sm"
+                                  style={{
+                                    color: Colors.accent,
+                                    fontFamily: 'var(--font-be-vietnam-pro)',
+                                  }}
+                                >
+                                  {meta}
+                                </span>
+                              ) : null}
+                              {event.description?.trim() ? (
+                                <span
+                                  className="mt-1.5 text-sm leading-snug"
+                                  style={{
+                                    color: 'rgba(249, 247, 242, 0.62)',
+                                    fontFamily: 'var(--font-be-vietnam-pro)',
+                                    display: '-webkit-box',
+                                    WebkitBoxOrient: 'vertical' as const,
+                                    WebkitLineClamp: 2,
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  {event.description.trim()}
+                                </span>
+                              ) : null}
+                            </span>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              )
+            })}
           </div>
         )}
       </div>
-    </div>
+    </PoshPageShell>
   )
 }
