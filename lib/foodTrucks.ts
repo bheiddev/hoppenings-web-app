@@ -109,7 +109,7 @@ export function foodTrucksForDisplay(trucks: FoodTruck[]): FoodTruckDisplayItem[
       const closedLabel = formatClosedWeekdays(truck.closed)
       return {
         key: `permanent-${truck.id}`,
-        badge: closedLabel ? `On site · ${closedLabel}` : 'On site',
+        badge: closedLabel ? `Permanent · ${closedLabel}` : 'Permanent',
         title: truck.name?.trim() || 'Food available',
         detail: null,
       }
