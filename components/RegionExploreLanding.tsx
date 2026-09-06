@@ -5,6 +5,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 
+export type ExploreTeaserBreweryStatus = {
+  hoursOpen: boolean
+  hoursLabel: string
+  releaseName?: string | null
+  eventTitle?: string | null
+  eventIconSrc?: string | null
+}
+
 export type ExploreTeaserItem = {
   id: string
   title: string
@@ -13,6 +21,8 @@ export type ExploreTeaserItem = {
   description?: string
   href: string
   imageUrl?: string | null
+  /** When set, show open/release/event highlights like the region breweries list. */
+  breweryStatus?: ExploreTeaserBreweryStatus
 }
 
 export type ExploreDayPage = {
@@ -28,7 +38,7 @@ export type ExploreSection = {
   panelLabel: string
   emptyMessage: string
   items: ExploreTeaserItem[]
-  /** When set (Events), enable day cycling with chevrons. */
+  /** When set, enable chevron paging (event days or brewery pages). */
   dayPages?: ExploreDayPage[]
 }
 
@@ -40,6 +50,8 @@ type RegionExploreLandingProps = {
 }
 
 const TEASER_LIMIT = 5
+const STATUS_ICON_SIZE = 16
+const HOURS_ICON_SIZE = 22
 
 function ChevronButton({
   direction,
@@ -78,6 +90,64 @@ function ChevronButton({
   )
 }
 
+function StatusIcon({ src, active }: { src: string; active: boolean }) {
+  return (
+    <span
+      className="shrink-0"
+      style={{
+        width: STATUS_ICON_SIZE,
+        height: STATUS_ICON_SIZE,
+        backgroundColor: active ? Colors.accent : 'rgba(249, 247, 242, 0.45)',
+        WebkitMaskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskImage: `url(${src})`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+      }}
+      aria-hidden
+    />
+  )
+}
+
+function BreweryStatusBlock({ status }: { status: ExploreTeaserBreweryStatus }) {
+  const hasRelease = Boolean(status.releaseName)
+  const hasEvent = Boolean(status.eventTitle)
+  if (!hasRelease && !hasEvent) return null
+
+  return (
+    <span className="mt-2 flex flex-col gap-1.5">
+      {hasRelease ? (
+        <span className="flex min-w-0 items-center gap-2">
+          <StatusIcon src="/beer.svg" active />
+          <span
+            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            title={status.releaseName ?? undefined}
+          >
+            {status.releaseName}
+          </span>
+        </span>
+      ) : null}
+
+      {hasEvent ? (
+        <span className="flex min-w-0 items-center gap-2">
+          <StatusIcon src={status.eventIconSrc || '/event.svg'} active />
+          <span
+            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            title={status.eventTitle ?? undefined}
+          >
+            {status.eventTitle}
+          </span>
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 export function RegionExploreLanding({
   cityName,
   subtitle,
@@ -90,6 +160,8 @@ export function RegionExploreLanding({
   const dayPages = active?.dayPages
   const hasDayPages = Boolean(dayPages && dayPages.length > 0)
   const currentDay = hasDayPages ? dayPages![Math.min(dayIndex, dayPages!.length - 1)] : null
+  const pageNavPrevLabel = active?.id === 'breweries' ? 'Previous breweries' : 'Previous day'
+  const pageNavNextLabel = active?.id === 'breweries' ? 'Next breweries' : 'Next day'
 
   useEffect(() => {
     setDayIndex(0)
@@ -194,13 +266,13 @@ export function RegionExploreLanding({
                     {hasDayPages ? (
                       <ChevronButton
                         direction="prev"
-                        label="Previous day"
+                        label={pageNavPrevLabel}
                         disabled={dayIndex <= 0}
                         onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
                       />
                     ) : null}
                     <h2
-                      className="text-xl font-bold uppercase tracking-wide sm:text-2xl"
+                      className="min-w-0 text-xl font-bold uppercase tracking-wide sm:text-2xl"
                       style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
                     >
                       {panelLabel}
@@ -208,7 +280,7 @@ export function RegionExploreLanding({
                     {hasDayPages ? (
                       <ChevronButton
                         direction="next"
-                        label="Next day"
+                        label={pageNavNextLabel}
                         disabled={dayIndex >= (dayPages?.length ?? 1) - 1}
                         onClick={() =>
                           setDayIndex((i) => Math.min((dayPages?.length ?? 1) - 1, i + 1))
@@ -259,11 +331,34 @@ export function RegionExploreLanding({
                           />
                         )}
                         <span className="min-w-0 flex-1">
-                          <span
-                            className="block truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
-                            style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-                          >
-                            {item.title}
+                          <span className="flex items-start justify-between gap-3">
+                            <span
+                              className="min-w-0 truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
+                              style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                            >
+                              {item.title}
+                            </span>
+                            {item.breweryStatus ? (
+                              <span
+                                className="relative mt-0.5 shrink-0"
+                                style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
+                                title={item.breweryStatus.hoursLabel}
+                                aria-label={item.breweryStatus.hoursLabel}
+                              >
+                                <Image
+                                  src={
+                                    item.breweryStatus.hoursOpen
+                                      ? '/open.svg'
+                                      : '/closed-sign.svg'
+                                  }
+                                  alt=""
+                                  fill
+                                  className="object-contain"
+                                  style={{ filter: 'brightness(0) invert(1)' }}
+                                  aria-hidden
+                                />
+                              </span>
+                            ) : null}
                           </span>
                           {item.subtitle ? (
                             <span
@@ -287,7 +382,9 @@ export function RegionExploreLanding({
                               {item.description}
                             </span>
                           ) : null}
-                          {item.meta ? (
+                          {item.breweryStatus ? (
+                            <BreweryStatusBlock status={item.breweryStatus} />
+                          ) : item.meta ? (
                             <span
                               className="mt-1.5 block text-xs uppercase tracking-[0.14em]"
                               style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}

@@ -169,6 +169,8 @@ export interface Profile {
   updated_at: string | null;
   staff_brewery_id: string | null;
   admin: boolean | null;
+  /** Second gate for any admin UI (content admin or brewery staff). */
+  brewery_admin: boolean | null;
 }
 
 /** Client-writable profile fields only */

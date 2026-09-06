@@ -14,6 +14,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 import { getProfile } from '@/lib/auth/profileService'
 import { getPostAuthPath } from '@/lib/auth/postAuthRedirect'
+import { canAccessContentAdmin } from '@/lib/auth/adminAccess'
 import { signOut as authSignOut } from '@/lib/auth/authService'
 import type { Profile } from '@/types/supabase'
 
@@ -202,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const needsDisplayName = Boolean(
     user && !isLoading && profileReady && !hasDisplayName(profile)
   )
-  const isAdmin = Boolean(profile?.admin)
+  const isAdmin = canAccessContentAdmin(profile)
 
   useEffect(() => {
     if (isLoading) return

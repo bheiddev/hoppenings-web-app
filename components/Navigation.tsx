@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { canAccessContentAdmin } from '@/lib/auth/adminAccess'
 
 export default function Navigation() {
   const pathname = usePathname()
   const { isAuthenticated, profile, isLoading } = useAuth()
   const isAdminSection = pathname === '/admin' || pathname.startsWith('/admin/')
+  const showAdminLink = canAccessContentAdmin(profile) && !isAdminSection
 
   // Landing-style brewery pages, ad spots, and the region-picker home own the full viewport
   if (
@@ -60,7 +62,7 @@ export default function Navigation() {
             {!isLoading &&
               (isAuthenticated ? (
                 <>
-                  {profile?.admin && !isAdminSection ? (
+                  {showAdminLink ? (
                     <Link
                       href="/admin"
                       className="rounded border px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-90"

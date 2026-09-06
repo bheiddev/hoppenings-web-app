@@ -2,10 +2,20 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import {
   RegionExploreLanding,
+  type ExploreDayPage,
   type ExploreSection,
   type ExploreTeaserItem,
 } from '@/components/RegionExploreLanding'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import {
+  getBreweryCardContext,
+  getBreweryCardContextMap,
+} from '@/lib/breweryCardContext'
+import {
+  BREWERY_EVENT_ICON_SRC,
+  getBreweryHoursStatusLabel,
+  isBreweryOpenIconStatus,
+} from '@/lib/breweryCardStatus'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import {
@@ -86,10 +96,11 @@ export default async function CityLandingPage({
   const citySlug = city as CitySlug
   const cityConfig = CITY_CONFIG[citySlug]
 
-  const [breweries, events, releases] = await Promise.all([
+  const [breweries, events, releases, breweryCardContext] = await Promise.all([
     getAllBreweriesWithSlugs(),
     getAllEventsWithSlugs(),
     getAllReleasesWithSlugs(),
+    getBreweryCardContextMap(),
   ])
 
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
@@ -119,22 +130,61 @@ export default async function CityLandingPage({
     }
   })
 
-  const breweryTeasers: ExploreTeaserItem[] = cityBreweries
+  const sortedCityBreweries = cityBreweries
     .slice()
-    .sort((a, b) => {
-      const aImg = a.image_url || a.tap_image ? 0 : 1
-      const bImg = b.image_url || b.tap_image ? 0 : 1
-      if (aImg !== bImg) return aImg - bImg
-      return a.name.localeCompare(b.name)
-    })
-    .slice(0, TEASER_LIMIT)
-    .map((brewery) => ({
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const breweryEmptyMessage = `No breweries currently listed in ${cityConfig.name}.`
+  const breweryTeasers: ExploreTeaserItem[] = sortedCityBreweries.map((brewery) => {
+    const context = getBreweryCardContext(breweryCardContext, brewery.id)
+    const hoursLabel = getBreweryHoursStatusLabel(context.hoursStatus)
+    const hoursOpen = isBreweryOpenIconStatus(context.hoursStatus)
+    return {
       id: brewery.id,
       title: brewery.name,
       subtitle: brewery.location || undefined,
       href: `/breweries/${brewery.slug}`,
       imageUrl: brewery.image_url || brewery.tap_image,
-    }))
+      breweryStatus: {
+        hoursOpen,
+        hoursLabel,
+        releaseName:
+          context.hasNewRelease && context.releaseName ? context.releaseName : null,
+        eventTitle: context.todayEventTitle,
+        eventIconSrc: BREWERY_EVENT_ICON_SRC[context.todayEventIcon],
+      },
+    }
+  })
+
+  const breweryPages: ExploreDayPage[] =
+    breweryTeasers.length === 0
+      ? [
+          {
+            dateLabel: `Taprooms in ${cityConfig.name}`,
+            items: [],
+            emptyMessage: breweryEmptyMessage,
+          },
+        ]
+      : Array.from(
+          { length: Math.ceil(breweryTeasers.length / TEASER_LIMIT) },
+          (_, pageIndex) => {
+            const start = pageIndex * TEASER_LIMIT
+            const pageItems = breweryTeasers.slice(start, start + TEASER_LIMIT)
+            const first = pageItems[0]?.title ?? ''
+            const last = pageItems[pageItems.length - 1]?.title ?? first
+            const dateLabel =
+              breweryTeasers.length <= TEASER_LIMIT
+                ? `Taprooms in ${cityConfig.name}`
+                : first === last
+                  ? first
+                  : `${first} – ${last}`
+            return {
+              dateLabel,
+              items: pageItems,
+              emptyMessage: breweryEmptyMessage,
+            }
+          }
+        )
 
   const releaseTeasers: ExploreTeaserItem[] = cityReleases
     .slice()
@@ -166,9 +216,10 @@ export default async function CityLandingPage({
       id: 'breweries',
       label: 'Breweries',
       href: `/${citySlug}/breweries`,
-      panelLabel: `Taprooms in ${cityConfig.name}`,
-      emptyMessage: `No breweries currently listed in ${cityConfig.name}.`,
-      items: breweryTeasers,
+      panelLabel: breweryPages[0]?.dateLabel ?? `Taprooms in ${cityConfig.name}`,
+      emptyMessage: breweryEmptyMessage,
+      items: breweryPages[0]?.items ?? [],
+      dayPages: breweryPages,
     },
     {
       id: 'releases',

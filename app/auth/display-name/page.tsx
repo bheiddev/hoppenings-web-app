@@ -48,7 +48,7 @@ export default function DisplayNamePage() {
     }
 
     await refreshProfile()
-    router.replace(getPostAuthPath(profile?.admin ? { ...profile, display_name: trimmed } : profile))
+    router.replace(getPostAuthPath(profile ? { ...profile, display_name: trimmed } : null))
   }
 
   if (!isLoading && !isAuthenticated) {

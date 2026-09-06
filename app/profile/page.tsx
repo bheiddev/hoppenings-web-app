@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AuthShell, AuthPrimaryButton } from '@/components/auth/AuthShell'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { canAccessBreweryStaffAdmin, canAccessContentAdmin } from '@/lib/auth/adminAccess'
 import { Colors } from '@/lib/colors'
 import type { Profile } from '@/types/supabase'
 
@@ -36,6 +37,11 @@ const PROFILE_FIELDS: {
     key: 'admin',
     label: 'Admin',
     format: (p) => formatValue(Boolean(p.admin)),
+  },
+  {
+    key: 'brewery_admin',
+    label: 'Brewery admin',
+    format: (p) => formatValue(Boolean(p.brewery_admin)),
   },
   {
     key: 'created_at',
@@ -116,9 +122,15 @@ export default function ProfilePage() {
         ))}
       </dl>
 
-      {profile?.admin ? (
+      {canAccessContentAdmin(profile) ? (
         <Link href="/admin" className="btn-primary w-full py-3 text-center mb-3 block">
           Open Content Admin
+        </Link>
+      ) : null}
+
+      {canAccessBreweryStaffAdmin(profile) ? (
+        <Link href="/staff" className="btn-primary w-full py-3 text-center mb-3 block">
+          Manage Brewery
         </Link>
       ) : null}
 
