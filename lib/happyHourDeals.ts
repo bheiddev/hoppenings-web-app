@@ -41,13 +41,14 @@ export function happyHourDealIsActiveAtHour(deal: HappyHourDeal, hour: number): 
 
 /**
  * Deals scheduled for today (Mountain Time), sorted with Happy Hour titles first.
- * Does not invent or collapse rows — returns the matching DB objects as-is.
+ * Near-duplicate crawl rows (same title family + window) collapse to one.
  */
 export function getTodaysHappyHourDeals(
   deals: HappyHourDeal[],
   now: { date: string; hours: number }
 ): HappyHourDeal[] {
-  return sortHappyHourDeals(deals.filter((deal) => happyHourDealShowsOnDate(deal, now.date)))
+  const todays = deals.filter((deal) => happyHourDealShowsOnDate(deal, now.date))
+  return sortHappyHourDeals(dedupeDealsByTitleFamilyAndWindow(todays))
 }
 
 /**
@@ -142,7 +143,7 @@ export function sortHappyHourDeals(deals: HappyHourDeal[]): HappyHourDeal[] {
 }
 
 function isHappyHourTitle(title: string): boolean {
-  return title.trim().toLowerCase() === 'happy hour'
+  return normalizeTitleFamily(title) === 'happy hour'
 }
 
 const DAY_ABBR: Record<HappyHourDayOfWeek, string> = {
@@ -200,6 +201,11 @@ function normalizeDealText(value: string | null | undefined): string {
   return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
+/** Collapse crawl title variants: "Weekly Happy Hour" → "happy hour". */
+function normalizeTitleFamily(title: string): string {
+  return normalizeDealText(title).replace(/^weekly\s+/, '')
+}
+
 function normalizeHour(value: number | string | null | undefined): string {
   if (value == null || value === '') return 'x'
   const n = typeof value === 'number' ? value : Number(value)
@@ -212,68 +218,163 @@ function coerceHour(value: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Treat null/null and common full-day encodings (0–23, 0–24) as the same window. */
+function normalizeTimeWindow(
+  timeStart: number | string | null | undefined,
+  timeEnd: number | string | null | undefined
+): { start: number | null; end: number | null } {
+  const start = coerceHour(timeStart)
+  const end = coerceHour(timeEnd)
+  if (start == null && end == null) return { start: null, end: null }
+  if (start === 0 && (end == null || end >= 23)) return { start: null, end: null }
+  return { start, end }
+}
+
+function isAllDayWindow(start: number | null, end: number | null): boolean {
+  return start == null && end == null
+}
+
 function normalizeDayOfWeek(day: string | null | undefined): HappyHourDayOfWeek | null {
   if (!day) return null
   const match = HAPPY_HOUR_DAYS.find((d) => d.toLowerCase() === day.trim().toLowerCase())
   return match ?? null
 }
 
-function dealGroupKey(deal: HappyHourDeal): string {
-  const title = normalizeDealText(deal.title)
-  const start = normalizeHour(deal.time_start)
-  const end = normalizeHour(deal.time_end)
+function dealSlotKey(deal: HappyHourDeal): string {
+  const title = normalizeTitleFamily(deal.title)
+  const { start, end } = normalizeTimeWindow(deal.time_start, deal.time_end)
+  return `${title}|${normalizeHour(start)}|${normalizeHour(end)}`
+}
 
-  // Standard "Happy Hour" windows collapse across days by title + hours only,
-  // so Mon–Thu 2–5 becomes one row even if descriptions differ slightly.
-  if (title === 'happy hour') {
-    return `happy-hour|${start}|${end}`
+function createdAtMs(value: string | null | undefined): number {
+  if (!value) return 0
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+/** Prefer cleaner crawl copy: no "Sourced from…", then newer, then more complete. */
+function descriptionScore(description: string | null | undefined, createdAt: string): number {
+  const text = description?.trim() ?? ''
+  let score = 0
+  if (text) score += 50
+  if (text && !/sourced from/i.test(text)) score += 100
+  score += Math.min(createdAtMs(createdAt), 1e15) / 1e11
+  // Mild preference for more complete copy (without letting length dominate).
+  if (text) score += Math.min(text.length, 160) * 0.05
+  return score
+}
+
+function preferDisplayTitle(current: string, candidate: string): string {
+  const cur = current.trim()
+  const next = candidate.trim()
+  if (!cur) return next
+  if (!next) return cur
+  // Prefer the shorter canonical label within a title family ("Happy Hour" over "Weekly Happy Hour").
+  if (normalizeTitleFamily(cur) === normalizeTitleFamily(next)) {
+    if (next.length !== cur.length) return next.length < cur.length ? next : cur
   }
-
-  return [title, normalizeDealText(deal.description), start, end].join('|')
+  return cur
 }
 
 /**
- * Collapse alike deals (same title, description, and time window) across weekdays
- * into one display row — e.g. Mon–Thu · 2 – 5 PM.
- * "Happy Hour" titles group by title + time window only.
+ * Keep one deal per title-family + time window (ignores day).
+ * Used for today's strip where multiple crawl rows share the same weekday.
+ */
+function dedupeDealsByTitleFamilyAndWindow(deals: HappyHourDeal[]): HappyHourDeal[] {
+  const best = new Map<string, HappyHourDeal>()
+
+  for (const deal of deals) {
+    const key = dealSlotKey(deal)
+    const existing = best.get(key)
+    if (!existing) {
+      best.set(key, deal)
+      continue
+    }
+
+    const existingScore = descriptionScore(existing.description, existing.created_at)
+    const candidateScore = descriptionScore(deal.description, deal.created_at)
+    if (candidateScore > existingScore) {
+      best.set(key, {
+        ...deal,
+        title: preferDisplayTitle(existing.title, deal.title),
+      })
+    } else {
+      best.set(key, {
+        ...existing,
+        title: preferDisplayTitle(existing.title, deal.title),
+      })
+    }
+  }
+
+  return [...best.values()]
+}
+
+type DealDisplayGroup = {
+  titleFamily: string
+  title: string
+  description: string | null
+  descriptionScore: number
+  timeStart: number | null
+  timeEnd: number | null
+  days: HappyHourDayOfWeek[]
+  ids: string[]
+}
+
+/**
+ * Drop all-day rows when the same title family already has a specific window
+ * on overlapping weekdays (common crawl artifact: All day + 2–5 PM).
+ */
+function dropRedundantAllDayGroups(groups: DealDisplayGroup[]): DealDisplayGroup[] {
+  return groups.filter((group) => {
+    if (!isAllDayWindow(group.timeStart, group.timeEnd)) return true
+    return !groups.some(
+      (other) =>
+        other !== group &&
+        other.titleFamily === group.titleFamily &&
+        !isAllDayWindow(other.timeStart, other.timeEnd) &&
+        other.days.some((day) => group.days.includes(day))
+    )
+  })
+}
+
+/**
+ * Collapse alike deals across weekdays into one display row — e.g. Mon–Thu · 2 – 5 PM.
+ * Dedupes crawl variants by title family + normalized time window (ignores description drift).
  */
 export function groupHappyHourDealsForDisplay(deals: HappyHourDeal[]): HappyHourDealDisplayItem[] {
-  const groups = new Map<
-    string,
-    {
-      title: string
-      description: string | null
-      timeStart: number | null
-      timeEnd: number | null
-      days: HappyHourDayOfWeek[]
-      ids: string[]
-    }
-  >()
+  const groups = new Map<string, DealDisplayGroup>()
 
   for (const deal of sortHappyHourDeals(deals)) {
-    const key = dealGroupKey(deal)
+    const key = dealSlotKey(deal)
     const day = normalizeDayOfWeek(deal.day_of_week) ?? deal.day_of_week
+    const window = normalizeTimeWindow(deal.time_start, deal.time_end)
+    const score = descriptionScore(deal.description, deal.created_at)
     const existing = groups.get(key)
+
     if (existing) {
       if (!existing.days.includes(day)) existing.days.push(day)
       existing.ids.push(deal.id)
-      if (!existing.description?.trim() && deal.description?.trim()) {
+      existing.title = preferDisplayTitle(existing.title, deal.title)
+      if (score > existing.descriptionScore) {
         existing.description = deal.description
+        existing.descriptionScore = score
       }
       continue
     }
 
     groups.set(key, {
+      titleFamily: normalizeTitleFamily(deal.title),
       title: deal.title.trim(),
       description: deal.description,
-      timeStart: coerceHour(deal.time_start),
-      timeEnd: coerceHour(deal.time_end),
+      descriptionScore: score,
+      timeStart: window.start,
+      timeEnd: window.end,
       days: [day],
       ids: [deal.id],
     })
   }
 
-  return [...groups.values()]
+  return dropRedundantAllDayGroups([...groups.values()])
     .map((group) => ({
       key: group.ids.join('-'),
       badge: `${formatDayList(group.days)} · ${formatHappyHourWindow(group.timeStart, group.timeEnd)}`,

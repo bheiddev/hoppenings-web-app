@@ -92,9 +92,9 @@ export function formatReleaseDate(releaseDate: string | null): string | null {
 /**
  * Group events by date
  */
-export function groupEventsByDate(events: Event[]): Record<string, Event[]> {
-  const grouped: Record<string, Event[]> = {};
-  
+export function groupEventsByDate<T extends Event>(events: T[]): Record<string, T[]> {
+  const grouped: Record<string, T[]> = {};
+
   events.forEach((event) => {
     const dateKey = formatEventDate(event.event_date);
     if (!grouped[dateKey]) {
@@ -102,7 +102,7 @@ export function groupEventsByDate(events: Event[]): Record<string, Event[]> {
     }
     grouped[dateKey].push(event);
   });
-  
+
   return grouped;
 }
 

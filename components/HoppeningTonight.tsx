@@ -72,12 +72,10 @@ function MaskIcon({
         WebkitMaskSize: 'contain',
         WebkitMaskRepeat: 'no-repeat',
         WebkitMaskPosition: 'center',
-        WebkitMaskMode: 'alpha',
         maskImage: `url(${src})`,
         maskSize: 'contain',
         maskRepeat: 'no-repeat',
         maskPosition: 'center',
-        maskMode: 'alpha',
       }}
       aria-hidden
     />
