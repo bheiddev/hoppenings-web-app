@@ -5,9 +5,9 @@ type ProfileAccessFields = Pick<
   'admin' | 'brewery_admin' | 'staff_brewery_id'
 > | null | undefined
 
-/** Site content admin (`/admin`) — requires both admin flags. */
+/** Site content admin (`/admin`) — `profiles.admin`. */
 export function canAccessContentAdmin(profile: ProfileAccessFields): boolean {
-  return Boolean(profile?.admin && profile?.brewery_admin)
+  return Boolean(profile?.admin)
 }
 
 /** Brewery staff admin (`/staff`) — assigned brewery + brewery_admin. */

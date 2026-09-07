@@ -11,8 +11,7 @@ export type BreweryEditorAccess =
 
 /**
  * Verify a browser access token and confirm the user may edit `breweryId`
- * (content admin or staff assigned to that brewery). brewery_admin is required
- * in both cases as a second gate.
+ * (site admin, or brewery staff with brewery_admin + matching staff_brewery_id).
  */
 export async function assertCanEditBrewery(
   breweryId: string,
@@ -22,7 +21,7 @@ export async function assertCanEditBrewery(
   if (!access.ok) return access
 
   const { profile } = access
-  const isContentAdmin = Boolean(profile.admin && profile.brewery_admin)
+  const isContentAdmin = Boolean(profile.admin)
   const isStaffForBrewery =
     Boolean(profile.brewery_admin) && profile.staff_brewery_id === breweryId
 

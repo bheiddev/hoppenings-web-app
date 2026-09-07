@@ -13,8 +13,8 @@ import { Colors } from '@/lib/colors'
  * Client gate for protected routes. Auth is browser/localStorage-based,
  * so this is the access control surface for admin / staff UI.
  *
- * Admin views require brewery_admin as a second check on top of admin /
- * staff_brewery_id.
+ * Content admin uses profiles.admin. Staff brewery admin requires
+ * staff_brewery_id + brewery_admin.
  *
  * Once the user has passed the gate, keep children mounted across brief
  * auth revalidations so UI state (e.g. admin tabs) is not wiped.
