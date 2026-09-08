@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getSupabaseAdmin } from './supabaseAdmin'
 import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, HappyHourDeal, ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
 import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import { sortHappyHourDeals } from '@/lib/happyHourDeals'
@@ -6,6 +7,11 @@ import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { isReleaseInIndexableWindow } from './contentExpiry'
 import { ensureFreshBreweryImages } from './storageUrls'
+
+/** Prefer service-role for admin inbox tables that may block anon RLS reads. */
+function getAdminReadClient() {
+  return getSupabaseAdmin() ?? supabase
+}
 
 export interface BreweryWithSlug extends Brewery {
   slug: string
@@ -494,7 +500,8 @@ export async function getBreweryTaplist(breweryId: string): Promise<TaplistItem[
  */
 export async function getProposedEventsByBreweryId(breweryId: string): Promise<ProposedEvent[]> {
   try {
-    const { data, error } = await supabase
+    const client = getAdminReadClient()
+    const { data, error } = await client
       .from('proposed_events')
       .select(
         'id, created_at, title, description, brewery_id, event_date, start_time, brewery_id2, brewery_id3, cost, end_time, featured, is_recurring, is_recurring_biweekly, is_recurring_monthly'
@@ -535,13 +542,15 @@ export async function getProposedEventsByBreweryId(breweryId: string): Promise<P
 }
 
 /**
- * Get proposed beer releases for a brewery from proposed_beer_releases table
+ * Get proposed beer releases for a brewery from proposed_beer_releases table.
+ * Uses service role when available — this table blocks anon SELECT via RLS.
  */
 export async function getProposedBeerReleasesByBreweryId(
   breweryId: string
 ): Promise<ProposedBeerRelease[]> {
   try {
-    const { data, error } = await supabase
+    const client = getAdminReadClient()
+    const { data, error } = await client
       .from('proposed_beer_releases')
       .select(
         'id, created_at, beer_name, description, brewery_id, "ABV", "Type", release_date, brewery_id2, brewery_id3'
@@ -556,22 +565,19 @@ export async function getProposedBeerReleasesByBreweryId(
 
     if (!data) return []
 
-    return data
-      .map((row: any) => ({
-        id: row.id,
-        created_at: row.created_at,
-        beer_name: row.beer_name ?? null,
-        description: row.description ?? null,
-        brewery_id: row.brewery_id ?? null,
-        ABV: row.ABV ?? null,
-        Type: row.Type ?? null,
-        release_date: row.release_date ?? null,
-        brewery_id2: row.brewery_id2 ?? null,
-        brewery_id3: row.brewery_id3 ?? null,
-      }))
-      .filter(
-        (release) => !release.release_date?.trim() || !isEventInPast(release.release_date)
-      ) as ProposedBeerRelease[]
+    // Admin inbox: show all proposals for this brewery (including past-dated).
+    return data.map((row: any) => ({
+      id: row.id,
+      created_at: row.created_at,
+      beer_name: row.beer_name ?? null,
+      description: row.description ?? null,
+      brewery_id: row.brewery_id ?? null,
+      ABV: row.ABV ?? null,
+      Type: row.Type ?? null,
+      release_date: row.release_date ?? null,
+      brewery_id2: row.brewery_id2 ?? null,
+      brewery_id3: row.brewery_id3 ?? null,
+    })) as ProposedBeerRelease[]
   } catch (error) {
     console.error('Error fetching proposed beer releases:', error)
     return []
