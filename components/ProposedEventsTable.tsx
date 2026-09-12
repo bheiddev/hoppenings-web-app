@@ -11,7 +11,7 @@ import {
   updateProposedEvent,
   type UpdateProposedEventPayload,
 } from '@/app/admin/actions'
-import { AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
+import { AdminButton, AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
