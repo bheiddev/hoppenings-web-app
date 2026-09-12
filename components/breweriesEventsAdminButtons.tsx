@@ -80,3 +80,43 @@ export function AdminButton({
     </button>
   )
 }
+
+/** Compact header action for bulk delete with confirm. Hidden when count is 0. */
+export function AdminDeleteAllButton({
+  count,
+  itemLabel,
+  scopeLabel,
+  disabled = false,
+  loading = false,
+  onConfirm,
+  className = 'shrink-0 font-medium',
+}: {
+  count: number
+  /** Plural noun, e.g. "proposed events" */
+  itemLabel: string
+  /** Optional scope, e.g. brewery name */
+  scopeLabel?: string
+  disabled?: boolean
+  loading?: boolean
+  onConfirm: () => void | Promise<void>
+  className?: string
+}) {
+  if (count <= 0) return null
+
+  return (
+    <AdminButton
+      variant="delete"
+      disabled={disabled}
+      loading={loading}
+      className={className}
+      onClick={() => {
+        const scope = scopeLabel ? ` for ${scopeLabel}` : ''
+        const confirmed = window.confirm(`Delete all ${count} ${itemLabel}${scope}?`)
+        if (!confirmed) return
+        void onConfirm()
+      }}
+    >
+      Delete all
+    </AdminButton>
+  )
+}

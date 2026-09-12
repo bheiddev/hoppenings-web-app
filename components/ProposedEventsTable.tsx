@@ -6,11 +6,12 @@ import { Colors } from '@/lib/colors'
 import { ProposedEvent } from '@/types/supabase'
 import {
   rejectProposedEvent,
+  rejectProposedEvents,
   acceptProposedEvent,
   updateProposedEvent,
   type UpdateProposedEventPayload,
 } from '@/app/admin/actions'
-import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import { AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
@@ -51,6 +52,22 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
     }
   }
 
+  async function handleRejectAll() {
+    const ids = proposed.map((p) => p.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    setPendingKey('reject-all:proposed')
+    try {
+      const result = await rejectProposedEvents(ids)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete proposed events')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete all failed')
+    }
+  }
+
   async function handleAccept(p: ProposedEvent) {
     setActionError(null)
     setPendingKey(acceptProposedKey(p.id))
@@ -88,7 +105,18 @@ export function ProposedEventsTable({ proposed, title }: ProposedEventsTableProp
         </div>
       )}
       <AdminColumnShell>
-        <AdminColumnHeader title={title} />
+        <AdminColumnHeader
+          title={title}
+          action={
+            <AdminDeleteAllButton
+              count={proposed.length}
+              itemLabel="proposed events"
+              disabled={pendingKey !== null}
+              loading={pendingKey === 'reject-all:proposed'}
+              onConfirm={handleRejectAll}
+            />
+          }
+        />
         <AdminColumnScrollBody>
           {proposed.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>

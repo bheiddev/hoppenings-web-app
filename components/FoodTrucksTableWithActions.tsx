@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { FoodTruck } from '@/types/supabase'
-import { deleteFoodTruck, updateFoodTruck } from '@/app/admin/actions'
+import { createFoodTruck, deleteFoodTruck, deleteFoodTrucks, updateFoodTruck } from '@/app/admin/actions'
 import { FoodTruckFormModal } from '@/components/FoodTruckFormModal'
+import { AdminButton, AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
@@ -31,6 +32,7 @@ export function FoodTrucksTableWithActions({
   const router = useRouter()
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<FoodTruck | null>(null)
+  const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(foodTruckId: number) {
@@ -47,6 +49,22 @@ export function FoodTrucksTableWithActions({
     }
   }
 
+  async function handleDeleteAll() {
+    const ids = foodTrucks.map((t) => t.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    setPendingKey('delete-all:food-trucks')
+    try {
+      const result = await deleteFoodTrucks(ids)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete food trucks')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete all failed')
+    }
+  }
+
   function openEdit(truck: FoodTruck) {
     setActionError(null)
     setEditing({ ...truck })
@@ -58,9 +76,9 @@ export function FoodTrucksTableWithActions({
 
   return (
     <>
-      {actionError && (
+      {actionError ? (
         <div
-          className="mb-2 px-3 py-2 rounded text-sm"
+          className="mb-2 rounded px-3 py-2 text-sm"
           style={{ backgroundColor: '#FEE2E2', color: Colors.error }}
         >
           {actionError}
@@ -68,9 +86,33 @@ export function FoodTrucksTableWithActions({
             Dismiss
           </button>
         </div>
-      )}
+      ) : null}
       <AdminColumnShell>
-        <AdminColumnHeader title={title} />
+        <AdminColumnHeader
+          title={title}
+          action={
+            <div className="flex items-center gap-1.5 shrink-0">
+              <AdminDeleteAllButton
+                count={foodTrucks.length}
+                itemLabel="food trucks"
+                disabled={pendingKey !== null}
+                loading={pendingKey === 'delete-all:food-trucks'}
+                onConfirm={handleDeleteAll}
+              />
+              <AdminButton
+                variant="add"
+                onClick={() => {
+                  setActionError(null)
+                  setAdding(true)
+                }}
+                disabled={pendingKey !== null}
+                className="shrink-0 font-medium"
+              >
+                Add
+              </AdminButton>
+            </div>
+          }
+        />
         <AdminColumnScrollBody>
           {foodTrucks.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
@@ -91,7 +133,7 @@ export function FoodTrucksTableWithActions({
         </AdminColumnScrollBody>
       </AdminColumnShell>
 
-      {editing && (
+      {editing ? (
         <FoodTruckFormModal
           modalTitle="Edit food truck"
           foodTruck={editing}
@@ -106,7 +148,24 @@ export function FoodTrucksTableWithActions({
           }}
           onClose={closeEdit}
         />
-      )}
+      ) : null}
+
+      {adding ? (
+        <FoodTruckFormModal
+          modalTitle="Add food truck"
+          foodTruck={null}
+          defaultBreweryId={breweryId}
+          onSave={async (data) => {
+            const result = await createFoodTruck(data)
+            if (result.ok) {
+              setAdding(false)
+              router.refresh()
+            }
+            return result
+          }}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
     </>
   )
 }

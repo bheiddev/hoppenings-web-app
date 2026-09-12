@@ -7,10 +7,11 @@ import { HappyHourDeal } from '@/types/supabase'
 import {
   createHappyHourDeal,
   deleteHappyHourDeal,
+  deleteHappyHourDeals,
   updateHappyHourDeal,
 } from '@/app/admin/actions'
 import { HappyHourDealFormModal } from '@/components/HappyHourDealFormModal'
-import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import { AdminButton, AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
@@ -53,6 +54,22 @@ export function HappyHourDealsTableWithActions({
     }
   }
 
+  async function handleDeleteAll() {
+    const ids = deals.map((d) => d.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    setPendingKey('delete-all:happy-hour')
+    try {
+      const result = await deleteHappyHourDeals(ids)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete happy hour deals')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete all failed')
+    }
+  }
+
   return (
     <>
       {actionError ? (
@@ -70,17 +87,26 @@ export function HappyHourDealsTableWithActions({
         <AdminColumnHeader
           title={title}
           action={
-            <AdminButton
-              variant="add"
-              onClick={() => {
-                setActionError(null)
-                setAdding(true)
-              }}
-              disabled={pendingKey !== null}
-              className="shrink-0 font-medium"
-            >
-              Add
-            </AdminButton>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <AdminDeleteAllButton
+                count={deals.length}
+                itemLabel="happy hour deals"
+                disabled={pendingKey !== null}
+                loading={pendingKey === 'delete-all:happy-hour'}
+                onConfirm={handleDeleteAll}
+              />
+              <AdminButton
+                variant="add"
+                onClick={() => {
+                  setActionError(null)
+                  setAdding(true)
+                }}
+                disabled={pendingKey !== null}
+                className="shrink-0 font-medium"
+              >
+                Add
+              </AdminButton>
+            </div>
           }
         />
         <AdminColumnScrollBody>

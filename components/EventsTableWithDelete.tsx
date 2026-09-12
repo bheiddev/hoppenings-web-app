@@ -7,11 +7,12 @@ import { Event } from '@/types/supabase'
 import {
   createEventInEventsBase,
   deleteEventFromEventsBase,
+  deleteEventsFromEventsBase,
   updateEventInEventsBase,
   type UpdateEventPayload,
 } from '@/app/admin/actions'
 import { EventFormModal } from '@/components/EventFormModal'
-import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import { AdminButton, AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
@@ -50,6 +51,22 @@ export function EventsTableWithDelete({ events, title, breweryId }: EventsTableW
     }
   }
 
+  async function handleDeleteAll() {
+    const ids = events.map((e) => e.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    setPendingKey('delete-all:events')
+    try {
+      const result = await deleteEventsFromEventsBase(ids)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete events')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete all failed')
+    }
+  }
+
   function openEdit(e: Event) {
     setActionError(null)
     setEditing({ ...e })
@@ -85,14 +102,23 @@ export function EventsTableWithDelete({ events, title, breweryId }: EventsTableW
         <AdminColumnHeader
           title={title}
           action={
-            <AdminButton
-              variant="add"
-              onClick={openAdd}
-              disabled={pendingKey !== null}
-              className="shrink-0 font-medium"
-            >
-              Add
-            </AdminButton>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <AdminDeleteAllButton
+                count={events.length}
+                itemLabel="events"
+                disabled={pendingKey !== null}
+                loading={pendingKey === 'delete-all:events'}
+                onConfirm={handleDeleteAll}
+              />
+              <AdminButton
+                variant="add"
+                onClick={openAdd}
+                disabled={pendingKey !== null}
+                className="shrink-0 font-medium"
+              >
+                Add
+              </AdminButton>
+            </div>
           }
         />
         <AdminColumnScrollBody>

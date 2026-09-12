@@ -6,12 +6,14 @@ import { Colors } from '@/lib/colors'
 import { ProposedBeerRelease } from '@/types/supabase'
 import {
   rejectProposedBeerRelease,
+  rejectProposedBeerReleases,
   acceptProposedBeerRelease,
   updateProposedBeerRelease,
   type UpdateProposedBeerReleasePayload,
   type UpdateBeerReleasePayload,
 } from '@/app/admin/actions'
 import { BeerReleaseFormModal } from '@/components/BeerReleaseFormModal'
+import { AdminDeleteAllButton } from '@/components/breweriesEventsAdminButtons'
 import {
   AdminColumnHeader,
   AdminColumnScrollBody,
@@ -71,6 +73,22 @@ export function ProposedBeerReleasesTable({ proposed, title }: ProposedBeerRelea
     }
   }
 
+  async function handleRejectAll() {
+    const ids = proposed.map((p) => p.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    setPendingKey('reject-all:proposed-beer')
+    try {
+      const result = await rejectProposedBeerReleases(ids)
+      setPendingKey(null)
+      if (result?.ok) router.refresh()
+      else setActionError(result?.error ?? 'Failed to delete proposed beer releases')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete all failed')
+    }
+  }
+
   async function handleAccept(p: ProposedBeerRelease) {
     setActionError(null)
     setPendingKey(acceptProposedBeerKey(p.id))
@@ -99,7 +117,18 @@ export function ProposedBeerReleasesTable({ proposed, title }: ProposedBeerRelea
         </div>
       )}
       <AdminColumnShell>
-        <AdminColumnHeader title={title} />
+        <AdminColumnHeader
+          title={title}
+          action={
+            <AdminDeleteAllButton
+              count={proposed.length}
+              itemLabel="proposed beer releases"
+              disabled={pendingKey !== null}
+              loading={pendingKey === 'reject-all:proposed-beer'}
+              onConfirm={handleRejectAll}
+            />
+          }
+        />
         <AdminColumnScrollBody>
           {proposed.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>

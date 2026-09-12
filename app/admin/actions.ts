@@ -47,6 +47,25 @@ export async function rejectProposedEvent(id: number) {
   return { ok: true }
 }
 
+export async function rejectProposedEvents(ids: number[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [...new Set(ids.filter((id) => Number.isFinite(id)))]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No proposed events to delete' }
+
+  const { error } = await admin!
+    .from('proposed_events')
+    .delete()
+    .in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error rejecting proposed events:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export async function acceptProposedEvent(proposed: ProposedEvent) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
@@ -142,6 +161,25 @@ export async function rejectProposedBeerRelease(id: number) {
 
   if (error) {
     console.error('Error rejecting proposed beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function rejectProposedBeerReleases(ids: number[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [...new Set(ids.filter((id) => Number.isFinite(id)))]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No proposed beer releases to delete' }
+
+  const { error } = await admin!
+    .from('proposed_beer_releases')
+    .delete()
+    .in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error rejecting proposed beer releases:', error)
     return { ok: false, error: error.message }
   }
   revalidateBreweriesEvents()
@@ -314,6 +352,24 @@ export async function deleteEventFromEventsBase(eventId: string) {
   return { ok: true }
 }
 
+export async function deleteEventsFromEventsBase(eventIds: string[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [
+    ...new Set(eventIds.map((id) => normalizeEventsBaseId(id)).filter((id) => id.length > 0)),
+  ]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No events to delete' }
+
+  const { error } = await admin!.from('events_base').delete().in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error deleting events:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export type UpdateBeerReleasePayload = {
   beer_name: string
   ABV: string | null
@@ -384,6 +440,31 @@ export type UpdateFoodTruckPayload = {
   closed: number[] | null
 }
 
+export async function createFoodTruck(data: UpdateFoodTruckPayload) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  if (!data.brewery_id?.trim()) return { ok: false, error: 'Brewery id is required' }
+  if (!data.name?.trim()) return { ok: false, error: 'Name is required' }
+  if (data.permanent !== true && !data.date?.trim()) {
+    return { ok: false, error: 'Date is required for one-day food trucks' }
+  }
+
+  const { error } = await admin!.from('food_trucks').insert({
+    name: data.name.trim(),
+    brewery_id: data.brewery_id.trim(),
+    date: data.permanent === true ? null : data.date,
+    permanent: data.permanent === true,
+    closed: data.permanent === true ? data.closed : null,
+  })
+
+  if (error) {
+    console.error('Error creating food truck:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export async function updateFoodTruck(foodTruckId: number, data: UpdateFoodTruckPayload) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
@@ -413,6 +494,22 @@ export async function deleteFoodTruck(foodTruckId: number) {
 
   if (error) {
     console.error('Error deleting food truck:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
+export async function deleteFoodTrucks(foodTruckIds: number[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [...new Set(foodTruckIds.filter((id) => Number.isFinite(id)))]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No food trucks to delete' }
+
+  const { error } = await admin!.from('food_trucks').delete().in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error deleting food trucks:', error)
     return { ok: false, error: error.message }
   }
   revalidateBreweriesEvents()
@@ -484,6 +581,22 @@ export async function deleteHappyHourDeal(dealId: string) {
   return { ok: true }
 }
 
+export async function deleteHappyHourDeals(dealIds: string[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [...new Set(dealIds.map((id) => id.trim()).filter(Boolean))]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No happy hour deals to delete' }
+
+  const { error } = await admin!.from('happy_hour_deals').delete().in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error deleting happy hour deals:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  return { ok: true }
+}
+
 export async function deleteBeerReleaseFromBase(releaseId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
@@ -491,6 +604,23 @@ export async function deleteBeerReleaseFromBase(releaseId: string) {
 
   if (error) {
     console.error('Error deleting beer release:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidateBreweriesEvents()
+  revalidatePath('/releases')
+  return { ok: true }
+}
+
+export async function deleteBeerReleasesFromBase(releaseIds: string[]) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const uniqueIds = [...new Set(releaseIds.map((id) => id.trim()).filter(Boolean))]
+  if (uniqueIds.length === 0) return { ok: false, error: 'No beer releases to delete' }
+
+  const { error } = await admin!.from('beer_releases_base').delete().in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error deleting beer releases:', error)
     return { ok: false, error: error.message }
   }
   revalidateBreweriesEvents()

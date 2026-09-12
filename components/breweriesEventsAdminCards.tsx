@@ -103,14 +103,21 @@ export function AdminColumnHeader({
   )
 }
 
-export function AdminSectionHeader({ label }: { label: string }) {
+export function AdminSectionHeader({
+  label,
+  action,
+}: {
+  label: string
+  action?: React.ReactNode
+}) {
   return (
-    <p
-      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide border-b"
+    <div
+      className="px-3 py-2 border-b flex items-center justify-between gap-2"
       style={sectionHeaderStyle}
     >
-      {label}
-    </p>
+      <p className="text-xs font-semibold uppercase tracking-wide min-w-0">{label}</p>
+      {action}
+    </div>
   )
 }
 
