@@ -1,10 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { BackLink } from '@/components/BackLink'
 import { notFound } from 'next/navigation'
+import { BackLink } from '@/components/BackLink'
+import { ExploreTeaserRow } from '@/components/ExploreTeaserRow'
+import { PoshEyebrow, PoshPageShell } from '@/components/PoshPageShell'
 import { Colors } from '@/lib/colors'
-import { EventCard } from '@/components/EventCard'
-import { CardCarousel } from '@/components/CardCarousel'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import {
   ACTIVITY_CONFIG,
@@ -14,7 +14,12 @@ import {
   filterEventsForActivity,
   filterEventsForCity,
 } from '@/lib/seoCities'
-import { bucketEventsByMountainWeekDays, formatMountainWeekDayHeading, isRelativeDayHeading } from '@/lib/utils'
+import {
+  bucketEventsByMountainWeekDays,
+  formatMountainWeekDayHeading,
+  formatTime12Hour,
+  isRelativeDayHeading,
+} from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -69,81 +74,106 @@ export default async function CityActivityPage({
     bucketEventsByMountainWeekDays(filtered, 7)
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: Colors.surfaceMedium }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <BackLink
-          fallbackHref={`/${citySlug}`}
-          showIcon={false}
-          className="underline text-sm"
-          style={{ color: Colors.primary }}
-        />
+    <PoshPageShell>
+      <div className="mx-auto max-w-7xl px-6 pb-16 pt-24 sm:px-10 lg:px-12 lg:pb-20 lg:pt-28">
+        <div className="mb-3 flex items-center gap-2 [&_p]:mb-0">
+          <BackLink
+            fallbackHref={`/${citySlug}`}
+            showLabel={false}
+            iconSize={18}
+            className="inline-flex shrink-0 items-center"
+            style={{ color: Colors.accent }}
+          />
+          <PoshEyebrow>{cityName}</PoshEyebrow>
+        </div>
         <h1
-          className="text-3xl font-bold mt-4 mb-4"
-          style={{ color: Colors.primary, fontFamily: 'var(--font-fjalla-one)' }}
+          className="hop-home-fade mb-4 font-bold uppercase leading-[0.95] tracking-wide text-[clamp(2.25rem,8vw,5rem)]"
+          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
         >
-          {activityLabel} in {cityName}
+          {activityLabel}
         </h1>
-        <p className="mb-8 max-w-3xl" style={{ color: Colors.textPrimary }}>
-          Explore recurring {activityLabel.toLowerCase()} at breweries around {cityName}. Listings are
-          continuously updated so you can plan weeknights and weekend outings quickly.
+        <p
+          className="hop-home-fade hop-home-delay-1 mb-12 max-w-xl text-base leading-relaxed sm:text-lg"
+          style={{ color: 'rgba(249, 247, 242, 0.78)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+        >
+          Upcoming {activityLabel.toLowerCase()} at taprooms across {cityName}.
         </p>
 
         {filtered.length === 0 ? (
-          <p style={{ color: Colors.textPrimary }}>No events currently matched this category.</p>
+          <p
+            className="text-base"
+            style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
+            No events currently matched this category.
+          </p>
         ) : activityEventsThisWeek.length === 0 ? (
-          <p className="text-sm max-w-2xl" style={{ color: Colors.textPrimary }}>
+          <p
+            className="text-base max-w-2xl"
+            style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
+          >
             No matching {activityLabel.toLowerCase()} in {cityName} over the next seven days. Check the{' '}
-            <Link href={`/${citySlug}`} className="underline font-semibold" style={{ color: Colors.primary }}>
+            <Link href={`/${citySlug}`} className="underline" style={{ color: Colors.accent }}>
               {cityName} hub
             </Link>{' '}
             or full{' '}
-            <Link href="/events" className="underline font-semibold" style={{ color: Colors.primary }}>
+            <Link href={`/${citySlug}/events`} className="underline" style={{ color: Colors.accent }}>
               events calendar
             </Link>
             .
           </p>
         ) : (
-          <div className="space-y-8">
+          <div className="hop-home-fade hop-home-delay-2 space-y-12">
             {weekDates.map((ymd, index) => {
               const dayEvents = eventsByMountainDay.get(ymd) ?? []
               const dayHeading = formatMountainWeekDayHeading(ymd, index)
               return (
-                <div key={ymd} className="space-y-4">
-                  <div
-                    className="flex items-center justify-between pb-2 border-b-2"
-                    style={{ borderColor: Colors.dividerLight }}
+                <section key={ymd}>
+                  <h2
+                    className="mb-2 text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+                    style={{
+                      color: isRelativeDayHeading(dayHeading) ? Colors.accent : Colors.textOnDark,
+                      fontFamily: 'var(--font-fjalla-one)',
+                    }}
                   >
-                    <h2
-                      className="text-xl font-bold"
+                    {dayHeading}
+                  </h2>
+                  {dayEvents.length === 0 ? (
+                    <p
+                      className="border-t border-white/10 py-4 text-sm"
                       style={{
-                        color: isRelativeDayHeading(dayHeading) ? Colors.textPrimary : Colors.primary,
-                        fontFamily: 'var(--font-fjalla-one)',
+                        color: 'rgba(249, 247, 242, 0.55)',
+                        fontFamily: 'var(--font-be-vietnam-pro)',
                       }}
                     >
-                      {dayHeading}
-                    </h2>
-                  </div>
-                  {dayEvents.length === 0 ? (
-                    <p className="text-sm" style={{ color: Colors.textPrimary }}>
                       No events scheduled.
                     </p>
                   ) : (
-                    <CardCarousel>
+                    <ul className="flex flex-col">
                       {dayEvents.map((event) => (
-                        <EventCard
-                          key={`${event.id}-${event.event_date}`}
-                          event={event}
-                          isFeatured={event.featured}
-                        />
+                        <li key={`${event.id}-${event.event_date}`}>
+                          <ExploreTeaserRow
+                            item={{
+                              id: `${event.id}-${event.event_date}`,
+                              title: event.title,
+                              subtitle: event.breweries?.name,
+                              meta: event.start_time
+                                ? formatTime12Hour(event.start_time) || undefined
+                                : undefined,
+                              description: event.description?.trim() || undefined,
+                              href: `/events/${event.slug}`,
+                              imageUrl: event.breweries?.image_url ?? null,
+                            }}
+                          />
+                        </li>
                       ))}
-                    </CardCarousel>
+                    </ul>
                   )}
-                </div>
+                </section>
               )
             })}
           </div>
         )}
       </div>
-    </div>
+    </PoshPageShell>
   )
 }

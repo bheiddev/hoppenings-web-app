@@ -1,13 +1,9 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { BackLink } from '@/components/BackLink'
+import { ExploreTeaserRow } from '@/components/ExploreTeaserRow'
 import { PoshEyebrow, PoshPageShell } from '@/components/PoshPageShell'
 import { Colors } from '@/lib/colors'
-import {
-  BREWERY_EVENT_ICON_SRC,
-  matchBreweryEventIcon,
-} from '@/lib/breweryCardStatus'
 import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import {
@@ -19,7 +15,6 @@ import {
 } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
-const ICON_SIZE = 28
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -46,28 +41,6 @@ export async function generateMetadata({
     alternates: { canonical: `${BASE_URL}/${city}/events` },
     openGraph: { title, description, type: 'website', url: `${BASE_URL}/${city}/events` },
   }
-}
-
-function EventIcon({ src }: { src: string }) {
-  return (
-    <span
-      className="mt-0.5 block shrink-0"
-      style={{
-        width: ICON_SIZE,
-        height: ICON_SIZE,
-        backgroundColor: Colors.accent,
-        WebkitMaskImage: `url(${src})`,
-        WebkitMaskSize: 'contain',
-        WebkitMaskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'center',
-        maskImage: `url(${src})`,
-        maskSize: 'contain',
-        maskRepeat: 'no-repeat',
-        maskPosition: 'center',
-      }}
-      aria-hidden
-    />
-  )
 }
 
 export default async function CityEventsPage({
@@ -141,66 +114,23 @@ export default async function CityEventsPage({
                     {dateHeading}
                   </h2>
                   <ul className="flex flex-col">
-                    {dateEvents.map((event) => {
-                      const icon =
-                        BREWERY_EVENT_ICON_SRC[
-                          matchBreweryEventIcon(event.title, event.description)
-                        ]
-                      const meta = [
-                        event.breweries?.name,
-                        event.start_time ? formatTime12Hour(event.start_time) : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' ')
-
-                      return (
-                        <li key={`${event.id}-${event.event_date}`}>
-                          <Link
-                            href={`/events/${event.slug}`}
-                            className="flex items-start gap-3 border-t border-white/10 py-4 transition-opacity hover:opacity-85 sm:gap-4"
-                          >
-                            <EventIcon src={icon} />
-                            <span className="min-w-0 flex-1">
-                              <span
-                                className="block truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
-                                style={{
-                                  color: Colors.textOnDark,
-                                  fontFamily: 'var(--font-fjalla-one)',
-                                }}
-                              >
-                                {event.title}
-                              </span>
-                              {meta ? (
-                                <span
-                                  className="mt-1 block text-sm"
-                                  style={{
-                                    color: Colors.accent,
-                                    fontFamily: 'var(--font-be-vietnam-pro)',
-                                  }}
-                                >
-                                  {meta}
-                                </span>
-                              ) : null}
-                              {event.description?.trim() ? (
-                                <span
-                                  className="mt-1.5 text-sm leading-snug"
-                                  style={{
-                                    color: 'rgba(249, 247, 242, 0.62)',
-                                    fontFamily: 'var(--font-be-vietnam-pro)',
-                                    display: '-webkit-box',
-                                    WebkitBoxOrient: 'vertical' as const,
-                                    WebkitLineClamp: 2,
-                                    overflow: 'hidden',
-                                  }}
-                                >
-                                  {event.description.trim()}
-                                </span>
-                              ) : null}
-                            </span>
-                          </Link>
-                        </li>
-                      )
-                    })}
+                    {dateEvents.map((event) => (
+                      <li key={`${event.id}-${event.event_date}`}>
+                        <ExploreTeaserRow
+                          item={{
+                            id: `${event.id}-${event.event_date}`,
+                            title: event.title,
+                            subtitle: event.breweries?.name,
+                            meta: event.start_time
+                              ? formatTime12Hour(event.start_time) || undefined
+                              : undefined,
+                            description: event.description?.trim() || undefined,
+                            href: `/events/${event.slug}`,
+                            imageUrl: event.breweries?.image_url ?? null,
+                          }}
+                        />
+                      </li>
+                    ))}
                   </ul>
                 </section>
               )
