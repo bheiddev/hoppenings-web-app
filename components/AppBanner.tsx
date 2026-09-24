@@ -37,7 +37,14 @@ export default function AppBanner() {
     localStorage.setItem('appBannerDismissed', 'true')
   }
 
-  if (pathname === '/collab-fest-ad' || /^\/breweries\/[^/]+/.test(pathname)) return null
+  if (
+    pathname === '/collab-fest-ad' ||
+    pathname === '/checkin' ||
+    pathname.startsWith('/checkin/') ||
+    /^\/breweries\/[^/]+/.test(pathname)
+  ) {
+    return null
+  }
   if (!isVisible) return null
 
   return (

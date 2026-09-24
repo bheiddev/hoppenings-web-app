@@ -13,10 +13,12 @@ export default function Navigation() {
   const isAdminSection = pathname === '/admin' || pathname.startsWith('/admin/')
   const showAdminLink = canAccessContentAdmin(profile) && !isAdminSection
 
-  // Landing-style brewery pages, ad spots, and the region-picker home own the full viewport
+  // Landing-style brewery pages, ad spots, check-in QR funnel, and the region-picker home own the full viewport
   if (
     pathname === '/' ||
     pathname === '/collab-fest-ad' ||
+    pathname === '/checkin' ||
+    pathname.startsWith('/checkin/') ||
     /^\/breweries\/[^/]+/.test(pathname)
   ) {
     return null

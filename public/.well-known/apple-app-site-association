@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "54H62V7566.com.breweryevents.app",
+        "paths": ["/checkin", "/checkin/*"]
+      }
+    ]
+  }
+}
