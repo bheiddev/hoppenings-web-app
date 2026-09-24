@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.breweryevents.app",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_APP_SIGNING_SHA256"]
+      "sha256_cert_fingerprints": [
+        "1F:26:62:51:58:DE:86:4B:51:36:23:A5:E8:8A:3F:C2:76:EF:6E:47:B8:23:B0:8A:C9:9B:71:D5:72:D9:14:D3"
+      ]
     }
   }
 ]
