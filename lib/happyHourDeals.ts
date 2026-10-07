@@ -1,6 +1,12 @@
 import type { HappyHourDayOfWeek, HappyHourDeal } from '@/types/supabase'
 import { getMountainWeekdayIndex } from '@/lib/foodTrucks'
 
+/**
+ * Public site surfaces for happy hour / deals (brewery pages, Hoppening Tonight, etc.).
+ * Admin CRUD remains available while this is false.
+ */
+export const SHOW_HAPPY_HOUR_DEALS_ON_SITE = false
+
 export const HAPPY_HOUR_DAYS: HappyHourDayOfWeek[] = [
   'Sunday',
   'Monday',
@@ -47,6 +53,7 @@ export function getTodaysHappyHourDeals(
   deals: HappyHourDeal[],
   now: { date: string; hours: number }
 ): HappyHourDeal[] {
+  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return []
   const todays = deals.filter((deal) => happyHourDealShowsOnDate(deal, now.date))
   return sortHappyHourDeals(dedupeDealsByTitleFamilyAndWindow(todays))
 }
@@ -102,6 +109,7 @@ export function getUpcomingHappyHourStatus(
   deals: HappyHourDeal[],
   now: { date: string; hours: number }
 ): string | null {
+  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return null
   const todays = getTodaysHappyHourDeals(deals, now)
   const remaining = todays.filter(
     (deal) => deal.time_end == null || now.hours < deal.time_end
@@ -342,6 +350,7 @@ function dropRedundantAllDayGroups(groups: DealDisplayGroup[]): DealDisplayGroup
  * Dedupes crawl variants by title family + normalized time window (ignores description drift).
  */
 export function groupHappyHourDealsForDisplay(deals: HappyHourDeal[]): HappyHourDealDisplayItem[] {
+  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return []
   const groups = new Map<string, DealDisplayGroup>()
 
   for (const deal of sortHappyHourDeals(deals)) {

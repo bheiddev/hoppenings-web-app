@@ -39,6 +39,7 @@ import {
   formatHappyHourWindow,
   getTodaysHappyHourDeals,
   getUpcomingHappyHourStatus,
+  SHOW_HAPPY_HOUR_DEALS_ON_SITE,
 } from '@/lib/happyHourDeals'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
@@ -113,11 +114,15 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     getBreweryEvents(brewery.id),
     getBreweryReleases(brewery.id),
     getBreweryTonightFood(brewery.id, Boolean(brewery.has_food_trucks)),
-    getBreweryHappyHourDeals(brewery.id),
+    SHOW_HAPPY_HOUR_DEALS_ON_SITE
+      ? getBreweryHappyHourDeals(brewery.id)
+      : Promise.resolve([]),
     getBreweryFoodTrucks(brewery.id),
     siblingBreweryId ? getBreweryById(siblingBreweryId) : Promise.resolve(null),
     siblingBreweryId ? getBreweryEvents(siblingBreweryId) : Promise.resolve([]),
-    siblingBreweryId ? getBreweryHappyHourDeals(siblingBreweryId) : Promise.resolve([]),
+    SHOW_HAPPY_HOUR_DEALS_ON_SITE && siblingBreweryId
+      ? getBreweryHappyHourDeals(siblingBreweryId)
+      : Promise.resolve([]),
   ])
 
   const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
