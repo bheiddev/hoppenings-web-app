@@ -19,6 +19,8 @@ export default function Navigation() {
     pathname === '/collab-fest-ad' ||
     pathname === '/checkin' ||
     pathname.startsWith('/checkin/') ||
+    pathname === '/perks' ||
+    pathname.startsWith('/perks/') ||
     /^\/breweries\/[^/]+/.test(pathname)
   ) {
     return null
