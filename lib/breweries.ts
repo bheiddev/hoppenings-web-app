@@ -5,7 +5,7 @@ import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/f
 import { sortHappyHourDeals } from '@/lib/happyHourDeals'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
-import { isReleaseInIndexableWindow } from './contentExpiry'
+import { getReleaseListDateBounds, isReleaseInIndexableWindow } from './contentExpiry'
 import { ensureFreshBreweryImages } from './storageUrls'
 
 /** Prefer service-role for admin inbox tables that may block anon RLS reads. */
@@ -255,6 +255,8 @@ export async function getBreweryEvents(breweryId: string): Promise<Event[]> {
  */
 export async function getBreweryReleases(breweryId: string): Promise<BeerRelease[]> {
   try {
+    const { fromYmd, toYmd } = getReleaseListDateBounds()
+
     const { data, error } = await supabase
       .from('beer_releases_base')
       .select(`
@@ -275,7 +277,10 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
         )
       `)
       .or(`brewery_id.eq.${breweryId},brewery_id2.eq.${breweryId},brewery_id3.eq.${breweryId}`)
-      .order('created_at', { ascending: false })
+      .not('release_date', 'is', null)
+      .gte('release_date', fromYmd)
+      .lte('release_date', toYmd)
+      .order('release_date', { ascending: false })
       .limit(50)
 
     if (error) {
@@ -303,12 +308,7 @@ export async function getBreweryReleases(breweryId: string): Promise<BeerRelease
       }
     })) as BeerRelease[]
 
-    // Same indexable window as sitemap and release detail (lib/contentExpiry)
-    const filteredReleases = releases.filter((release) =>
-      isReleaseInIndexableWindow(release.release_date)
-    )
-
-    return filteredReleases
+    return releases.filter((release) => isReleaseInIndexableWindow(release.release_date))
   } catch (error) {
     console.error('Error fetching brewery releases:', error)
     return []

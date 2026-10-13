@@ -13,7 +13,6 @@ import {
 import { getSiblingBreweryId } from '@/lib/multiLocationBreweries'
 import {
   formatEventDateShort,
-  formatReleaseDate,
   formatTime12Hour,
   getMountainTimeNow,
   isEventToday,
@@ -41,6 +40,8 @@ import {
   getUpcomingHappyHourStatus,
   SHOW_HAPPY_HOUR_DEALS_ON_SITE,
 } from '@/lib/happyHourDeals'
+import { flattenReleaseSections, splitReleasesForDisplay } from '@/lib/releaseSections'
+import { ReleaseSectionsList } from '@/components/ReleaseSectionsList'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -149,7 +150,8 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     ? getUpcomingHappyHourStatus(siblingHappyHourDeals, mountainNow)
     : null
 
-  const latestRelease = releases[0] ?? null
+  const orderedReleases = flattenReleaseSections(splitReleasesForDisplay(releases))
+  const latestRelease = orderedReleases[0] ?? null
   const hoppeningReleaseBase = latestRelease
     ? {
         name: latestRelease.beer_name,
@@ -493,50 +495,20 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
               >
                 New Beer Releases
               </h2>
-              <ul className="flex flex-col">
-                {releases.map((release) => {
-                  const releaseSlug = generateReleaseSlug(
+              <ReleaseSectionsList
+                releases={releases}
+                variant="light"
+                showBrewery={false}
+                getHref={(release) =>
+                  `/releases/${generateReleaseSlug(
                     release.beer_name,
                     release.Type,
                     release.breweries.name,
                     release.breweries.location || null,
                     release.id
-                  )
-                  return (
-                    <li key={release.id}>
-                      <Link
-                        href={`/releases/${releaseSlug}`}
-                        className="block border-t py-4 transition-opacity hover:opacity-85"
-                        style={{ borderColor: Colors.border }}
-                      >
-                        <span
-                          className="block text-lg font-bold uppercase tracking-wide sm:text-xl"
-                          style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
-                        >
-                          {release.beer_name}
-                        </span>
-                        {release.description ? (
-                          <span
-                            className="mt-1.5 block text-sm leading-snug line-clamp-2"
-                            style={{
-                              color: Colors.textSecondary,
-                              fontFamily: 'var(--font-be-vietnam-pro)',
-                            }}
-                          >
-                            {release.description}
-                          </span>
-                        ) : null}
-                        <span
-                          className="mt-1.5 block text-xs uppercase tracking-[0.14em]"
-                          style={{ color: Colors.primary, fontFamily: 'var(--font-be-vietnam-pro)' }}
-                        >
-                          {[release.Type, formatReleaseDate(release.release_date)].filter(Boolean).join(' · ')}
-                        </span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
+                  )}`
+                }
+              />
             </div>
           </section>
         ) : null}

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { BeerRelease } from '@/types/supabase'
 import { generateReleaseSlug, generateLegacyReleaseSlug } from './slug'
-import { isReleaseInIndexableWindow } from './contentExpiry'
+import { getReleaseListDateBounds, isReleaseInIndexableWindow } from './contentExpiry'
 import { ensureFreshBreweryImages } from './storageUrls'
 
 export interface BeerReleaseWithSlug extends BeerRelease {
@@ -24,6 +24,9 @@ function buildReleaseSlugMap(releases: BeerReleaseWithSlug[]): Map<string, BeerR
  */
 export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> {
   try {
+    // Same bounds as mobile useBeerReleasesService (Mountain calendar dates).
+    const { fromYmd, toYmd } = getReleaseListDateBounds()
+
     const { data, error } = await supabase
       .from('beer_releases_base')
       .select(`
@@ -44,8 +47,11 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
           Region
         )
       `)
-      .order('created_at', { ascending: false })
-      .limit(500) // Increase limit to get all releases
+      .not('release_date', 'is', null)
+      .gte('release_date', fromYmd)
+      .lte('release_date', toYmd)
+      .order('release_date', { ascending: false })
+      .limit(500)
 
     if (error) {
       console.error('Error fetching releases:', error)
@@ -98,12 +104,10 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
       }
     })
 
-    // Only include releases in the indexable window (sitemap + listing). Expired URLs 301 from the detail page.
-    const filteredReleases = releasesWithSlugs.filter((release) =>
+    // Defense in depth — same window as the query / mobile.
+    return releasesWithSlugs.filter((release) =>
       isReleaseInIndexableWindow(release.release_date)
     )
-
-    return filteredReleases
   } catch (error) {
     console.error('Error fetching releases with slugs:', error)
     return []

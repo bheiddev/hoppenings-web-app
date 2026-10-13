@@ -18,6 +18,7 @@ import {
 } from '@/lib/breweryCardStatus'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
+import { flattenReleaseSections, splitReleasesForDisplay } from '@/lib/releaseSections'
 import {
   ACTIVITY_CONFIG,
   ActivitySlug,
@@ -186,9 +187,9 @@ export default async function CityLandingPage({
           }
         )
 
-  const releaseTeasers: ExploreTeaserItem[] = cityReleases
-    .slice()
-    .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''))
+  const releaseTeasers: ExploreTeaserItem[] = flattenReleaseSections(
+    splitReleasesForDisplay(cityReleases)
+  )
     .slice(0, TEASER_LIMIT)
     .map((release) => ({
       id: release.id,

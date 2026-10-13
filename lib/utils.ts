@@ -293,7 +293,7 @@ function compareDateStrings(date1: string, date2: string): number {
  * Add days to a date string in YYYY-MM-DD format, returning a new date string
  * Works with date components directly to avoid timezone issues
  */
-function addDaysToDateString(dateStr: string, days: number): string {
+export function addDaysToDateString(dateStr: string, days: number): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   
   // Create a date object and add days

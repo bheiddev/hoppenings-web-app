@@ -13,10 +13,14 @@
  * without accumulating 404s.
  */
 
-const TIMEZONE = 'America/Denver'
+import { addDaysToDateString, getTodayMountainDateString, normalizeEventDateToMountainTime } from '@/lib/utils'
 
-/** Release detail pages: indexable for this many days after release_date (and always future). */
-export const RELEASE_INDEXABLE_DAYS = 14
+/** Release list/detail: from 14 Mountain days ago through ~1 year ahead (matches mobile). */
+export const RELEASE_LOOKBACK_DAYS = 14
+export const RELEASE_LOOKAHEAD_YEARS = 1
+
+/** @deprecated Prefer RELEASE_LOOKBACK_DAYS — kept for older call sites. */
+export const RELEASE_INDEXABLE_DAYS = RELEASE_LOOKBACK_DAYS
 
 /** Event detail pages: indexable for this many days after event_date. null = no expiry (all events stay indexable). */
 export const EVENT_INDEXABLE_DAYS: number | null = null
@@ -27,29 +31,40 @@ export const EXPIRED_RELEASE_REDIRECT = '/releases'
 /** Where to send users when they hit an expired event URL (if event expiry is enabled). */
 export const EXPIRED_EVENT_REDIRECT = '/events'
 
-function todayDateString(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE })
-}
+const TIMEZONE = 'America/Denver'
 
 function toDateString(isoOrDate: string | null): string | null {
   if (!isoOrDate) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(isoOrDate)) {
+    return normalizeEventDateToMountainTime(isoOrDate)
+  }
   const d = new Date(isoOrDate)
+  if (Number.isNaN(d.getTime())) return null
   return d.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
 }
 
+/** Mountain YYYY-MM-DD bounds used by the mobile beer_releases_base query. */
+export function getReleaseListDateBounds(todayYmd = getTodayMountainDateString()): {
+  fromYmd: string
+  toYmd: string
+} {
+  const fromYmd = addDaysToDateString(todayYmd, -RELEASE_LOOKBACK_DAYS)
+  const [y, m, d] = todayYmd.split('-').map(Number)
+  const future = new Date(Date.UTC(y + RELEASE_LOOKAHEAD_YEARS, m - 1, d, 12, 0, 0))
+  const toYmd = future.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+  return { fromYmd, toYmd }
+}
+
 /**
- * True if this release should be in the sitemap and served as a normal page.
- * Uses release_date: within last RELEASE_INDEXABLE_DAYS or in the future; no date = indexable.
+ * True if this release should be in the sitemap and listing pages.
+ * Matches mobile: release_date required, within 14 days ago → 1 year ahead (Mountain).
  */
 export function isReleaseInIndexableWindow(releaseDate: string | null): boolean {
-  if (!releaseDate) return true
+  if (!releaseDate) return false
   const releaseStr = toDateString(releaseDate)
-  if (!releaseStr) return true
-  const today = todayDateString()
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - RELEASE_INDEXABLE_DAYS)
-  const cutoffStr = cutoff.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
-  return releaseStr >= cutoffStr
+  if (!releaseStr) return false
+  const { fromYmd, toYmd } = getReleaseListDateBounds()
+  return releaseStr >= fromYmd && releaseStr <= toYmd
 }
 
 /**
@@ -60,8 +75,7 @@ export function isEventInIndexableWindow(eventDate: string): boolean {
   if (EVENT_INDEXABLE_DAYS === null) return true
   const eventStr = toDateString(eventDate)
   if (!eventStr) return true
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - EVENT_INDEXABLE_DAYS)
-  const cutoffStr = cutoff.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+  const today = getTodayMountainDateString()
+  const cutoffStr = addDaysToDateString(today, -EVENT_INDEXABLE_DAYS)
   return eventStr >= cutoffStr
 }
