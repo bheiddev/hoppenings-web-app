@@ -88,6 +88,13 @@ export function BreweriesEventsRegionContent({
                   />
                 </div>
                 <div className="min-w-0">
+                  <FoodTrucksTableWithActions
+                    foodTrucks={foodTrucks}
+                    title="Food trucks"
+                    breweryId={brewery.id}
+                  />
+                </div>
+                <div className="min-w-0">
                   <BeerReleasesTableWithActions
                     releases={releases}
                     title="Beer releases"
@@ -98,13 +105,6 @@ export function BreweriesEventsRegionContent({
                   <ProposedBeerReleasesTable
                     proposed={proposedBeerReleases}
                     title="Proposed beers (proposed_beer_releases)"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <FoodTrucksTableWithActions
-                    foodTrucks={foodTrucks}
-                    title="Food trucks"
-                    breweryId={brewery.id}
                   />
                 </div>
                 <div className="min-w-0">

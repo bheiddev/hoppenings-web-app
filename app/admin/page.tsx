@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { Colors } from '@/lib/colors'
 import { AdminHomeTopTabs, type AdminHomeTab } from '@/components/admin/AdminHomeTopTabs'
+import { BreweryStaffSection } from '@/components/admin/BreweryStaffSection'
 import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSection'
 import { RegionAdminPanel } from '@/components/admin/RegionAdminPanel'
 import { SeoAnalyticsSection } from '@/components/admin/SeoAnalyticsSection'
@@ -11,6 +12,7 @@ import {
   type BreweryWithData,
   type RegionBucket,
 } from '@/lib/breweriesEventsRegions'
+import { getBreweryAdminProfiles } from '@/lib/breweryStaffProfiles'
 import { getMobileAnalyticsSummary } from '@/lib/ga4'
 import { getSeoAnalyticsSummary } from '@/lib/gsc'
 
@@ -45,10 +47,11 @@ function regionPanel(
 }
 
 export default async function AdminPage() {
-  const [breweriesWithData, analytics, seo] = await Promise.all([
+  const [breweriesWithData, analytics, seo, staffProfiles] = await Promise.all([
     getBreweriesWithEvents(),
     getMobileAnalyticsSummary(),
     getSeoAnalyticsSummary(),
+    getBreweryAdminProfiles(),
   ])
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
@@ -64,6 +67,13 @@ export default async function AdminPage() {
       id: 'seo',
       label: 'Website Analytics',
       panel: <SeoAnalyticsSection result={seo} />,
+    },
+    {
+      id: 'brewery-staff',
+      label: 'Brewery Staff',
+      panel: (
+        <BreweryStaffSection rows={staffProfiles.rows} error={staffProfiles.error} />
+      ),
     },
     ...REGION_TAB_ORDER.map(({ slug, label }) => ({
       id: `region:${slug}`,
