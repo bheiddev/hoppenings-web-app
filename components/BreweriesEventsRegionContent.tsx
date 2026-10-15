@@ -26,19 +26,18 @@ export function BreweriesEventsRegionContent({
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2
-          className="text-2xl font-bold"
-          style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
-        >
-          {sectionHeading}
-        </h2>
-        <AddBreweryControl regionLabel={regionLabel} />
-      </div>
+      <h2
+        className="text-2xl font-bold"
+        style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+      >
+        {sectionHeading}
+      </h2>
+
+      <AddBreweryControl regionLabel={regionLabel} />
 
       {sorted.length === 0 ? (
         <p className="text-sm" style={{ color: Colors.textSecondary }}>
-          No breweries in this region yet. Use Add brewery to create one.
+          No breweries in this region yet. Use Add brewery above to create one.
         </p>
       ) : (
         sorted.map(
