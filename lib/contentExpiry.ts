@@ -6,7 +6,10 @@
  * - Expired one-off event URLs 301 to the listing page.
  * - Expired / past dated URLs for a recurring series 301 to the next upcoming
  *   occurrence of that series (so ranked weekly event links stay useful).
- * - We never 404 for content that "existed but expired" – only for truly invalid slugs.
+ * - Expired / still-findable rows 301 to hubs or the next occurrence.
+ * - Deletes and renames write `slug_redirects` tombstones (see lib/slugRedirects.ts)
+ *   so formerly valid URLs 301 instead of 404.
+ * - True unknowns (never existed) still 404.
  *
  * As time moves forward, content ages out of the indexable window and drops off the
  * sitemap; visits to those URLs get a 301. Google recrawls and updates the index

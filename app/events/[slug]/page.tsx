@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs, eventIsRecurring } from '@/lib/events'
 import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
+import { resolveEventSlugRedirect } from '@/lib/slugRedirects'
 import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
@@ -131,6 +132,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         permanentRedirect(eventCanonicalPath(expiredOrSeries))
       }
       permanentRedirect(EXPIRED_EVENT_REDIRECT)
+    }
+    const tombstone = await resolveEventSlugRedirect(slug)
+    if (tombstone) {
+      permanentRedirect(tombstone)
     }
     notFound()
   }

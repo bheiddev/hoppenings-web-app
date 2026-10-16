@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getReleaseBySlug, getReleaseBySlugIncludingExpired, getAllReleasesWithSlugs, getReleaseBreweries } from '@/lib/releases'
 import { EXPIRED_RELEASE_REDIRECT } from '@/lib/contentExpiry'
+import { resolveReleaseSlugRedirect } from '@/lib/slugRedirects'
 import { formatReleaseDate } from '@/lib/utils'
 import { generateBrewerySlug } from '@/lib/slug'
 import { Colors } from '@/lib/colors'
@@ -65,6 +66,10 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
     const expiredRelease = await getReleaseBySlugIncludingExpired(slug)
     if (expiredRelease) {
       permanentRedirect(EXPIRED_RELEASE_REDIRECT)
+    }
+    const tombstone = await resolveReleaseSlugRedirect(slug)
+    if (tombstone) {
+      permanentRedirect(tombstone)
     }
     notFound()
   }

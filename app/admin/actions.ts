@@ -3,11 +3,111 @@
 import { revalidatePath } from 'next/cache'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { ProposedEvent, ProposedBeerRelease, TaplistItem } from '@/types/supabase'
+import {
+  recordEventDeletedRedirects,
+  recordEventRenamedRedirects,
+  recordReleaseDeletedRedirects,
+  recordReleaseRenamedRedirects,
+} from '@/lib/slugRedirects'
 
 const ADMIN_PATH = '/admin'
 
 function revalidateBreweriesEvents() {
   revalidatePath(ADMIN_PATH, 'layout')
+}
+
+/** Public listing + sitemap after event/release mutations (ISR detail paths too). */
+function revalidatePublicEventReleasePaths(detailPaths: string[] = []) {
+  revalidateBreweriesEvents()
+  revalidatePath('/events')
+  revalidatePath('/releases')
+  revalidatePath('/sitemap.xml')
+  for (const path of detailPaths) {
+    if (path) revalidatePath(path)
+  }
+}
+
+type BrewerySlugFields = { name: string; location: string | null }
+
+async function fetchBrewerySlugFields(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  breweryId: string
+): Promise<BrewerySlugFields> {
+  const { data } = await admin
+    .from('breweries')
+    .select('name, location')
+    .eq('id', breweryId)
+    .maybeSingle()
+  return {
+    name: (data?.name as string) || 'Unknown Brewery',
+    location: (data?.location as string | null) ?? null,
+  }
+}
+
+async function fetchEventForSlugRedirects(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  eventId: string
+) {
+  const { data, error } = await admin
+    .from('events_base')
+    .select(
+      `
+      id,
+      title,
+      event_date,
+      is_recurring,
+      is_recurring_biweekly,
+      is_recurring_monthly,
+      brewery_id,
+      breweries ( name, location )
+    `
+    )
+    .eq('id', eventId)
+    .maybeSingle()
+
+  if (error || !data) return null
+
+  const brewery = data.breweries as { name?: string; location?: string | null } | null
+  return {
+    id: String(data.id),
+    title: String(data.title ?? ''),
+    event_date: String(data.event_date ?? ''),
+    is_recurring: Boolean(data.is_recurring),
+    is_recurring_biweekly: Boolean(data.is_recurring_biweekly),
+    is_recurring_monthly: Boolean(data.is_recurring_monthly),
+    breweryName: brewery?.name || 'Unknown Brewery',
+    location: brewery?.location ?? null,
+  }
+}
+
+async function fetchReleaseForSlugRedirects(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  releaseId: string
+) {
+  const { data, error } = await admin
+    .from('beer_releases_base')
+    .select(
+      `
+      id,
+      beer_name,
+      "Type",
+      brewery_id,
+      breweries!beer_releases_brewery_id_fkey ( name, location )
+    `
+    )
+    .eq('id', releaseId)
+    .maybeSingle()
+
+  if (error || !data) return null
+
+  const brewery = data.breweries as { name?: string; location?: string | null } | null
+  return {
+    id: String(data.id),
+    beer_name: String(data.beer_name ?? ''),
+    Type: (data.Type as string | null) ?? null,
+    breweryName: brewery?.name || 'Unknown Brewery',
+    location: brewery?.location ?? null,
+  }
 }
 
 /** Expanded recurring rows use synthetic ids `{uuid}-{YYYY-MM-DD}`; DB expects the base UUID. */
@@ -302,8 +402,7 @@ export async function createEventInEventsBase(breweryId: string, data: UpdateEve
     console.error('Error creating event:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
-  revalidatePath('/events')
+  revalidatePublicEventReleasePaths()
   return { ok: true }
 }
 
@@ -311,6 +410,9 @@ export async function updateEventInEventsBase(eventId: string, data: UpdateEvent
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
   const id = normalizeEventsBaseId(eventId)
+
+  const before = await fetchEventForSlugRedirects(admin!, id)
+
   const { error } = await admin!
     .from('events_base')
     .update({
@@ -331,7 +433,22 @@ export async function updateEventInEventsBase(eventId: string, data: UpdateEvent
     console.error('Error updating event:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
+
+  const redirectedPaths: string[] = []
+  if (before) {
+    const after = {
+      ...before,
+      title: data.title,
+      event_date: data.event_date,
+      is_recurring: data.is_recurring,
+      is_recurring_biweekly: data.is_recurring_biweekly,
+      is_recurring_monthly: data.is_recurring_monthly,
+    }
+    const recorded = await recordEventRenamedRedirects(admin!, before, after)
+    redirectedPaths.push(...recorded.paths)
+  }
+
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 
@@ -339,6 +456,14 @@ export async function deleteEventFromEventsBase(eventId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
   const id = normalizeEventsBaseId(eventId)
+
+  const before = await fetchEventForSlugRedirects(admin!, id)
+  const redirectedPaths: string[] = []
+  if (before) {
+    const recorded = await recordEventDeletedRedirects(admin!, before)
+    redirectedPaths.push(...recorded.paths)
+  }
+
   const { error } = await admin!
     .from('events_base')
     .delete()
@@ -348,7 +473,7 @@ export async function deleteEventFromEventsBase(eventId: string) {
     console.error('Error deleting event:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 
@@ -360,13 +485,21 @@ export async function deleteEventsFromEventsBase(eventIds: string[]) {
   ]
   if (uniqueIds.length === 0) return { ok: false, error: 'No events to delete' }
 
+  const redirectedPaths: string[] = []
+  for (const id of uniqueIds) {
+    const before = await fetchEventForSlugRedirects(admin!, id)
+    if (!before) continue
+    const recorded = await recordEventDeletedRedirects(admin!, before)
+    redirectedPaths.push(...recorded.paths)
+  }
+
   const { error } = await admin!.from('events_base').delete().in('id', uniqueIds)
 
   if (error) {
     console.error('Error deleting events:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 
@@ -401,14 +534,17 @@ export async function createBeerReleaseInBase(data: UpdateBeerReleasePayload) {
     console.error('Error creating beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
-  revalidatePath('/releases')
+  revalidatePublicEventReleasePaths()
   return { ok: true }
 }
 
 export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBeerReleasePayload) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
+
+  const before = await fetchReleaseForSlugRedirects(admin!, releaseId)
+  const brewery = await fetchBrewerySlugFields(admin!, data.brewery_id)
+
   const { error } = await admin!
     .from('beer_releases_base')
     .update({
@@ -427,8 +563,21 @@ export async function updateBeerReleaseInBase(releaseId: string, data: UpdateBee
     console.error('Error updating beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
-  revalidatePath('/releases')
+
+  const redirectedPaths: string[] = []
+  if (before) {
+    const after = {
+      id: before.id,
+      beer_name: data.beer_name,
+      Type: data.Type,
+      breweryName: brewery.name,
+      location: brewery.location,
+    }
+    const recorded = await recordReleaseRenamedRedirects(admin!, before, after)
+    redirectedPaths.push(...recorded.paths)
+  }
+
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 
@@ -600,14 +749,21 @@ export async function deleteHappyHourDeals(dealIds: string[]) {
 export async function deleteBeerReleaseFromBase(releaseId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
+
+  const before = await fetchReleaseForSlugRedirects(admin!, releaseId)
+  const redirectedPaths: string[] = []
+  if (before) {
+    const recorded = await recordReleaseDeletedRedirects(admin!, before)
+    redirectedPaths.push(...recorded.paths)
+  }
+
   const { error } = await admin!.from('beer_releases_base').delete().eq('id', releaseId)
 
   if (error) {
     console.error('Error deleting beer release:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
-  revalidatePath('/releases')
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 
@@ -617,14 +773,21 @@ export async function deleteBeerReleasesFromBase(releaseIds: string[]) {
   const uniqueIds = [...new Set(releaseIds.map((id) => id.trim()).filter(Boolean))]
   if (uniqueIds.length === 0) return { ok: false, error: 'No beer releases to delete' }
 
+  const redirectedPaths: string[] = []
+  for (const id of uniqueIds) {
+    const before = await fetchReleaseForSlugRedirects(admin!, id)
+    if (!before) continue
+    const recorded = await recordReleaseDeletedRedirects(admin!, before)
+    redirectedPaths.push(...recorded.paths)
+  }
+
   const { error } = await admin!.from('beer_releases_base').delete().in('id', uniqueIds)
 
   if (error) {
     console.error('Error deleting beer releases:', error)
     return { ok: false, error: error.message }
   }
-  revalidateBreweriesEvents()
-  revalidatePath('/releases')
+  revalidatePublicEventReleasePaths(redirectedPaths)
   return { ok: true }
 }
 

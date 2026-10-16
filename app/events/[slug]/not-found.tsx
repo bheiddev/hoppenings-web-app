@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import { BackLink } from '@/components/BackLink'
 import { Colors } from '@/lib/colors'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function NotFound() {
   return (
