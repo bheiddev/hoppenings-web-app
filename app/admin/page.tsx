@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { Colors } from '@/lib/colors'
 import { AdminHomeTopTabs, type AdminHomeTab } from '@/components/admin/AdminHomeTopTabs'
 import { BreweryStaffSection } from '@/components/admin/BreweryStaffSection'
+import { CouponsTapTrackersSection } from '@/components/admin/CouponsTapTrackersSection'
 import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSection'
 import { RegionAdminPanel } from '@/components/admin/RegionAdminPanel'
 import { SeoAnalyticsSection } from '@/components/admin/SeoAnalyticsSection'
@@ -12,6 +13,7 @@ import {
   type BreweryWithData,
   type RegionBucket,
 } from '@/lib/breweriesEventsRegions'
+import { getCouponsTapTrackersOverview } from '@/lib/adminCouponsTapTrackers'
 import { getBreweryAdminProfiles } from '@/lib/breweryStaffProfiles'
 import { getMobileAnalyticsSummary } from '@/lib/ga4'
 import { getSeoAnalyticsSummary } from '@/lib/gsc'
@@ -47,12 +49,14 @@ function regionPanel(
 }
 
 export default async function AdminPage() {
-  const [breweriesWithData, analytics, seo, staffProfiles] = await Promise.all([
-    getBreweriesWithEvents(),
-    getMobileAnalyticsSummary(),
-    getSeoAnalyticsSummary(),
-    getBreweryAdminProfiles(),
-  ])
+  const [breweriesWithData, analytics, seo, staffProfiles, couponsTapTrackers] =
+    await Promise.all([
+      getBreweriesWithEvents(),
+      getMobileAnalyticsSummary(),
+      getSeoAnalyticsSummary(),
+      getBreweryAdminProfiles(),
+      getCouponsTapTrackersOverview(),
+    ])
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
   const bucketBySlug = new Map(regionBuckets.map((b) => [b.slug, b]))
@@ -67,6 +71,11 @@ export default async function AdminPage() {
       id: 'seo',
       label: 'Website Analytics',
       panel: <SeoAnalyticsSection result={seo} />,
+    },
+    {
+      id: 'coupons-tap-trackers',
+      label: 'Coupons & Tap Trackers',
+      panel: <CouponsTapTrackersSection result={couponsTapTrackers} />,
     },
     {
       id: 'brewery-staff',
