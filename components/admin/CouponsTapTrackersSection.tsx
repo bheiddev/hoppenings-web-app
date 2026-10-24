@@ -3,6 +3,7 @@ import type {
   CouponAwardRow,
   CouponUsagePersonRow,
   CouponsTapTrackersResult,
+  TapTrackerCompleterRow,
   TapTrackerProgressRow,
 } from '@/lib/adminCouponsTapTrackers'
 
@@ -142,7 +143,69 @@ function ProgressBar({ counted, required }: { counted: number; required: number 
   )
 }
 
-function PeopleTable({ rows }: { rows: CouponUsagePersonRow[] }) {
+function CompletersTable({ rows }: { rows: TapTrackerCompleterRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm" style={{ color: Colors.textSecondary }}>
+        No completed tap trackers yet (closed with full visits).
+      </p>
+    )
+  }
+
+  return (
+    <div
+      className="overflow-x-auto rounded-lg border"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead>
+          <tr style={{ backgroundColor: Colors.surfaceLight }}>
+            {['Person', 'Completed trackers', 'Breweries', 'Last completed'].map((h) => (
+              <th
+                key={h}
+                className="px-4 py-3 font-semibold"
+                style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.userId}
+              className="border-t align-top"
+              style={{ borderColor: Colors.dividerLight }}
+            >
+              <td className="px-4 py-3">
+                <PersonCell
+                  displayName={row.displayName}
+                  email={row.email}
+                  userId={row.userId}
+                />
+              </td>
+              <td
+                className="px-4 py-3 tabular-nums font-semibold"
+                style={{ color: Colors.primaryDark }}
+              >
+                {row.completedRuns}
+              </td>
+              <td className="px-4 py-3" style={{ color: Colors.textSecondary }}>
+                {row.breweryNames.join(', ')}
+              </td>
+              <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
+                {formatWhen(row.lastCompletedAt)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function CouponPeopleTable({ rows }: { rows: CouponUsagePersonRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="text-sm" style={{ color: Colors.textSecondary }}>
@@ -329,6 +392,11 @@ function TapTrackersTable({ rows }: { rows: TapTrackerProgressRow[] }) {
                 <div className="font-semibold" style={{ color: Colors.primaryDark }}>
                   {row.breweryName}
                 </div>
+                {row.couponAwarded ? (
+                  <div className="text-[11px] mt-1 font-semibold" style={{ color: Colors.success }}>
+                    Coupon awarded (closed + full visits)
+                  </div>
+                ) : null}
                 {row.couponPourCounted ? (
                   <div className="text-[11px] mt-1" style={{ color: Colors.textMuted }}>
                     Coupon pour counted
@@ -361,7 +429,7 @@ function TapTrackersTable({ rows }: { rows: TapTrackerProgressRow[] }) {
 }
 
 export function CouponsTapTrackersSection({ result }: { result: CouponsTapTrackersResult }) {
-  const { summary, people, recentAwards, tapTrackers, error } = result
+  const { summary, people, tapTrackerCompleters, recentAwards, tapTrackers, error } = result
   const redeemedPeople = people.filter((p) => p.redeemedCount > 0)
 
   return (
@@ -374,8 +442,9 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
           Coupons &amp; Tap Trackers
         </h2>
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
-          Who has been awarded or redeemed coupons, and each person&apos;s pour-contest (tap
-          tracker) progress by brewery.
+          Usage is based on completed tap trackers: status <code className="text-xs">closed</code>{' '}
+          with <code className="text-xs">visits_counted = visits_required</code> means a reward
+          coupon was awarded. Coupon rows below are supporting detail.
         </p>
       </div>
 
@@ -390,19 +459,14 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         <StatCard
-          label="People redeemed"
-          value={summary.uniqueUsersRedeemed.toLocaleString()}
-          hint="Unique profiles with at least one redeemed coupon"
+          label="People used tap tracker"
+          value={summary.uniqueUsersTapTrackerCouponAwarded.toLocaleString()}
+          hint="Closed + full visits (coupon awarded)"
         />
         <StatCard
-          label="People with coupons"
-          value={summary.uniqueUsersWithCoupon.toLocaleString()}
-          hint="Unique profiles awarded any coupon"
-        />
-        <StatCard
-          label="Coupons redeemed"
-          value={summary.couponsRedeemed.toLocaleString()}
-          hint={`of ${summary.couponsAwarded.toLocaleString()} awarded`}
+          label="Completed trackers"
+          value={summary.completedTapTrackersCouponAwarded.toLocaleString()}
+          hint="Runs that earned a reward coupon"
         />
         <StatCard
           label="Active tap trackers"
@@ -413,6 +477,11 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
           label="Active enrollments"
           value={summary.activeEnrollments.toLocaleString()}
           hint="Opted in, not opted out"
+        />
+        <StatCard
+          label="Coupons redeemed"
+          value={summary.couponsRedeemed.toLocaleString()}
+          hint={`${summary.uniqueUsersRedeemed} people · ${summary.couponsAwarded} awarded`}
         />
       </div>
 
@@ -429,17 +498,14 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             className="text-lg font-semibold"
             style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
           >
-            People who used a coupon
+            People who completed a tap tracker
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            {redeemedPeople.length.toLocaleString()} people with a redemption
-            {people.length !== redeemedPeople.length
-              ? ` · ${people.length.toLocaleString()} people with any award`
-              : ''}
-            .
+            {tapTrackerCompleters.length.toLocaleString()} people with at least one closed run at
+            full visits (coupon awarded).
           </p>
         </div>
-        <PeopleTable rows={redeemedPeople.length > 0 ? redeemedPeople : people} />
+        <CompletersTable rows={tapTrackerCompleters} />
       </div>
 
       <div className="space-y-3">
@@ -451,10 +517,30 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             Tap tracker progress
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            Pour contest runs by person and brewery (visits counted vs required).
+            All pour-contest runs by person and brewery. Completed (coupon awarded) listed first.
           </p>
         </div>
         <TapTrackersTable rows={tapTrackers} />
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+          >
+            Coupon redemptions (supporting)
+          </h3>
+          <p className="text-sm" style={{ color: Colors.textSecondary }}>
+            {redeemedPeople.length.toLocaleString()} people with a{' '}
+            <code className="text-xs">user_coupons</code> redemption
+            {people.length !== redeemedPeople.length
+              ? ` · ${people.length.toLocaleString()} with any award`
+              : ''}
+            .
+          </p>
+        </div>
+        <CouponPeopleTable rows={redeemedPeople.length > 0 ? redeemedPeople : people} />
       </div>
 
       <div className="space-y-3">

@@ -54,7 +54,19 @@ export type TapTrackerProgressRow = {
   closedAt: string | null
   closeReason: string | null
   couponPourCounted: boolean
+  /** Closed with full visits → reward coupon was awarded. */
+  couponAwarded: boolean
   optedInAt: string | null
+}
+
+/** People who finished a tap tracker (closed + visits_counted === visits_required). */
+export type TapTrackerCompleterRow = {
+  userId: string
+  displayName: string | null
+  email: string | null
+  completedRuns: number
+  breweryNames: string[]
+  lastCompletedAt: string | null
 }
 
 export type CouponsTapTrackersSummary = {
@@ -66,15 +78,34 @@ export type CouponsTapTrackersSummary = {
   activeTapTrackers: number
   rewardedTapTrackers: number
   closedTapTrackers: number
+  /** Closed runs where visits_counted === visits_required (coupon awarded). */
+  completedTapTrackersCouponAwarded: number
+  /** Unique people with at least one completed tap tracker (coupon awarded). */
+  uniqueUsersTapTrackerCouponAwarded: number
   activeEnrollments: number
 }
 
 export type CouponsTapTrackersResult = {
   summary: CouponsTapTrackersSummary
   people: CouponUsagePersonRow[]
+  tapTrackerCompleters: TapTrackerCompleterRow[]
   recentAwards: CouponAwardRow[]
   tapTrackers: TapTrackerProgressRow[]
   error: string | null
+}
+
+/** Closed + full visit requirement ⇒ a reward coupon was awarded for that run. */
+export function isTapTrackerCouponAwarded(run: {
+  status: string
+  visits_counted?: number | null
+  visits_required?: number | null
+  visitsCounted?: number | null
+  visitsRequired?: number | null
+}): boolean {
+  if (run.status !== 'closed') return false
+  const counted = Number(run.visits_counted ?? run.visitsCounted) || 0
+  const required = Number(run.visits_required ?? run.visitsRequired) || 0
+  return required > 0 && counted === required
 }
 
 const emptySummary = (): CouponsTapTrackersSummary => ({
@@ -86,6 +117,8 @@ const emptySummary = (): CouponsTapTrackersSummary => ({
   activeTapTrackers: 0,
   rewardedTapTrackers: 0,
   closedTapTrackers: 0,
+  completedTapTrackersCouponAwarded: 0,
+  uniqueUsersTapTrackerCouponAwarded: 0,
   activeEnrollments: 0,
 })
 
@@ -224,6 +257,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       return {
         summary,
         people: [],
+        tapTrackerCompleters: [],
         recentAwards: [],
         tapTrackers: [],
         error: couponsResult.error.message,
@@ -234,6 +268,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       return {
         summary,
         people: [],
+        tapTrackerCompleters: [],
         recentAwards: [],
         tapTrackers: [],
         error: runsResult.error.message,
@@ -256,6 +291,18 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
     summary.activeTapTrackers = runs.filter((r) => r.status === 'active').length
     summary.rewardedTapTrackers = runs.filter((r) => r.status === 'rewarded').length
     summary.closedTapTrackers = runs.filter((r) => r.status === 'closed').length
+
+    const couponAwardedRuns = runs.filter((r) =>
+      isTapTrackerCouponAwarded({
+        status: r.status as string,
+        visits_counted: r.visits_counted as number,
+        visits_required: r.visits_required as number,
+      })
+    )
+    summary.completedTapTrackersCouponAwarded = couponAwardedRuns.length
+    summary.uniqueUsersTapTrackerCouponAwarded = new Set(
+      couponAwardedRuns.map((r) => r.user_id as string)
+    ).size
 
     const userIdsWithCoupon = new Set<string>()
     const userIdsRedeemed = new Set<string>()
@@ -377,6 +424,9 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       const uid = r.user_id as string
       const profile = profiles.get(uid)
       const enrollment = enrollmentById.get(r.enrollment_id as string)
+      const visitsCounted = Number(r.visits_counted) || 0
+      const visitsRequired = Number(r.visits_required) || 0
+      const status = r.status as string
       return {
         runId: r.id as string,
         userId: uid,
@@ -384,20 +434,54 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
         email: profile?.email ?? null,
         breweryId: r.brewery_id as string,
         breweryName: breweryNames.get(r.brewery_id as string) ?? 'Unknown brewery',
-        status: r.status as string,
-        visitsCounted: Number(r.visits_counted) || 0,
-        visitsRequired: Number(r.visits_required) || 0,
+        status,
+        visitsCounted,
+        visitsRequired,
         startedAt: r.started_at as string,
         completedAt: (r.completed_at as string | null) ?? null,
         closedAt: (r.closed_at as string | null) ?? null,
         closeReason: (r.close_reason as string | null) ?? null,
         couponPourCounted: Boolean(r.coupon_pour_counted),
+        couponAwarded: isTapTrackerCouponAwarded({
+          status,
+          visitsCounted,
+          visitsRequired,
+        }),
         optedInAt: enrollment?.opted_in_at ?? null,
       }
     })
 
-    // Active/rewarded first, then by progress, then brewery name
+    const completersMap = new Map<string, TapTrackerCompleterRow>()
+    for (const row of tapTrackers) {
+      if (!row.couponAwarded) continue
+      const existing = completersMap.get(row.userId) ?? {
+        userId: row.userId,
+        displayName: row.displayName,
+        email: row.email,
+        completedRuns: 0,
+        breweryNames: [],
+        lastCompletedAt: null,
+      }
+      existing.completedRuns += 1
+      if (!existing.breweryNames.includes(row.breweryName)) {
+        existing.breweryNames.push(row.breweryName)
+      }
+      const completedAt = row.closedAt || row.completedAt
+      if (completedAt && (!existing.lastCompletedAt || completedAt > existing.lastCompletedAt)) {
+        existing.lastCompletedAt = completedAt
+      }
+      completersMap.set(row.userId, existing)
+    }
+    const tapTrackerCompleters = Array.from(completersMap.values()).sort((a, b) => {
+      if (b.completedRuns !== a.completedRuns) return b.completedRuns - a.completedRuns
+      const aKey = (a.displayName || a.email || a.userId).toLowerCase()
+      const bKey = (b.displayName || b.email || b.userId).toLowerCase()
+      return aKey.localeCompare(bKey)
+    })
+
+    // Coupon-awarded completed first, then active/rewarded, then by progress
     tapTrackers.sort((a, b) => {
+      if (a.couponAwarded !== b.couponAwarded) return a.couponAwarded ? -1 : 1
       const statusRank = (s: string) =>
         s === 'active' ? 0 : s === 'rewarded' ? 1 : 2
       const sr = statusRank(a.status) - statusRank(b.status)
@@ -412,6 +496,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
     return {
       summary,
       people,
+      tapTrackerCompleters,
       recentAwards,
       tapTrackers,
       error: null,
@@ -421,6 +506,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
     return {
       summary,
       people: [],
+      tapTrackerCompleters: [],
       recentAwards: [],
       tapTrackers: [],
       error: err instanceof Error ? err.message : 'Failed to load coupons / tap trackers',
