@@ -4,7 +4,10 @@ import { Colors } from '@/lib/colors'
 
 type PoshPageShellProps = {
   children: ReactNode
-  /** When true, pull the page under the sticky faded header. */
+  /**
+   * Deprecated underlap helper. Kept for call-site compatibility; the site nav is a
+   * solid sticky bar now, so pages should not pull under it (avoids a double header).
+   */
   accountForNav?: boolean
   className?: string
 }
@@ -12,10 +15,10 @@ type PoshPageShellProps = {
 /** Shared maroon atmosphere used by region landings and detail screens. */
 export function PoshPageShell({
   children,
-  accountForNav = true,
+  accountForNav: _accountForNav = false,
   className = '',
 }: PoshPageShellProps) {
-  const heightClass = accountForNav ? 'min-h-screen -mt-16' : 'min-h-screen'
+  const heightClass = 'min-h-screen'
 
   return (
     <div

@@ -28,7 +28,7 @@ export default function Navigation() {
 
   return (
     <nav
-      className={isAdminSection ? 'sticky top-0 z-50' : 'hop-site-nav sticky top-0 z-50'}
+      className="hop-site-nav sticky top-0 z-50"
       style={isAdminSection ? { backgroundColor: Colors.primaryDark } : undefined}
     >
       {!isAdminSection ? <div className="hop-site-nav-atmosphere" aria-hidden /> : null}

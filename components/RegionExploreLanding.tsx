@@ -99,7 +99,7 @@ export function RegionExploreLanding({
 
   return (
     <div
-      className="relative -mt-16 min-h-screen overflow-hidden"
+      className="relative min-h-screen overflow-hidden"
       style={{ backgroundColor: Colors.primaryDark }}
     >
       {children}
@@ -122,7 +122,7 @@ export function RegionExploreLanding({
         />
       </div>
 
-      <div className="relative z-[1] mx-auto grid min-h-screen max-w-7xl pt-16 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div className="relative z-[1] mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-12 lg:py-16">
           <h1
             className="hop-home-fade hop-home-delay-1 mb-5 font-bold uppercase leading-[0.9] tracking-wide text-[clamp(2.5rem,10vw,6.5rem)]"

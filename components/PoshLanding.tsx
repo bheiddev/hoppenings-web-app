@@ -18,7 +18,7 @@ type PoshLandingProps = {
   subtitle: string
   links: PoshLandingLink[]
   linksAriaLabel: string
-  /** When true, pull under the sticky faded header. */
+  /** @deprecated No longer pulls under the nav (solid sticky header). */
   accountForNav?: boolean
   /** Optional brewery photos for a right-side visual (region landings). */
   breweryImages?: PoshBreweryImage[]
@@ -31,11 +31,11 @@ export function PoshLanding({
   subtitle,
   links,
   linksAriaLabel,
-  accountForNav = false,
+  accountForNav: _accountForNav = false,
   breweryImages = [],
   children,
 }: PoshLandingProps) {
-  const heightClass = accountForNav ? 'min-h-screen -mt-16' : 'min-h-screen'
+  const heightClass = 'min-h-screen'
   const hasVisual = breweryImages.length > 0
 
   return (

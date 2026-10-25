@@ -229,25 +229,17 @@ h4 {
   top: 0;
   z-index: 50;
   isolation: isolate;
+  /* Solid bar — avoids a second “ghost” header from the old underlap fade. */
+  background-color: #3a1515;
 }
 
 .hop-site-nav-atmosphere {
   pointer-events: none;
   position: absolute;
-  inset: 0 0 -2.75rem 0;
+  inset: 0;
   background:
     radial-gradient(ellipse 90% 80% at 12% 0%, rgba(248, 199, 1, 0.16) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 90% at 95% 120%, rgba(93, 37, 37, 0.55) 0%, transparent 55%),
-    linear-gradient(
-      180deg,
-      #3a1515 0%,
-      #3a1515 42%,
-      rgba(58, 21, 21, 0.72) 72%,
-      rgba(58, 21, 21, 0.28) 88%,
-      rgba(58, 21, 21, 0) 100%
-    );
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
+    radial-gradient(ellipse 70% 90% at 95% 120%, rgba(93, 37, 37, 0.55) 0%, transparent 55%);
 }
 
 .hop-site-nav-atmosphere::after {
