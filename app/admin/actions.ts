@@ -1115,14 +1115,12 @@ export async function upsertBreweryHours(breweryId: string, hours: BreweryHoursP
   return { ok: true as const }
 }
 
-const DEFAULT_PUSH_FUNCTION_NAME = 'send-push'
+const DEFAULT_PUSH_FUNCTION_NAME = 'Announcements'
 
 export type SendPushNotificationPayload = {
   title: string
   body: string
-  /** Optional JSON object passed through to Expo as `data`. */
-  data?: Record<string, unknown>
-  /** Edge function slug under /functions/v1/. Defaults to send-push. */
+  /** Edge function slug under /functions/v1/. Defaults to Announcements. */
   functionName?: string
 }
 
@@ -1135,7 +1133,6 @@ export type SendPushNotificationResult = {
     requestPayload: {
       title: string
       body: string
-      data?: Record<string, unknown>
     }
     startedAt: string
     durationMs: number
@@ -1174,7 +1171,6 @@ export async function sendAdminPushNotification(
     requestPayload: {
       title,
       body,
-      ...(payload.data && Object.keys(payload.data).length > 0 ? { data: payload.data } : {}),
     },
     startedAt,
     durationMs: 0,

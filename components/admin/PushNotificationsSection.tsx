@@ -17,8 +17,7 @@ const inputStyle = {
 export function PushNotificationsSection() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [dataJson, setDataJson] = useState('{\n  "type": "broadcast"\n}')
-  const [functionName, setFunctionName] = useState('send-push')
+  const [functionName, setFunctionName] = useState('Announcements')
   const [sending, setSending] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [result, setResult] = useState<SendPushNotificationResult | null>(null)
@@ -28,28 +27,11 @@ export function PushNotificationsSection() {
     setFormError(null)
     setResult(null)
 
-    let data: Record<string, unknown> | undefined
-    const trimmedData = dataJson.trim()
-    if (trimmedData) {
-      try {
-        const parsed = JSON.parse(trimmedData) as unknown
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          setFormError('Data must be a JSON object (e.g. { "type": "broadcast" }).')
-          return
-        }
-        data = parsed as Record<string, unknown>
-      } catch {
-        setFormError('Data JSON is invalid.')
-        return
-      }
-    }
-
     setSending(true)
     try {
       const next = await sendAdminPushNotification({
         title,
         body,
-        data,
         functionName,
       })
       setResult(next)
@@ -117,24 +99,6 @@ export function PushNotificationsSection() {
 
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
-            Data (JSON object, optional)
-          </label>
-          <textarea
-            value={dataJson}
-            onChange={(e) => setDataJson(e.target.value)}
-            rows={5}
-            spellCheck={false}
-            className="w-full px-3 py-2 border rounded font-mono text-xs"
-            style={inputStyle}
-          />
-          <p className="text-[11px] mt-1" style={{ color: Colors.textMuted }}>
-            Passed through to Expo as the notification <code className="text-[10px]">data</code>{' '}
-            payload. Leave as <code className="text-[10px]">{'{}'}</code> if unused.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
             Edge function name
           </label>
           <input
@@ -143,12 +107,12 @@ export function PushNotificationsSection() {
             onChange={(e) => setFunctionName(e.target.value)}
             className="w-full px-3 py-2 border rounded font-mono text-sm"
             style={inputStyle}
-            placeholder="send-push"
+            placeholder="Announcements"
           />
           <p className="text-[11px] mt-1" style={{ color: Colors.textMuted }}>
             Invokes{' '}
             <code className="text-[10px]">
-              {'{SUPABASE_URL}'}/functions/v1/{functionName || 'send-push'}
+              {'{SUPABASE_URL}'}/functions/v1/{functionName || 'Announcements'}
             </code>
           </p>
         </div>
