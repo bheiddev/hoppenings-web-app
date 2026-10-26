@@ -1114,3 +1114,170 @@ export async function upsertBreweryHours(breweryId: string, hours: BreweryHoursP
   revalidatePath('/breweries')
   return { ok: true as const }
 }
+
+const DEFAULT_PUSH_FUNCTION_NAME = 'send-push'
+
+export type SendPushNotificationPayload = {
+  title: string
+  body: string
+  /** Optional JSON object passed through to Expo as `data`. */
+  data?: Record<string, unknown>
+  /** Edge function slug under /functions/v1/. Defaults to send-push. */
+  functionName?: string
+}
+
+export type SendPushNotificationResult = {
+  ok: boolean
+  error?: string
+  debug: {
+    requestUrl: string
+    requestMethod: string
+    requestPayload: {
+      title: string
+      body: string
+      data?: Record<string, unknown>
+    }
+    startedAt: string
+    durationMs: number
+    httpStatus: number | null
+    responseOk: boolean | null
+    responseHeaders: Record<string, string>
+    responseBodyText: string | null
+    responseJson: unknown | null
+    activeDeviceTokenCount: number | null
+  }
+}
+
+/**
+ * Invoke the Supabase edge function that fans out Expo push notifications
+ * to active device_tokens. Uses the anon key as Bearer (and apikey) auth.
+ */
+export async function sendAdminPushNotification(
+  payload: SendPushNotificationPayload
+): Promise<SendPushNotificationResult> {
+  const title = payload.title?.trim() ?? ''
+  const body = payload.body?.trim() ?? ''
+  const functionName = (payload.functionName?.trim() || DEFAULT_PUSH_FUNCTION_NAME).replace(
+    /^\/+|\/+$/g,
+    ''
+  )
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '')
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  const startedAt = new Date().toISOString()
+  const startedMs = Date.now()
+
+  const baseDebug = {
+    requestUrl: supabaseUrl ? `${supabaseUrl}/functions/v1/${functionName}` : '',
+    requestMethod: 'POST',
+    requestPayload: {
+      title,
+      body,
+      ...(payload.data && Object.keys(payload.data).length > 0 ? { data: payload.data } : {}),
+    },
+    startedAt,
+    durationMs: 0,
+    httpStatus: null as number | null,
+    responseOk: null as boolean | null,
+    responseHeaders: {} as Record<string, string>,
+    responseBodyText: null as string | null,
+    responseJson: null as unknown | null,
+    activeDeviceTokenCount: null as number | null,
+  }
+
+  if (!title) {
+    return { ok: false, error: 'Title is required', debug: { ...baseDebug, durationMs: 0 } }
+  }
+  if (!body) {
+    return { ok: false, error: 'Body is required', debug: { ...baseDebug, durationMs: 0 } }
+  }
+  if (!supabaseUrl || !anonKey) {
+    return {
+      ok: false,
+      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      debug: { ...baseDebug, durationMs: Date.now() - startedMs },
+    }
+  }
+
+  // Best-effort preview count for the debug panel (service role when available).
+  try {
+    const admin = getSupabaseAdmin()
+    if (admin) {
+      const { count } = await admin
+        .from('device_tokens')
+        .select('device_token', { count: 'exact', head: true })
+        .eq('is_active', true)
+      baseDebug.activeDeviceTokenCount = count ?? null
+    }
+  } catch {
+    // ignore — push still proceeds
+  }
+
+  const requestUrl = `${supabaseUrl}/functions/v1/${functionName}`
+  const requestBody = JSON.stringify(baseDebug.requestPayload)
+
+  try {
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${anonKey}`,
+        apikey: anonKey,
+      },
+      body: requestBody,
+    })
+
+    const responseBodyText = await response.text()
+    let responseJson: unknown = null
+    try {
+      responseJson = responseBodyText ? JSON.parse(responseBodyText) : null
+    } catch {
+      responseJson = null
+    }
+
+    const responseHeaders: Record<string, string> = {}
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value
+    })
+
+    const debug = {
+      ...baseDebug,
+      requestUrl,
+      durationMs: Date.now() - startedMs,
+      httpStatus: response.status,
+      responseOk: response.ok,
+      responseHeaders,
+      responseBodyText,
+      responseJson,
+    }
+
+    if (!response.ok) {
+      let message = `Edge function returned ${response.status}`
+      if (
+        responseJson &&
+        typeof responseJson === 'object' &&
+        responseJson !== null &&
+        'error' in responseJson &&
+        typeof (responseJson as { error: unknown }).error === 'string'
+      ) {
+        message = (responseJson as { error: string }).error
+      } else if (responseBodyText.trim()) {
+        message = responseBodyText
+      }
+      return { ok: false, error: message, debug }
+    }
+
+    return { ok: true, debug }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to call push edge function',
+      debug: {
+        ...baseDebug,
+        requestUrl,
+        durationMs: Date.now() - startedMs,
+      },
+    }
+  }
+}

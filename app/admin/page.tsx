@@ -4,6 +4,7 @@ import { AdminHomeTopTabs, type AdminHomeTab } from '@/components/admin/AdminHom
 import { BreweryStaffSection } from '@/components/admin/BreweryStaffSection'
 import { CouponsTapTrackersSection } from '@/components/admin/CouponsTapTrackersSection'
 import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSection'
+import { PushNotificationsSection } from '@/components/admin/PushNotificationsSection'
 import { RegionAdminPanel } from '@/components/admin/RegionAdminPanel'
 import { SeoAnalyticsSection } from '@/components/admin/SeoAnalyticsSection'
 import {
@@ -76,6 +77,11 @@ export default async function AdminPage() {
       id: 'coupons-tap-trackers',
       label: 'Coupons & Tap Trackers',
       panel: <CouponsTapTrackersSection result={couponsTapTrackers} />,
+    },
+    {
+      id: 'push-notifications',
+      label: 'Push Notifications',
+      panel: <PushNotificationsSection />,
     },
     {
       id: 'brewery-staff',
