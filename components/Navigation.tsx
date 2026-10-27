@@ -29,10 +29,9 @@ export default function Navigation() {
   return (
     <nav
       className="hop-site-nav sticky top-0 z-50"
-      style={isAdminSection ? { backgroundColor: Colors.primaryDark } : undefined}
+      style={{ backgroundColor: Colors.primaryDark }}
     >
-      {!isAdminSection ? <div className="hop-site-nav-atmosphere" aria-hidden /> : null}
-      <div className="relative z-[1] mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link href={isAdminSection ? '/admin' : '/'} className="flex items-center gap-0">
             <span className="relative h-10 w-10 shrink-0">

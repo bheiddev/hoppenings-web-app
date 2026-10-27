@@ -17,6 +17,13 @@ export type ExploreDayPage = {
   emptyMessage: string
 }
 
+/** Stacked day groups (activity filters: trivia, run clubs, etc.). */
+export type ExploreDayGroup = {
+  weekdayLabel: string
+  dateLabel: string
+  items: ExploreTeaserItem[]
+}
+
 export type ExploreSection = {
   id: string
   label: string
@@ -26,6 +33,8 @@ export type ExploreSection = {
   items: ExploreTeaserItem[]
   /** When set, enable chevron paging (event days or brewery pages). */
   dayPages?: ExploreDayPage[]
+  /** When set, show all days in one list with prominent weekday headers. */
+  dayGroups?: ExploreDayGroup[]
 }
 
 type RegionExploreLandingProps = {
@@ -34,8 +43,6 @@ type RegionExploreLandingProps = {
   sections: ExploreSection[]
   children?: ReactNode
 }
-
-const TEASER_LIMIT = 5
 
 function ChevronButton({
   direction,
@@ -84,7 +91,9 @@ export function RegionExploreLanding({
   const [dayIndex, setDayIndex] = useState(0)
   const active = sections.find((section) => section.id === activeId) ?? sections[0]
   const dayPages = active?.dayPages
+  const dayGroups = active?.dayGroups
   const hasDayPages = Boolean(dayPages && dayPages.length > 0)
+  const hasDayGroups = Boolean(dayGroups && dayGroups.length > 0)
   const currentDay = hasDayPages ? dayPages![Math.min(dayIndex, dayPages!.length - 1)] : null
   const pageNavPrevLabel = active?.id === 'breweries' ? 'Previous breweries' : 'Previous day'
   const pageNavNextLabel = active?.id === 'breweries' ? 'Next breweries' : 'Next day'
@@ -95,11 +104,11 @@ export function RegionExploreLanding({
 
   const panelLabel = currentDay?.dateLabel ?? active?.panelLabel ?? ''
   const emptyMessage = currentDay?.emptyMessage ?? active?.emptyMessage ?? ''
-  const teasers = (currentDay?.items ?? active?.items ?? []).slice(0, TEASER_LIMIT)
+  const teasers = currentDay?.items ?? (hasDayGroups ? [] : active?.items ?? [])
 
   return (
     <div
-      className="relative min-h-screen overflow-hidden"
+      className="relative min-h-screen overflow-x-hidden"
       style={{ backgroundColor: Colors.primaryDark }}
     >
       {children}
@@ -177,7 +186,7 @@ export function RegionExploreLanding({
           </nav>
         </div>
 
-        <div className="flex flex-col justify-center px-6 pb-14 pt-2 sm:px-10 lg:px-8 lg:py-16">
+        <div className="flex min-h-0 flex-col justify-center px-6 pb-14 pt-2 sm:px-10 lg:max-h-screen lg:overflow-y-auto lg:px-8 lg:py-16">
           {active ? (
             <div key={`${active.id}-${currentDay?.dateLabel ?? 'static'}`} className="hop-explore-panel">
               <div className="mb-6 flex items-end justify-between gap-4">
@@ -220,11 +229,57 @@ export function RegionExploreLanding({
                   className="shrink-0 text-sm font-semibold uppercase tracking-[0.12em] transition-opacity hover:opacity-80"
                   style={{ color: Colors.accent, fontFamily: 'var(--font-fjalla-one)' }}
                 >
-                  Show All
+                  Full page
                 </Link>
               </div>
 
-              {teasers.length === 0 ? (
+              {hasDayGroups ? (
+                dayGroups!.length === 0 ? (
+                  <p
+                    className="text-base leading-relaxed"
+                    style={{
+                      color: 'rgba(249, 247, 242, 0.65)',
+                      fontFamily: 'var(--font-be-vietnam-pro)',
+                    }}
+                  >
+                    {emptyMessage}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-8">
+                    {dayGroups!.map((group) => (
+                      <section key={`${group.weekdayLabel}-${group.dateLabel}`}>
+                        <div className="mb-3">
+                          <h3
+                            className="text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+                            style={{
+                              color: Colors.accent,
+                              fontFamily: 'var(--font-fjalla-one)',
+                            }}
+                          >
+                            {group.weekdayLabel}
+                          </h3>
+                          <p
+                            className="mt-0.5 text-sm"
+                            style={{
+                              color: 'rgba(249, 247, 242, 0.65)',
+                              fontFamily: 'var(--font-be-vietnam-pro)',
+                            }}
+                          >
+                            {group.dateLabel}
+                          </p>
+                        </div>
+                        <ul className="flex flex-col">
+                          {group.items.map((item) => (
+                            <li key={item.id}>
+                              <ExploreTeaserRow item={item} />
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                  </div>
+                )
+              ) : teasers.length === 0 ? (
                 <p
                   className="text-base leading-relaxed"
                   style={{ color: 'rgba(249, 247, 242, 0.65)', fontFamily: 'var(--font-be-vietnam-pro)' }}
@@ -252,7 +307,7 @@ export function RegionExploreLanding({
                     padding: '0.7rem 1.15rem',
                   }}
                 >
-                  Show All {active.label}
+                  Open {active.label} page
                 </Link>
               </div>
             </div>

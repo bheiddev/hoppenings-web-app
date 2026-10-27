@@ -213,6 +213,36 @@ export function formatRelativeEventDateHeading(eventDate: string): string {
   return formatEventDate(eventDate);
 }
 
+/**
+ * Prominent weekday + calendar date for activity groupings on region hubs.
+ * e.g. { weekdayLabel: "Monday", dateLabel: "Oct 27" } or Today/Tomorrow.
+ */
+export function formatActivityDayGroupLabels(eventDate: string): {
+  weekdayLabel: string
+  dateLabel: string
+} {
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(eventDate)
+    ? eventDate
+    : normalizeEventDateToMountainTime(eventDate)
+  const today = getTodayMountainDateString()
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`
+  )
+  const dateLabel = date.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
+    month: 'short',
+    day: 'numeric',
+  })
+  if (ymd === today) return { weekdayLabel: 'Today', dateLabel }
+  if (ymd === addDaysToDateString(today, 1)) return { weekdayLabel: 'Tomorrow', dateLabel }
+  const weekdayLabel = date.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
+    weekday: 'long',
+  })
+  return { weekdayLabel, dateLabel }
+}
+
 export function isRelativeDayHeading(label: string): boolean {
   return label === 'Today' || label === 'Tomorrow';
 }

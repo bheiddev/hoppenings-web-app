@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import {
   RegionExploreLanding,
+  type ExploreDayGroup,
   type ExploreDayPage,
   type ExploreSection,
   type ExploreTeaserItem,
@@ -30,6 +31,7 @@ import {
   filterReleasesForCity,
 } from '@/lib/seoCities'
 import {
+  formatActivityDayGroupLabels,
   formatEventDateShort,
   formatReleaseDate,
   formatTime12Hour,
@@ -39,7 +41,8 @@ import {
 } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
-const TEASER_LIMIT = 5
+/** Breweries stay paged on the region hub; events and releases show in full. */
+const BREWERY_PAGE_SIZE = 5
 const EVENT_DAY_HORIZON = 14
 
 export async function generateStaticParams() {
@@ -126,7 +129,7 @@ export default async function CityLandingPage({
     const dateLabel = formatEventDateShort(ymd)
     return {
       dateLabel,
-      items: dayEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+      items: dayEvents.map(eventTeaser),
       emptyMessage: `No events listed for ${dateLabel} in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
     }
   })
@@ -167,14 +170,14 @@ export default async function CityLandingPage({
           },
         ]
       : Array.from(
-          { length: Math.ceil(breweryTeasers.length / TEASER_LIMIT) },
+          { length: Math.ceil(breweryTeasers.length / BREWERY_PAGE_SIZE) },
           (_, pageIndex) => {
-            const start = pageIndex * TEASER_LIMIT
-            const pageItems = breweryTeasers.slice(start, start + TEASER_LIMIT)
+            const start = pageIndex * BREWERY_PAGE_SIZE
+            const pageItems = breweryTeasers.slice(start, start + BREWERY_PAGE_SIZE)
             const first = pageItems[0]?.title ?? ''
             const last = pageItems[pageItems.length - 1]?.title ?? first
             const dateLabel =
-              breweryTeasers.length <= TEASER_LIMIT
+              breweryTeasers.length <= BREWERY_PAGE_SIZE
                 ? `Taprooms in ${cityConfig.name}`
                 : first === last
                   ? first
@@ -189,17 +192,15 @@ export default async function CityLandingPage({
 
   const releaseTeasers: ExploreTeaserItem[] = flattenReleaseSections(
     splitReleasesForDisplay(cityReleases)
-  )
-    .slice(0, TEASER_LIMIT)
-    .map((release) => ({
-      id: release.id,
-      title: release.beer_name,
-      subtitle: release.breweries.name,
-      meta: formatReleaseDate(release.release_date) || release.Type || undefined,
-      description: release.description?.trim() || undefined,
-      href: `/releases/${release.slug}`,
-      imageUrl: breweryImageById.get(release.brewery_id) ?? null,
-    }))
+  ).map((release) => ({
+    id: release.id,
+    title: release.beer_name,
+    subtitle: release.breweries.name,
+    meta: formatReleaseDate(release.release_date) || release.Type || undefined,
+    description: release.description?.trim() || undefined,
+    href: `/releases/${release.slug}`,
+    imageUrl: breweryImageById.get(release.brewery_id) ?? null,
+  }))
 
   const sections: ExploreSection[] = [
     {
@@ -233,13 +234,37 @@ export default async function CityLandingPage({
     ...(Object.keys(ACTIVITY_CONFIG) as ActivitySlug[]).map((activitySlug) => {
       const activity = ACTIVITY_CONFIG[activitySlug]
       const activityEvents = filterEventsForActivity(upcomingEvents, activitySlug)
+
+      const byDay = new Map<string, typeof activityEvents>()
+      for (const event of activityEvents) {
+        const ymd = normalizeEventDateToMountainTime(event.event_date)
+        const list = byDay.get(ymd) ?? []
+        list.push(event)
+        byDay.set(ymd, list)
+      }
+
+      const dayGroups: ExploreDayGroup[] = [...byDay.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([ymd, dayEvents]) => {
+          const labels = formatActivityDayGroupLabels(ymd)
+          const sorted = [...dayEvents].sort((a, b) =>
+            (a.start_time || '').localeCompare(b.start_time || '')
+          )
+          return {
+            weekdayLabel: labels.weekdayLabel,
+            dateLabel: labels.dateLabel,
+            items: sorted.map(eventTeaser),
+          }
+        })
+
       return {
         id: activitySlug,
         label: activity.label,
         href: `/${citySlug}/${activitySlug}`,
         panelLabel: `Upcoming in ${cityConfig.name}`,
         emptyMessage: `No upcoming ${activity.label.toLowerCase()} listed in ${cityConfig.name}.`,
-        items: activityEvents.slice(0, TEASER_LIMIT).map(eventTeaser),
+        items: [],
+        dayGroups,
       }
     }),
   ]
