@@ -1291,6 +1291,37 @@ export type ClearCouponTapTrackerTestDataResult = {
   }
 }
 
+export async function deleteUserCoupon(couponId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const id = couponId.trim()
+  if (!id) return { ok: false, error: 'Missing coupon id' }
+
+  const { error } = await admin!.from('user_coupons').delete().eq('id', id)
+  if (error) {
+    console.error('Error deleting user_coupon:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(ADMIN_PATH, 'layout')
+  return { ok: true }
+}
+
+export async function deletePourContestRun(runId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const id = runId.trim()
+  if (!id) return { ok: false, error: 'Missing run id' }
+
+  // Visit claims cascade on run delete; clear source_run_id via FK SET NULL.
+  const { error } = await admin!.from('pour_contest_runs').delete().eq('id', id)
+  if (error) {
+    console.error('Error deleting pour_contest_run:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(ADMIN_PATH, 'layout')
+  return { ok: true }
+}
+
 /**
  * Wipe test usage data: coupon instances/redemptions + tap tracker runs/enrollments.
  * Does not delete coupon_offers or pour_contest_programs (catalog / brewery setup).
