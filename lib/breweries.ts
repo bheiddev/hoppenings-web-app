@@ -353,6 +353,28 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
 /**
  * Recurring happy hour / deals for a brewery.
  */
+function mapHappyHourDealRows(data: Record<string, unknown>[]): HappyHourDeal[] {
+  const deals = data.map((row) => ({
+    id: row.id as string,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+    brewery_id: row.brewery_id as string,
+    day_of_week: row.day_of_week as HappyHourDeal['day_of_week'],
+    time_start: row.time_start == null ? null : Number(row.time_start),
+    time_end: row.time_end == null ? null : Number(row.time_end),
+    title: row.title as string,
+    description: (row.description as string | null) ?? null,
+  }))
+
+  return sortHappyHourDeals(
+    deals.map((deal) => ({
+      ...deal,
+      time_start: Number.isFinite(deal.time_start as number) ? deal.time_start : null,
+      time_end: Number.isFinite(deal.time_end as number) ? deal.time_end : null,
+    }))
+  )
+}
+
 export async function getBreweryHappyHourDeals(breweryId: string): Promise<HappyHourDeal[]> {
   try {
     const { data, error } = await supabase
@@ -368,28 +390,43 @@ export async function getBreweryHappyHourDeals(breweryId: string): Promise<Happy
     }
 
     if (!data) return []
-
-    const deals = data.map((row) => ({
-      id: row.id,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      brewery_id: row.brewery_id,
-      day_of_week: row.day_of_week,
-      time_start: row.time_start == null ? null : Number(row.time_start),
-      time_end: row.time_end == null ? null : Number(row.time_end),
-      title: row.title,
-      description: row.description,
-    })) as HappyHourDeal[]
-
-    return sortHappyHourDeals(
-      deals.map((deal) => ({
-        ...deal,
-        time_start: Number.isFinite(deal.time_start as number) ? deal.time_start : null,
-        time_end: Number.isFinite(deal.time_end as number) ? deal.time_end : null,
-      }))
-    )
+    return mapHappyHourDealRows(data as Record<string, unknown>[])
   } catch (error) {
     console.error('Error fetching brewery happy hour deals:', error)
+    return []
+  }
+}
+
+/** Batch-fetch happy hour deals for many breweries (region hubs). */
+export async function getHappyHourDealsForBreweryIds(
+  breweryIds: string[]
+): Promise<HappyHourDeal[]> {
+  const unique = [...new Set(breweryIds.filter(Boolean))]
+  if (unique.length === 0) return []
+
+  try {
+    const results: HappyHourDeal[] = []
+    const chunkSize = 200
+    for (let i = 0; i < unique.length; i += chunkSize) {
+      const chunk = unique.slice(i, i + chunkSize)
+      const { data, error } = await supabase
+        .from('happy_hour_deals')
+        .select(
+          'id, created_at, updated_at, brewery_id, day_of_week, time_start, time_end, title, description'
+        )
+        .in('brewery_id', chunk)
+
+      if (error) {
+        console.error('Error fetching happy hour deals for brewery ids:', error)
+        continue
+      }
+      if (data?.length) {
+        results.push(...mapHappyHourDealRows(data as Record<string, unknown>[]))
+      }
+    }
+    return sortHappyHourDeals(results)
+  } catch (error) {
+    console.error('Error fetching happy hour deals for brewery ids:', error)
     return []
   }
 }

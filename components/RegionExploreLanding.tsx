@@ -131,7 +131,7 @@ export function RegionExploreLanding({
         />
       </div>
 
-      <div className="relative z-[1] mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div className="relative z-[1] mx-auto grid min-h-[calc(100dvh-4rem)] max-w-7xl lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-12 lg:py-16">
           <h1
             className="hop-home-fade hop-home-delay-1 mb-5 font-bold uppercase leading-[0.9] tracking-wide text-[clamp(2.5rem,10vw,6.5rem)]"
@@ -186,7 +186,7 @@ export function RegionExploreLanding({
           </nav>
         </div>
 
-        <div className="flex min-h-0 flex-col justify-center px-6 pb-14 pt-2 sm:px-10 lg:max-h-screen lg:overflow-y-auto lg:px-8 lg:py-16">
+        <div className="flex min-h-0 flex-col justify-start px-6 pb-14 pt-8 sm:px-10 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto lg:px-8 lg:pb-16 lg:pt-16">
           {active ? (
             <div key={`${active.id}-${currentDay?.dateLabel ?? 'static'}`} className="hop-explore-panel">
               <div className="mb-6 flex items-end justify-between gap-4">

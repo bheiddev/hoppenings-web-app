@@ -285,6 +285,28 @@ function preferDisplayTitle(current: string, candidate: string): string {
 }
 
 /**
+ * Deals scheduled for a calendar date (Mountain YMD), deduped per brewery.
+ * Used by region hubs — does not gate on SHOW_HAPPY_HOUR_DEALS_ON_SITE.
+ */
+export function getHappyHourDealsForCalendarDate(
+  deals: HappyHourDeal[],
+  ymd: string
+): HappyHourDeal[] {
+  const forDay = deals.filter((deal) => happyHourDealShowsOnDate(deal, ymd))
+  const byBrewery = new Map<string, HappyHourDeal[]>()
+  for (const deal of forDay) {
+    const list = byBrewery.get(deal.brewery_id) ?? []
+    list.push(deal)
+    byBrewery.set(deal.brewery_id, list)
+  }
+  const out: HappyHourDeal[] = []
+  for (const list of byBrewery.values()) {
+    out.push(...dedupeDealsByTitleFamilyAndWindow(list))
+  }
+  return sortHappyHourDeals(out)
+}
+
+/**
  * Keep one deal per title-family + time window (ignores day).
  * Used for today's strip where multiple crawl rows share the same weekday.
  */

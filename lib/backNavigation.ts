@@ -44,6 +44,12 @@ export function pathToLabel(path: string): string {
     return `Beer Releases in ${cityName}`
   }
 
+  const cityHappyHoursMatch = normalized.match(/^\/([^/]+)\/happy-hours$/)
+  if (cityHappyHoursMatch && cityHappyHoursMatch[1] in CITY_CONFIG) {
+    const cityName = CITY_CONFIG[cityHappyHoursMatch[1] as CitySlug].name
+    return `Happy Hours in ${cityName}`
+  }
+
   const cityActivityMatch = normalized.match(/^\/([^/]+)\/([^/]+)$/)
   if (
     cityActivityMatch &&

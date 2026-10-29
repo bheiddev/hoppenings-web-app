@@ -1,3 +1,4 @@
+import { ClearCouponTapTrackerTestDataButton } from '@/components/admin/ClearCouponTapTrackerTestDataButton'
 import { Colors } from '@/lib/colors'
 import type {
   CouponAwardRow,
@@ -447,6 +448,13 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
           coupon was awarded. Coupon rows below are supporting detail.
         </p>
       </div>
+
+      <ClearCouponTapTrackerTestDataButton
+        couponsAwarded={summary.couponsAwarded}
+        couponsRedeemed={summary.couponsRedeemed}
+        tapTrackerRuns={tapTrackers.length}
+        enrollments={summary.activeEnrollments}
+      />
 
       {error ? (
         <div

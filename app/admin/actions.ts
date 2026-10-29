@@ -1277,3 +1277,73 @@ export async function sendAdminPushNotification(
     }
   }
 }
+
+export type ClearCouponTapTrackerTestDataResult = {
+  ok: boolean
+  error?: string
+  deleted?: {
+    visitClaims: number
+    redeemSessions: number
+    guestClaims: number
+    userCoupons: number
+    pourContestRuns: number
+    enrollments: number
+  }
+}
+
+/**
+ * Wipe test usage data: coupon instances/redemptions + tap tracker runs/enrollments.
+ * Does not delete coupon_offers or pour_contest_programs (catalog / brewery setup).
+ */
+export async function clearCouponAndTapTrackerTestData(): Promise<ClearCouponTapTrackerTestDataResult> {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+
+  async function deleteAll(
+    table: string
+  ): Promise<{ count: number; error?: string }> {
+    const { count, error } = await admin!
+      .from(table)
+      .delete({ count: 'exact' })
+      .not('id', 'is', null)
+
+    if (error) {
+      console.error(`Error deleting ${table}:`, error)
+      return { count: 0, error: error.message }
+    }
+    return { count: count ?? 0 }
+  }
+
+  // Child rows first, then coupons, then runs, then enrollments.
+  // reward_coupon_id / source_run_id are ON DELETE SET NULL across the coupon↔run pair.
+  const visitClaims = await deleteAll('pour_contest_visit_claims')
+  if (visitClaims.error) return { ok: false, error: visitClaims.error }
+
+  const redeemSessions = await deleteAll('coupon_redeem_sessions')
+  if (redeemSessions.error) return { ok: false, error: redeemSessions.error }
+
+  const guestClaims = await deleteAll('guest_coupon_claims')
+  if (guestClaims.error) return { ok: false, error: guestClaims.error }
+
+  const userCoupons = await deleteAll('user_coupons')
+  if (userCoupons.error) return { ok: false, error: userCoupons.error }
+
+  const pourContestRuns = await deleteAll('pour_contest_runs')
+  if (pourContestRuns.error) return { ok: false, error: pourContestRuns.error }
+
+  const enrollments = await deleteAll('user_pour_enrollments')
+  if (enrollments.error) return { ok: false, error: enrollments.error }
+
+  revalidatePath(ADMIN_PATH, 'layout')
+  return {
+    ok: true,
+    deleted: {
+      visitClaims: visitClaims.count,
+      redeemSessions: redeemSessions.count,
+      guestClaims: guestClaims.count,
+      userCoupons: userCoupons.count,
+      pourContestRuns: pourContestRuns.count,
+      enrollments: enrollments.count,
+    },
+  }
+}

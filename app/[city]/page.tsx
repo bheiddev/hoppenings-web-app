@@ -7,7 +7,7 @@ import {
   type ExploreSection,
   type ExploreTeaserItem,
 } from '@/components/RegionExploreLanding'
-import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { getAllBreweriesWithSlugs, getHappyHourDealsForBreweryIds } from '@/lib/breweries'
 import {
   getBreweryCardContext,
   getBreweryCardContextMap,
@@ -18,6 +18,10 @@ import {
   isBreweryOpenIconStatus,
 } from '@/lib/breweryCardStatus'
 import { getAllEventsWithSlugs } from '@/lib/events'
+import {
+  formatHappyHourWindow,
+  getHappyHourDealsForCalendarDate,
+} from '@/lib/happyHourDeals'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { flattenReleaseSections, splitReleasesForDisplay } from '@/lib/releaseSections'
 import {
@@ -110,6 +114,10 @@ export default async function CityLandingPage({
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
   const cityEvents = filterEventsForCity(events, citySlug)
   const cityReleases = filterReleasesForCity(releases, citySlug)
+  const cityHappyHourDeals = await getHappyHourDealsForBreweryIds(
+    cityBreweries.map((brewery) => brewery.id)
+  )
+  const breweryById = new Map(cityBreweries.map((brewery) => [brewery.id, brewery]))
   const breweryImageById = new Map(
     cityBreweries.map((brewery) => [brewery.id, brewery.image_url || brewery.tap_image || null])
   )
@@ -202,6 +210,38 @@ export default async function CityLandingPage({
     imageUrl: breweryImageById.get(release.brewery_id) ?? null,
   }))
 
+  const happyHourDayPages: ExploreDayPage[] = getMountainDateRangeFromToday(
+    EVENT_DAY_HORIZON
+  ).map((ymd) => {
+    const dateLabel = formatEventDateShort(ymd)
+    const dayDeals = getHappyHourDealsForCalendarDate(cityHappyHourDeals, ymd)
+    const items: ExploreTeaserItem[] = dayDeals
+      .map((deal) => {
+        const brewery = breweryById.get(deal.brewery_id)
+        return {
+          id: deal.id,
+          title: deal.title,
+          subtitle: brewery?.name,
+          meta: formatHappyHourWindow(deal.time_start, deal.time_end),
+          description: deal.description?.trim() || undefined,
+          href: brewery ? `/breweries/${brewery.slug}` : `/${citySlug}`,
+          imageUrl: brewery
+            ? brewery.image_url || brewery.tap_image || null
+            : null,
+        }
+      })
+      .sort((a, b) => {
+        const byBrewery = (a.subtitle || '').localeCompare(b.subtitle || '')
+        if (byBrewery !== 0) return byBrewery
+        return (a.meta || '').localeCompare(b.meta || '')
+      })
+    return {
+      dateLabel,
+      items,
+      emptyMessage: `No happy hours listed for ${dateLabel} in ${cityConfig.name}.`,
+    }
+  })
+
   const sections: ExploreSection[] = [
     {
       id: 'events',
@@ -230,6 +270,17 @@ export default async function CityLandingPage({
       panelLabel: 'Fresh on tap',
       emptyMessage: `No beer releases listed right now in ${cityConfig.name}.`,
       items: releaseTeasers,
+    },
+    {
+      id: 'happy-hours',
+      label: 'Happy Hours',
+      href: `/${citySlug}/happy-hours`,
+      panelLabel: happyHourDayPages[0]?.dateLabel ?? 'Happy Hours',
+      emptyMessage:
+        happyHourDayPages[0]?.emptyMessage ??
+        `No happy hours listed in ${cityConfig.name}.`,
+      items: happyHourDayPages[0]?.items ?? [],
+      dayPages: happyHourDayPages,
     },
     ...(Object.keys(ACTIVITY_CONFIG) as ActivitySlug[]).map((activitySlug) => {
       const activity = ACTIVITY_CONFIG[activitySlug]
