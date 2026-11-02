@@ -69,6 +69,18 @@ export type TapTrackerCompleterRow = {
   lastCompletedAt: string | null
 }
 
+export type PourEnrollmentRow = {
+  id: string
+  userId: string
+  displayName: string | null
+  email: string | null
+  breweryId: string
+  breweryName: string
+  optedInAt: string | null
+  optedOutAt: string | null
+  active: boolean
+}
+
 export type CouponsTapTrackersSummary = {
   couponsAwarded: number
   couponsRedeemed: number
@@ -91,6 +103,7 @@ export type CouponsTapTrackersResult = {
   tapTrackerCompleters: TapTrackerCompleterRow[]
   recentAwards: CouponAwardRow[]
   tapTrackers: TapTrackerProgressRow[]
+  enrollments: PourEnrollmentRow[]
   error: string | null
 }
 
@@ -248,7 +261,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       client
         .from('user_pour_enrollments')
         .select('id, user_id, brewery_id, opted_in_at, opted_out_at')
-        .is('opted_out_at', null)
+        .order('opted_in_at', { ascending: false })
         .limit(5000),
     ])
 
@@ -260,6 +273,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
         tapTrackerCompleters: [],
         recentAwards: [],
         tapTrackers: [],
+        enrollments: [],
         error: couponsResult.error.message,
       }
     }
@@ -271,6 +285,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
         tapTrackerCompleters: [],
         recentAwards: [],
         tapTrackers: [],
+        enrollments: [],
         error: runsResult.error.message,
       }
     }
@@ -281,13 +296,14 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
     const coupons = couponsResult.data ?? []
     const runs = runsResult.data ?? []
     const enrollments = enrollmentsResult.data ?? []
+    const activeEnrollments = enrollments.filter((e) => !e.opted_out_at)
 
     summary.couponsAwarded = coupons.length
     summary.couponsRedeemed = coupons.filter(
       (c) => c.status === 'redeemed' || c.redeemed_at
     ).length
     summary.guestDeviceCoupons = coupons.filter((c) => !c.user_id && c.device_id).length
-    summary.activeEnrollments = enrollments.length
+    summary.activeEnrollments = activeEnrollments.length
     summary.activeTapTrackers = runs.filter((r) => r.status === 'active').length
     summary.rewardedTapTrackers = runs.filter((r) => r.status === 'rewarded').length
     summary.closedTapTrackers = runs.filter((r) => r.status === 'closed').length
@@ -325,6 +341,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
     const allBreweryIds = [
       ...coupons.map((c) => c.brewery_id as string),
       ...runs.map((r) => r.brewery_id as string),
+      ...enrollments.map((e) => e.brewery_id as string),
     ]
     const offerIds = coupons.map((c) => c.offer_id as string)
 
@@ -334,27 +351,15 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       fetchOfferLabels(client, offerIds),
     ])
 
-    const enrollmentById = new Map<string, { opted_in_at: string | null }>()
+    const enrollmentById = new Map<
+      string,
+      { opted_in_at: string | null; opted_out_at: string | null }
+    >()
     for (const e of enrollments) {
       enrollmentById.set(e.id as string, {
         opted_in_at: (e.opted_in_at as string | null) ?? null,
+        opted_out_at: (e.opted_out_at as string | null) ?? null,
       })
-    }
-    // Also fetch opted-in dates for runs whose enrollment may be opted out (still useful)
-    const missingEnrollmentIds = runs
-      .map((r) => r.enrollment_id as string)
-      .filter((id) => id && !enrollmentById.has(id))
-    if (missingEnrollmentIds.length > 0) {
-      const uniqueMissing = [...new Set(missingEnrollmentIds)]
-      const { data: extraEnrollments } = await client
-        .from('user_pour_enrollments')
-        .select('id, opted_in_at')
-        .in('id', uniqueMissing.slice(0, 1000))
-      for (const e of extraEnrollments ?? []) {
-        enrollmentById.set(e.id as string, {
-          opted_in_at: (e.opted_in_at as string | null) ?? null,
-        })
-      }
     }
 
     const peopleMap = new Map<string, CouponUsagePersonRow>()
@@ -399,7 +404,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       return aKey.localeCompare(bKey)
     })
 
-    const recentAwards: CouponAwardRow[] = coupons.slice(0, 200).map((c) => {
+    const recentAwards: CouponAwardRow[] = coupons.map((c) => {
       const uid = (c.user_id as string | null) ?? null
       const profile = uid ? profiles.get(uid) : undefined
       return {
@@ -418,6 +423,29 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
         redeemedAt: (c.redeemed_at as string | null) ?? null,
         expiresAt: (c.expires_at as string | null) ?? null,
       }
+    })
+
+    const enrollmentRows: PourEnrollmentRow[] = enrollments.map((e) => {
+      const uid = e.user_id as string
+      const profile = profiles.get(uid)
+      const optedOutAt = (e.opted_out_at as string | null) ?? null
+      return {
+        id: e.id as string,
+        userId: uid,
+        displayName: profile?.display_name ?? null,
+        email: profile?.email ?? null,
+        breweryId: e.brewery_id as string,
+        breweryName: breweryNames.get(e.brewery_id as string) ?? 'Unknown brewery',
+        optedInAt: (e.opted_in_at as string | null) ?? null,
+        optedOutAt,
+        active: !optedOutAt,
+      }
+    })
+    enrollmentRows.sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1
+      const aKey = a.optedInAt || ''
+      const bKey = b.optedInAt || ''
+      return bKey.localeCompare(aKey)
     })
 
     const tapTrackers: TapTrackerProgressRow[] = runs.map((r) => {
@@ -499,6 +527,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       tapTrackerCompleters,
       recentAwards,
       tapTrackers,
+      enrollments: enrollmentRows,
       error: null,
     }
   } catch (err) {
@@ -509,6 +538,7 @@ export async function getCouponsTapTrackersOverview(): Promise<CouponsTapTracker
       tapTrackerCompleters: [],
       recentAwards: [],
       tapTrackers: [],
+      enrollments: [],
       error: err instanceof Error ? err.message : 'Failed to load coupons / tap trackers',
     }
   }

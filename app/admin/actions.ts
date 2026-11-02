@@ -1306,6 +1306,25 @@ export async function deleteUserCoupon(couponId: string) {
   return { ok: true }
 }
 
+/** Delete every coupon award/redemption for a profile. */
+export async function deleteUserCouponsByUserId(userId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const id = userId.trim()
+  if (!id) return { ok: false, error: 'Missing user id' }
+
+  const { error, count } = await admin!
+    .from('user_coupons')
+    .delete({ count: 'exact' })
+    .eq('user_id', id)
+  if (error) {
+    console.error('Error deleting user_coupons for user:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(ADMIN_PATH, 'layout')
+  return { ok: true, deleted: count ?? 0 }
+}
+
 export async function deletePourContestRun(runId: string) {
   const { admin, error: configError } = getAdmin()
   if (configError) return { ok: false, error: configError }
@@ -1316,6 +1335,57 @@ export async function deletePourContestRun(runId: string) {
   const { error } = await admin!.from('pour_contest_runs').delete().eq('id', id)
   if (error) {
     console.error('Error deleting pour_contest_run:', error)
+    return { ok: false, error: error.message }
+  }
+  revalidatePath(ADMIN_PATH, 'layout')
+  return { ok: true }
+}
+
+/** Delete all tap tracker runs + enrollments for a profile. */
+export async function deleteUserTapTrackerByUserId(userId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const id = userId.trim()
+  if (!id) return { ok: false, error: 'Missing user id' }
+
+  const { error: runsError, count: runsDeleted } = await admin!
+    .from('pour_contest_runs')
+    .delete({ count: 'exact' })
+    .eq('user_id', id)
+  if (runsError) {
+    console.error('Error deleting pour_contest_runs for user:', runsError)
+    return { ok: false, error: runsError.message }
+  }
+
+  const { error: enrollError, count: enrollmentsDeleted } = await admin!
+    .from('user_pour_enrollments')
+    .delete({ count: 'exact' })
+    .eq('user_id', id)
+  if (enrollError) {
+    console.error('Error deleting user_pour_enrollments for user:', enrollError)
+    return { ok: false, error: enrollError.message }
+  }
+
+  revalidatePath(ADMIN_PATH, 'layout')
+  return {
+    ok: true,
+    deleted: {
+      runs: runsDeleted ?? 0,
+      enrollments: enrollmentsDeleted ?? 0,
+    },
+  }
+}
+
+export async function deleteUserPourEnrollment(enrollmentId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false, error: configError }
+  const id = enrollmentId.trim()
+  if (!id) return { ok: false, error: 'Missing enrollment id' }
+
+  // Runs reference enrollments with ON DELETE CASCADE.
+  const { error } = await admin!.from('user_pour_enrollments').delete().eq('id', id)
+  if (error) {
+    console.error('Error deleting user_pour_enrollment:', error)
     return { ok: false, error: error.message }
   }
   revalidatePath(ADMIN_PATH, 'layout')

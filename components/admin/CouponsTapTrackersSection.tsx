@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import {
   deletePourContestRun,
   deleteUserCoupon,
+  deleteUserCouponsByUserId,
+  deleteUserPourEnrollment,
+  deleteUserTapTrackerByUserId,
 } from '@/app/admin/actions'
 import { ClearCouponTapTrackerTestDataButton } from '@/components/admin/ClearCouponTapTrackerTestDataButton'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
@@ -13,6 +16,7 @@ import type {
   CouponAwardRow,
   CouponUsagePersonRow,
   CouponsTapTrackersResult,
+  PourEnrollmentRow,
   TapTrackerCompleterRow,
   TapTrackerProgressRow,
 } from '@/lib/adminCouponsTapTrackers'
@@ -153,7 +157,15 @@ function ProgressBar({ counted, required }: { counted: number; required: number 
   )
 }
 
-function CompletersTable({ rows }: { rows: TapTrackerCompleterRow[] }) {
+function CompletersTable({
+  rows,
+  pendingKey,
+  onDelete,
+}: {
+  rows: TapTrackerCompleterRow[]
+  pendingKey: string | null
+  onDelete: (userId: string, label: string) => void
+}) {
   if (rows.length === 0) {
     return (
       <p className="text-sm" style={{ color: Colors.textSecondary }}>
@@ -167,12 +179,12 @@ function CompletersTable({ rows }: { rows: TapTrackerCompleterRow[] }) {
       className="overflow-x-auto rounded-lg border"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[820px] text-left text-sm">
         <thead>
           <tr style={{ backgroundColor: Colors.surfaceLight }}>
-            {['Person', 'Completed trackers', 'Breweries', 'Last completed'].map((h) => (
+            {['Person', 'Completed trackers', 'Breweries', 'Last completed', ''].map((h, i) => (
               <th
-                key={h}
+                key={h || `actions-${i}`}
                 className="px-4 py-3 font-semibold"
                 style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
               >
@@ -182,40 +194,62 @@ function CompletersTable({ rows }: { rows: TapTrackerCompleterRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.userId}
-              className="border-t align-top"
-              style={{ borderColor: Colors.dividerLight }}
-            >
-              <td className="px-4 py-3">
-                <PersonCell
-                  displayName={row.displayName}
-                  email={row.email}
-                  userId={row.userId}
-                />
-              </td>
-              <td
-                className="px-4 py-3 tabular-nums font-semibold"
-                style={{ color: Colors.primaryDark }}
+          {rows.map((row) => {
+            const key = `completer:${row.userId}`
+            const who = row.displayName?.trim() || row.email || row.userId.slice(0, 8)
+            return (
+              <tr
+                key={row.userId}
+                className="border-t align-top"
+                style={{ borderColor: Colors.dividerLight }}
               >
-                {row.completedRuns}
-              </td>
-              <td className="px-4 py-3" style={{ color: Colors.textSecondary }}>
-                {row.breweryNames.join(', ')}
-              </td>
-              <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
-                {formatWhen(row.lastCompletedAt)}
-              </td>
-            </tr>
-          ))}
+                <td className="px-4 py-3">
+                  <PersonCell
+                    displayName={row.displayName}
+                    email={row.email}
+                    userId={row.userId}
+                  />
+                </td>
+                <td
+                  className="px-4 py-3 tabular-nums font-semibold"
+                  style={{ color: Colors.primaryDark }}
+                >
+                  {row.completedRuns}
+                </td>
+                <td className="px-4 py-3" style={{ color: Colors.textSecondary }}>
+                  {row.breweryNames.join(', ')}
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
+                  {formatWhen(row.lastCompletedAt)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <AdminButton
+                    variant="delete"
+                    loading={pendingKey === key}
+                    disabled={pendingKey != null && pendingKey !== key}
+                    onClick={() => onDelete(row.userId, who)}
+                  >
+                    Delete
+                  </AdminButton>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
-function CouponPeopleTable({ rows }: { rows: CouponUsagePersonRow[] }) {
+function CouponPeopleTable({
+  rows,
+  pendingKey,
+  onDelete,
+}: {
+  rows: CouponUsagePersonRow[]
+  pendingKey: string | null
+  onDelete: (userId: string, label: string, count: number) => void
+}) {
   if (rows.length === 0) {
     return (
       <p className="text-sm" style={{ color: Colors.textSecondary }}>
@@ -229,13 +263,13 @@ function CouponPeopleTable({ rows }: { rows: CouponUsagePersonRow[] }) {
       className="overflow-x-auto rounded-lg border"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[820px] text-left text-sm">
         <thead>
           <tr style={{ backgroundColor: Colors.surfaceLight }}>
-            {['Person', 'Awarded', 'Redeemed', 'Ready', 'Breweries', 'Last redeemed'].map(
-              (h) => (
+            {['Person', 'Awarded', 'Redeemed', 'Ready', 'Breweries', 'Last redeemed', ''].map(
+              (h, i) => (
                 <th
-                  key={h}
+                  key={h || `actions-${i}`}
                   className="px-4 py-3 font-semibold"
                   style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
                 >
@@ -246,36 +280,137 @@ function CouponPeopleTable({ rows }: { rows: CouponUsagePersonRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.userId}
-              className="border-t align-top"
-              style={{ borderColor: Colors.dividerLight }}
-            >
-              <td className="px-4 py-3">
-                <PersonCell
-                  displayName={row.displayName}
-                  email={row.email}
-                  userId={row.userId}
-                />
-              </td>
-              <td className="px-4 py-3 tabular-nums" style={{ color: Colors.textDark }}>
-                {row.awardedCount}
-              </td>
-              <td className="px-4 py-3 tabular-nums font-semibold" style={{ color: Colors.primaryDark }}>
-                {row.redeemedCount}
-              </td>
-              <td className="px-4 py-3 tabular-nums" style={{ color: Colors.textSecondary }}>
-                {row.readyCount}
-              </td>
-              <td className="px-4 py-3" style={{ color: Colors.textSecondary }}>
-                {row.breweryNames.join(', ')}
-              </td>
-              <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
-                {formatWhen(row.lastRedeemedAt)}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const key = `people:${row.userId}`
+            const who = row.displayName?.trim() || row.email || row.userId.slice(0, 8)
+            return (
+              <tr
+                key={row.userId}
+                className="border-t align-top"
+                style={{ borderColor: Colors.dividerLight }}
+              >
+                <td className="px-4 py-3">
+                  <PersonCell
+                    displayName={row.displayName}
+                    email={row.email}
+                    userId={row.userId}
+                  />
+                </td>
+                <td className="px-4 py-3 tabular-nums" style={{ color: Colors.textDark }}>
+                  {row.awardedCount}
+                </td>
+                <td
+                  className="px-4 py-3 tabular-nums font-semibold"
+                  style={{ color: Colors.primaryDark }}
+                >
+                  {row.redeemedCount}
+                </td>
+                <td className="px-4 py-3 tabular-nums" style={{ color: Colors.textSecondary }}>
+                  {row.readyCount}
+                </td>
+                <td className="px-4 py-3" style={{ color: Colors.textSecondary }}>
+                  {row.breweryNames.join(', ')}
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
+                  {formatWhen(row.lastRedeemedAt)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <AdminButton
+                    variant="delete"
+                    loading={pendingKey === key}
+                    disabled={pendingKey != null && pendingKey !== key}
+                    onClick={() => onDelete(row.userId, who, row.awardedCount)}
+                  >
+                    Delete
+                  </AdminButton>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function EnrollmentsTable({
+  rows,
+  pendingKey,
+  onDelete,
+}: {
+  rows: PourEnrollmentRow[]
+  pendingKey: string | null
+  onDelete: (enrollmentId: string, label: string) => void
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm" style={{ color: Colors.textSecondary }}>
+        No pour-contest enrollments yet.
+      </p>
+    )
+  }
+
+  return (
+    <div
+      className="overflow-x-auto rounded-lg border max-h-[28rem] overflow-y-auto"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <table className="w-full min-w-[820px] text-left text-sm">
+        <thead className="sticky top-0 z-10" style={{ backgroundColor: Colors.surfaceLight }}>
+          <tr>
+            {['Person', 'Brewery', 'Status', 'Opted in', 'Opted out', ''].map((h, i) => (
+              <th
+                key={h || `actions-${i}`}
+                className="px-4 py-3 font-semibold"
+                style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const key = `enrollment:${row.id}`
+            const who = row.displayName?.trim() || row.email || row.userId.slice(0, 8)
+            return (
+              <tr
+                key={row.id}
+                className="border-t align-top"
+                style={{ borderColor: Colors.dividerLight }}
+              >
+                <td className="px-4 py-3">
+                  <PersonCell
+                    displayName={row.displayName}
+                    email={row.email}
+                    userId={row.userId}
+                  />
+                </td>
+                <td className="px-4 py-3" style={{ color: Colors.textDark }}>
+                  {row.breweryName}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusPill status={row.active ? 'active' : 'void'} />
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
+                  {formatWhen(row.optedInAt)}
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: Colors.textMuted }}>
+                  {formatWhen(row.optedOutAt)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <AdminButton
+                    variant="delete"
+                    loading={pendingKey === key}
+                    disabled={pendingKey != null && pendingKey !== key}
+                    onClick={() => onDelete(row.id, `${row.breweryName} · ${who}`)}
+                  >
+                    Delete
+                  </AdminButton>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -506,7 +641,15 @@ function TapTrackersTable({
 
 export function CouponsTapTrackersSection({ result }: { result: CouponsTapTrackersResult }) {
   const router = useRouter()
-  const { summary, people, tapTrackerCompleters, recentAwards, tapTrackers, error } = result
+  const {
+    summary,
+    people,
+    tapTrackerCompleters,
+    recentAwards,
+    tapTrackers,
+    enrollments,
+    error,
+  } = result
   const redeemedPeople = people.filter((p) => p.redeemedCount > 0)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -541,6 +684,69 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
     }
   }
 
+  async function handleDeleteCompleter(userId: string, label: string) {
+    if (
+      !window.confirm(
+        `Delete all tap tracker runs and enrollments for “${label}”? This cannot be undone.`
+      )
+    ) {
+      return
+    }
+    setActionError(null)
+    setPendingKey(`completer:${userId}`)
+    try {
+      const res = await deleteUserTapTrackerByUserId(userId)
+      setPendingKey(null)
+      if (res.ok) router.refresh()
+      else setActionError(res.error ?? 'Failed to delete tap tracker data')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleDeletePersonCoupons(userId: string, label: string, count: number) {
+    if (
+      !window.confirm(
+        `Delete all ${count} coupon award(s)/redemption(s) for “${label}”? This cannot be undone.`
+      )
+    ) {
+      return
+    }
+    setActionError(null)
+    setPendingKey(`people:${userId}`)
+    try {
+      const res = await deleteUserCouponsByUserId(userId)
+      setPendingKey(null)
+      if (res.ok) router.refresh()
+      else setActionError(res.error ?? 'Failed to delete coupons')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleDeleteEnrollment(enrollmentId: string, label: string) {
+    if (
+      !window.confirm(
+        `Delete enrollment “${label}”? Related tap tracker runs for this enrollment are also removed.`
+      )
+    ) {
+      return
+    }
+    setActionError(null)
+    setPendingKey(`enrollment:${enrollmentId}`)
+    try {
+      const res = await deleteUserPourEnrollment(enrollmentId)
+      setPendingKey(null)
+      if (res.ok) router.refresh()
+      else setActionError(res.error ?? 'Failed to delete enrollment')
+    } catch (err) {
+      setPendingKey(null)
+      setActionError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
   return (
     <section className="space-y-8">
       <div>
@@ -553,8 +759,8 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
           Usage is based on completed tap trackers: status <code className="text-xs">closed</code>{' '}
           with <code className="text-xs">visits_counted = visits_required</code> means a reward
-          coupon was awarded. Coupon rows below are supporting detail. Use Delete on a row to
-          remove one record, or clear all test usage below.
+          coupon was awarded. Every row has Delete. Person rows remove that user's related
+          records; clear-all wipes all test usage.
         </p>
       </div>
 
@@ -562,7 +768,7 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
         couponsAwarded={summary.couponsAwarded}
         couponsRedeemed={summary.couponsRedeemed}
         tapTrackerRuns={tapTrackers.length}
-        enrollments={summary.activeEnrollments}
+        enrollments={enrollments.length}
       />
 
       {actionError ? (
@@ -638,7 +844,11 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             full visits (coupon awarded).
           </p>
         </div>
-        <CompletersTable rows={tapTrackerCompleters} />
+        <CompletersTable
+          rows={tapTrackerCompleters}
+          pendingKey={pendingKey}
+          onDelete={handleDeleteCompleter}
+        />
       </div>
 
       <div className="space-y-3">
@@ -666,18 +876,19 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             className="text-lg font-semibold"
             style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
           >
-            Coupon redemptions (supporting)
+            Enrollments
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            {redeemedPeople.length.toLocaleString()} people with a{' '}
-            <code className="text-xs">user_coupons</code> redemption
-            {people.length !== redeemedPeople.length
-              ? ` · ${people.length.toLocaleString()} with any award`
-              : ''}
-            .
+            {enrollments.length.toLocaleString()} pour-contest enrollment
+            {enrollments.length === 1 ? '' : 's'} ({summary.activeEnrollments.toLocaleString()}{' '}
+            active). Deleting an enrollment also removes its runs.
           </p>
         </div>
-        <CouponPeopleTable rows={redeemedPeople.length > 0 ? redeemedPeople : people} />
+        <EnrollmentsTable
+          rows={enrollments}
+          pendingKey={pendingKey}
+          onDelete={handleDeleteEnrollment}
+        />
       </div>
 
       <div className="space-y-3">
@@ -686,10 +897,34 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             className="text-lg font-semibold"
             style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
           >
-            Recent coupon awards
+            Coupon redemptions (supporting)
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            Latest {recentAwards.length.toLocaleString()} awards (including guest devices).
+            {redeemedPeople.length.toLocaleString()} people with a{' '}
+            <code className="text-xs">user_coupons</code> redemption
+            {people.length !== redeemedPeople.length
+              ? ` · ${people.length.toLocaleString()} with any award`
+              : ''}
+            . Delete removes all coupons for that person.
+          </p>
+        </div>
+        <CouponPeopleTable
+          rows={redeemedPeople.length > 0 ? redeemedPeople : people}
+          pendingKey={pendingKey}
+          onDelete={handleDeletePersonCoupons}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+          >
+            Coupon awards
+          </h3>
+          <p className="text-sm" style={{ color: Colors.textSecondary }}>
+            {recentAwards.length.toLocaleString()} awards (including guest devices).
           </p>
         </div>
         <AwardsTable
