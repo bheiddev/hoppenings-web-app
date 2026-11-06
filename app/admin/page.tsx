@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { Colors } from '@/lib/colors'
 import { AdminHomeTopTabs, type AdminHomeTab } from '@/components/admin/AdminHomeTopTabs'
 import { BreweryStaffSection } from '@/components/admin/BreweryStaffSection'
+import { BreweryVisitsSection } from '@/components/admin/BreweryVisitsSection'
 import { CouponsTapTrackersSection } from '@/components/admin/CouponsTapTrackersSection'
 import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSection'
 import { PushNotificationsSection } from '@/components/admin/PushNotificationsSection'
@@ -14,6 +15,7 @@ import {
   type BreweryWithData,
   type RegionBucket,
 } from '@/lib/breweriesEventsRegions'
+import { getBreweryVisitsOverview } from '@/lib/adminBreweryVisits'
 import { getCouponsTapTrackersOverview } from '@/lib/adminCouponsTapTrackers'
 import { getBreweryAdminProfiles } from '@/lib/breweryStaffProfiles'
 import { getMobileAnalyticsSummary } from '@/lib/ga4'
@@ -50,14 +52,21 @@ function regionPanel(
 }
 
 export default async function AdminPage() {
-  const [breweriesWithData, analytics, seo, staffProfiles, couponsTapTrackers] =
-    await Promise.all([
-      getBreweriesWithEvents(),
-      getMobileAnalyticsSummary(),
-      getSeoAnalyticsSummary(),
-      getBreweryAdminProfiles(),
-      getCouponsTapTrackersOverview(),
-    ])
+  const [
+    breweriesWithData,
+    analytics,
+    seo,
+    staffProfiles,
+    couponsTapTrackers,
+    breweryVisits,
+  ] = await Promise.all([
+    getBreweriesWithEvents(),
+    getMobileAnalyticsSummary(),
+    getSeoAnalyticsSummary(),
+    getBreweryAdminProfiles(),
+    getCouponsTapTrackersOverview(),
+    getBreweryVisitsOverview(),
+  ])
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
   const bucketBySlug = new Map(regionBuckets.map((b) => [b.slug, b]))
@@ -72,6 +81,11 @@ export default async function AdminPage() {
       id: 'seo',
       label: 'Website Analytics',
       panel: <SeoAnalyticsSection result={seo} />,
+    },
+    {
+      id: 'brewery-visits',
+      label: 'Brewery Visits',
+      panel: <BreweryVisitsSection result={breweryVisits} />,
     },
     {
       id: 'coupons-tap-trackers',
