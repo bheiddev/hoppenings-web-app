@@ -353,12 +353,21 @@ export async function getBreweryFoodTrucks(breweryId: string): Promise<FoodTruck
 /**
  * Recurring happy hour / deals for a brewery.
  */
+function normalizeDealDateValue(value: unknown): string | null {
+  if (value == null) return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10)
+  return null
+}
+
 function mapHappyHourDealRows(data: Record<string, unknown>[]): HappyHourDeal[] {
   const deals = data.map((row) => ({
     id: row.id as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     brewery_id: row.brewery_id as string,
+    deal_date: normalizeDealDateValue(row.deal_date),
     day_of_week: row.day_of_week as HappyHourDeal['day_of_week'],
     time_start: row.time_start == null ? null : Number(row.time_start),
     time_end: row.time_end == null ? null : Number(row.time_end),
@@ -380,7 +389,7 @@ export async function getBreweryHappyHourDeals(breweryId: string): Promise<Happy
     const { data, error } = await supabase
       .from('happy_hour_deals')
       .select(
-        'id, created_at, updated_at, brewery_id, day_of_week, time_start, time_end, title, description'
+        'id, created_at, updated_at, brewery_id, deal_date, day_of_week, time_start, time_end, title, description'
       )
       .eq('brewery_id', breweryId)
 
@@ -412,7 +421,7 @@ export async function getHappyHourDealsForBreweryIds(
       const { data, error } = await supabase
         .from('happy_hour_deals')
         .select(
-          'id, created_at, updated_at, brewery_id, day_of_week, time_start, time_end, title, description'
+          'id, created_at, updated_at, brewery_id, deal_date, day_of_week, time_start, time_end, title, description'
         )
         .in('brewery_id', chunk)
 

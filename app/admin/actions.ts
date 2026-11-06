@@ -667,6 +667,9 @@ export async function deleteFoodTrucks(foodTruckIds: number[]) {
 
 export type UpdateHappyHourDealPayload = {
   brewery_id: string
+  /** Calendar date YYYY-MM-DD — primary schedule field. */
+  deal_date: string
+  /** Derived from deal_date for legacy day_of_week column compatibility. */
   day_of_week: string
   time_start: number | null
   time_end: number | null
@@ -679,6 +682,7 @@ export async function createHappyHourDeal(data: UpdateHappyHourDealPayload) {
   if (configError) return { ok: false, error: configError }
   const { error } = await admin!.from('happy_hour_deals').insert({
     brewery_id: data.brewery_id,
+    deal_date: data.deal_date,
     day_of_week: data.day_of_week,
     time_start: data.time_start,
     time_end: data.time_end,
@@ -701,6 +705,7 @@ export async function updateHappyHourDeal(dealId: string, data: UpdateHappyHourD
     .from('happy_hour_deals')
     .update({
       brewery_id: data.brewery_id,
+      deal_date: data.deal_date,
       day_of_week: data.day_of_week,
       time_start: data.time_start,
       time_end: data.time_end,

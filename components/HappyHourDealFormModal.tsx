@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
-import { HAPPY_HOUR_DAYS } from '@/lib/happyHourDeals'
-import { HappyHourDeal, HappyHourDayOfWeek } from '@/types/supabase'
+import { dayOfWeekFromYmd, normalizeHappyHourDealDate } from '@/lib/happyHourDeals'
+import { getTodayMountainDateString } from '@/lib/utils'
+import { HappyHourDeal } from '@/types/supabase'
 import type { UpdateHappyHourDealPayload } from '@/app/admin/actions'
 
 function formatCreatedAt(iso: string) {
@@ -27,23 +28,37 @@ function parseHourInput(value: string): number | null {
   return n
 }
 
+function defaultDealDate(deal: HappyHourDeal | null): string {
+  return (
+    normalizeHappyHourDealDate(deal?.deal_date) ??
+    getTodayMountainDateString()
+  )
+}
+
 export function HappyHourDealFormModal({
   modalTitle,
   deal,
   defaultBreweryId,
+  defaultDealDate: defaultDealDateProp,
   onSave,
   onClose,
 }: {
   modalTitle: string
   deal: HappyHourDeal | null
   defaultBreweryId: string
+  /** Prefill when adding (e.g. the forecast day being viewed). */
+  defaultDealDate?: string
   onSave: (data: UpdateHappyHourDealPayload) => Promise<{ ok: boolean; error?: string }>
   onClose: () => void
 }) {
   const [title, setTitle] = useState(deal?.title ?? '')
   const [description, setDescription] = useState(deal?.description ?? '')
   const [breweryIdField, setBreweryIdField] = useState(deal?.brewery_id ?? defaultBreweryId)
-  const [dayOfWeek, setDayOfWeek] = useState<HappyHourDayOfWeek>(deal?.day_of_week ?? 'Monday')
+  const [dealDate, setDealDate] = useState(
+    normalizeHappyHourDealDate(deal?.deal_date) ??
+      normalizeHappyHourDealDate(defaultDealDateProp) ??
+      defaultDealDate(deal)
+  )
   const [timeStart, setTimeStart] = useState(
     deal?.time_start != null ? String(deal.time_start) : ''
   )
@@ -56,12 +71,17 @@ export function HappyHourDealFormModal({
     setError(null)
     const trimmedTitle = title.trim()
     const breweryId = breweryIdField.trim()
+    const normalizedDate = normalizeHappyHourDealDate(dealDate)
     if (!trimmedTitle) {
       setError('Title is required')
       return
     }
     if (!breweryId) {
       setError('Brewery ID is required')
+      return
+    }
+    if (!normalizedDate) {
+      setError('Deal date is required (YYYY-MM-DD)')
       return
     }
     const start = parseHourInput(timeStart)
@@ -74,7 +94,8 @@ export function HappyHourDealFormModal({
     try {
       const payload: UpdateHappyHourDealPayload = {
         brewery_id: breweryId,
-        day_of_week: dayOfWeek,
+        deal_date: normalizedDate,
+        day_of_week: dayOfWeekFromYmd(normalizedDate),
         time_start: start,
         time_end: end,
         title: trimmedTitle,
@@ -141,20 +162,19 @@ export function HappyHourDealFormModal({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium" style={{ color: Colors.textDark }}>
-              Day of week
+              Deal date
             </label>
-            <select
-              value={dayOfWeek}
-              onChange={(ev) => setDayOfWeek(ev.target.value as HappyHourDayOfWeek)}
+            <input
+              type="date"
+              value={dealDate}
+              onChange={(ev) => setDealDate(ev.target.value)}
               className="w-full rounded border px-3 py-2 text-sm"
               style={{ borderColor: Colors.dividerLight, color: Colors.textDark }}
-            >
-              {HAPPY_HOUR_DAYS.map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
+              required
+            />
+            <p className="mt-1 text-xs" style={{ color: Colors.textSecondary }}>
+              Calendar date this deal applies to (Mountain Time).
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

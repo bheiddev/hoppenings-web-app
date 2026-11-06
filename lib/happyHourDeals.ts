@@ -31,7 +31,24 @@ export function dayOfWeekFromYmd(ymd: string): HappyHourDayOfWeek {
   return DAY_BY_INDEX[getMountainWeekdayIndex(ymd)] ?? 'Sunday'
 }
 
+/** Normalize DB deal_date (date or timestamptz) to YYYY-MM-DD. */
+export function normalizeHappyHourDealDate(
+  value: string | null | undefined
+): string | null {
+  if (!value) return null
+  const raw = value.trim()
+  if (!raw) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10)
+  return null
+}
+
+/**
+ * True when the deal should appear on calendar date `ymd`.
+ * Prefers deal_date; falls back to legacy day_of_week for rows without a date.
+ */
 export function happyHourDealShowsOnDate(deal: HappyHourDeal, ymd: string): boolean {
+  const dealDate = normalizeHappyHourDealDate(deal.deal_date)
+  if (dealDate) return dealDate === ymd
   return deal.day_of_week === dayOfWeekFromYmd(ymd)
 }
 
@@ -141,13 +158,43 @@ export function sortHappyHourDeals(deals: HappyHourDeal[]): HappyHourDeal[] {
     const aHappy = isHappyHourTitle(a.title) ? 0 : 1
     const bHappy = isHappyHourTitle(b.title) ? 0 : 1
     if (aHappy !== bHappy) return aHappy - bHappy
-    const byDay = (dayOrder.get(a.day_of_week) ?? 0) - (dayOrder.get(b.day_of_week) ?? 0)
-    if (byDay !== 0) return byDay
+    const aDate = normalizeHappyHourDealDate(a.deal_date) ?? ''
+    const bDate = normalizeHappyHourDealDate(b.deal_date) ?? ''
+    if (aDate || bDate) {
+      if (aDate !== bDate) {
+        if (!aDate) return 1
+        if (!bDate) return -1
+        return aDate.localeCompare(bDate)
+      }
+    } else {
+      const byDay =
+        (dayOrder.get(a.day_of_week) ?? 0) - (dayOrder.get(b.day_of_week) ?? 0)
+      if (byDay !== 0) return byDay
+    }
     const aStart = a.time_start ?? -1
     const bStart = b.time_start ?? -1
     if (aStart !== bStart) return aStart - bStart
     return a.title.localeCompare(b.title)
   })
+}
+
+/** Admin card label: prefer deal_date, else weekday. */
+export function formatHappyHourDealScheduleLabel(deal: HappyHourDeal): string {
+  const dealDate = normalizeHappyHourDealDate(deal.deal_date)
+  if (dealDate) {
+    const [year, month, day] = dealDate.split('-').map(Number)
+    const date = new Date(
+      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`
+    )
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/Denver',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+  return deal.day_of_week
 }
 
 function isHappyHourTitle(title: string): boolean {

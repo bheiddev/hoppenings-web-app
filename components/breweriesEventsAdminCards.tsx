@@ -4,7 +4,10 @@ import { Colors } from '@/lib/colors'
 import { formatEventDate, formatReleaseDate, formatTime12Hour } from '@/lib/utils'
 import { BeerRelease, Event, FoodTruck, HappyHourDeal, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
-import { formatHappyHourWindow } from '@/lib/happyHourDeals'
+import {
+  formatHappyHourDealScheduleLabel,
+  formatHappyHourWindow,
+} from '@/lib/happyHourDeals'
 
 type RecurrenceFields = {
   is_recurring: boolean | null
@@ -579,7 +582,8 @@ export function HappyHourDealAdminCard({
           </p>
         ) : null}
         <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
-          {deal.day_of_week} · {formatHappyHourWindow(deal.time_start, deal.time_end)}
+          {formatHappyHourDealScheduleLabel(deal)} ·{' '}
+          {formatHappyHourWindow(deal.time_start, deal.time_end)}
         </p>
         <p className="break-words text-sm font-semibold" style={{ color: Colors.textDark }}>
           {deal.title || '—'}

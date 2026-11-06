@@ -139,6 +139,9 @@ export interface HappyHourDeal {
   created_at: string;
   updated_at: string;
   brewery_id: string;
+  /** Calendar date (YYYY-MM-DD). Primary scheduling field for content admin. */
+  deal_date: string | null;
+  /** Legacy weekday; kept in sync from deal_date when present. */
   day_of_week: HappyHourDayOfWeek;
   time_start: number | null;
   time_end: number | null;
