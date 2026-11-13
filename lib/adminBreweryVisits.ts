@@ -136,6 +136,47 @@ async function fetchBreweryNames(
   return map
 }
 
+type VisitRow = {
+  id: string
+  user_id: string
+  brewery_id: string
+  visited_at: string
+  is_visit_confirmed: boolean | null
+  source: string | null
+}
+
+/**
+ * PostgREST often caps a single response at 1000 rows even when `.limit()` is higher.
+ * Page with `.range()` until exhausted so tallies keep growing.
+ */
+async function fetchAllBreweryVisits(
+  client: ReturnType<typeof getReadClient>
+): Promise<{ visits: VisitRow[]; error: string | null }> {
+  const pageSize = 1000
+  const maxRows = 50000
+  const visits: VisitRow[] = []
+
+  for (let from = 0; from < maxRows; from += pageSize) {
+    const to = from + pageSize - 1
+    const { data, error } = await client
+      .from('brewery_visits')
+      .select('id, user_id, brewery_id, visited_at, is_visit_confirmed, source')
+      .order('visited_at', { ascending: false })
+      .range(from, to)
+
+    if (error) {
+      console.error('Error fetching brewery_visits page:', error)
+      return { visits, error: error.message }
+    }
+
+    const page = (data ?? []) as VisitRow[]
+    visits.push(...page)
+    if (page.length < pageSize) break
+  }
+
+  return { visits, error: null }
+}
+
 /**
  * Load brewery visits for admin: people leaderboard, daily counts, brewery totals.
  */
@@ -144,40 +185,30 @@ export async function getBreweryVisitsOverview(): Promise<BreweryVisitsResult> {
   const summary = emptySummary()
 
   try {
-    const { data, error } = await client
-      .from('brewery_visits')
-      .select(
-        'id, user_id, brewery_id, visited_at, is_visit_confirmed, source'
-      )
-      .order('visited_at', { ascending: false })
-      .limit(8000)
+    const { visits, error } = await fetchAllBreweryVisits(client)
 
-    if (error) {
-      console.error('Error fetching brewery_visits:', error)
+    if (error && visits.length === 0) {
       return {
         summary,
         people: [],
         byDay: [],
         byBrewery: [],
         recent: [],
-        error: error.message,
+        error,
       }
     }
 
-    const visits = data ?? []
     const today = getTodayMountainDateString()
 
     summary.totalVisits = visits.length
-    summary.confirmedVisits = visits.filter((v) => v.is_visit_confirmed).length
-    summary.uniqueUsers = new Set(visits.map((v) => v.user_id as string).filter(Boolean)).size
-    summary.uniqueBreweries = new Set(
-      visits.map((v) => v.brewery_id as string).filter(Boolean)
-    ).size
+    summary.confirmedVisits = visits.filter((v) => Boolean(v.is_visit_confirmed)).length
+    summary.uniqueUsers = new Set(visits.map((v) => v.user_id).filter(Boolean)).size
+    summary.uniqueBreweries = new Set(visits.map((v) => v.brewery_id).filter(Boolean)).size
 
     let visitsToday = 0
     let confirmedToday = 0
     for (const v of visits) {
-      const ymd = normalizeEventDateToMountainTime(v.visited_at as string)
+      const ymd = normalizeEventDateToMountainTime(v.visited_at)
       if (ymd === today) {
         visitsToday += 1
         if (v.is_visit_confirmed) confirmedToday += 1
@@ -189,11 +220,11 @@ export async function getBreweryVisitsOverview(): Promise<BreweryVisitsResult> {
     const [profiles, breweryNames] = await Promise.all([
       fetchProfilesByIds(
         client,
-        visits.map((v) => v.user_id as string)
+        visits.map((v) => v.user_id)
       ),
       fetchBreweryNames(
         client,
-        visits.map((v) => v.brewery_id as string)
+        visits.map((v) => v.brewery_id)
       ),
     ])
 
@@ -224,9 +255,9 @@ export async function getBreweryVisitsOverview(): Promise<BreweryVisitsResult> {
     const breweryMap = new Map<string, BreweryAgg>()
 
     for (const v of visits) {
-      const userId = v.user_id as string
-      const breweryId = v.brewery_id as string
-      const visitedAt = v.visited_at as string
+      const userId = v.user_id
+      const breweryId = v.brewery_id
+      const visitedAt = v.visited_at
       const confirmed = Boolean(v.is_visit_confirmed)
       const ymd = normalizeEventDateToMountainTime(visitedAt)
 
@@ -330,19 +361,19 @@ export async function getBreweryVisitsOverview(): Promise<BreweryVisitsResult> {
       )
 
     const recent: BreweryVisitRecentRow[] = visits.slice(0, 150).map((v) => {
-      const userId = v.user_id as string
+      const userId = v.user_id
       const profile = profiles.get(userId)
-      const breweryId = v.brewery_id as string
+      const breweryId = v.brewery_id
       return {
-        id: v.id as string,
+        id: v.id,
         userId,
         displayName: profile?.display_name ?? null,
         email: profile?.email ?? null,
         breweryId,
         breweryName: breweryNames.get(breweryId) ?? 'Unknown brewery',
-        visitedAt: v.visited_at as string,
+        visitedAt: v.visited_at,
         confirmed: Boolean(v.is_visit_confirmed),
-        source: (v.source as string | null) ?? null,
+        source: v.source ?? null,
       }
     })
 
@@ -352,7 +383,9 @@ export async function getBreweryVisitsOverview(): Promise<BreweryVisitsResult> {
       byDay,
       byBrewery,
       recent,
-      error: null,
+      error: error
+        ? `Loaded ${visits.length.toLocaleString()} visits with a partial read error: ${error}`
+        : null,
     }
   } catch (err) {
     console.error('getBreweryVisitsOverview failed:', err)

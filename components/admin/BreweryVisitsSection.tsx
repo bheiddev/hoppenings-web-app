@@ -364,7 +364,8 @@ export function BreweryVisitsSection({ result }: { result: BreweryVisitsResult }
         </h2>
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
           Check-ins from <code className="text-xs">brewery_visits</code>. People are sorted by
-          total visits. Days use Mountain Time. Showing up to the latest 8,000 visit rows.
+          total visits. Days use Mountain Time. Tallies page through all visit rows (not capped
+          at 1,000).
         </p>
       </div>
 

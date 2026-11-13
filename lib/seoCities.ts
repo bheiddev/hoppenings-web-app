@@ -2,7 +2,12 @@ import { BeerRelease } from '@/types/supabase'
 import { EventWithSlug } from '@/lib/events'
 import { BreweryWithSlug } from '@/lib/breweries'
 
-export type CitySlug = 'colorado-springs' | 'fort-collins' | 'boulder-longmont'
+export type CitySlug =
+  | 'colorado-springs'
+  | 'fort-collins'
+  | 'boulder-longmont'
+  | 'denver'
+  | 'castle-rock'
 export type ActivitySlug = 'trivia-nights' | 'run-clubs' | 'bingo' | 'live-music'
 
 export const CITY_CONFIG: Record<
@@ -41,6 +46,16 @@ export const CITY_CONFIG: Record<
     name: 'Boulder & Longmont',
     regionMatchers: ['boulder / longmont', 'boulder', 'longmont'],
     locationMatchers: ['boulder', 'longmont'],
+  },
+  denver: {
+    name: 'Denver',
+    regionMatchers: ['denver'],
+    locationMatchers: ['denver', 'ri no', 'rino', 'lohi', 'five points', 'capitol hill'],
+  },
+  'castle-rock': {
+    name: 'Castle Rock',
+    regionMatchers: ['castle rock'],
+    locationMatchers: ['castle rock'],
   },
 }
 
@@ -84,6 +99,8 @@ export function inferCityFromRegionOrLocation(
   ) {
     return 'boulder-longmont'
   }
+  if (region.includes('castle rock')) return 'castle-rock'
+  if (region.includes('denver')) return 'denver'
 
   if (location) {
     for (const [city, config] of Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][]) {
@@ -110,6 +127,8 @@ const TONIGHT_CAROUSEL_CITY_ORDER: CitySlug[] = [
   'colorado-springs',
   'fort-collins',
   'boulder-longmont',
+  'denver',
+  'castle-rock',
 ]
 
 /** Lower sort index = earlier in the Events Tonight carousel. Unknown cities sort last. */

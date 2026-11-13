@@ -891,14 +891,12 @@ export async function createBrewery(formData: FormData) {
   const name = formText(formData, 'name')
   const address = formText(formData, 'address')
   const phone = formText(formData, 'phone')
-  const description = formText(formData, 'description')
   const region = formText(formData, 'region')
   const location = formText(formData, 'location') || region || null
 
   if (!name) return { ok: false as const, error: 'Name is required' }
   if (!address) return { ok: false as const, error: 'Address is required' }
   if (!phone) return { ok: false as const, error: 'Phone is required' }
-  if (!description) return { ok: false as const, error: 'Description is required' }
   if (!region) return { ok: false as const, error: 'Region is required' }
 
   const breweryId = crypto.randomUUID()
@@ -936,12 +934,12 @@ export async function createBrewery(formData: FormData) {
     name,
     address,
     phone,
-    description,
-    is_pet_friendly: formBool(formData, 'is_pet_friendly'),
-    has_outdoor_seating: formBool(formData, 'has_outdoor_seating'),
-    has_food_trucks: formBool(formData, 'has_food_trucks'),
-    has_wifi: formBool(formData, 'has_wifi'),
-    has_na_beer: formBool(formData, 'has_na_beer'),
+    description: '',
+    is_pet_friendly: false,
+    has_outdoor_seating: false,
+    has_food_trucks: false,
+    has_wifi: false,
+    has_na_beer: false,
     image_url: imageUrl,
     tap_image: tapImage,
     latitude: formOptionalNumber(formData, 'latitude'),
