@@ -16,7 +16,7 @@ export function RegionAdminPanel({
     <div className="space-y-10">
       <BreweriesEventsUpcomingByDate
         regionBreweries={regionBreweries}
-        title={`${regionLabel} · 2-day forecast`}
+        title={`${regionLabel} · Today`}
       />
       <BreweriesEventsBreweryBreakdown regionBreweries={regionBreweries} />
       <BreweriesEventsRegionContent

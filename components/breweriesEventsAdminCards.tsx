@@ -1,7 +1,13 @@
 'use client'
 
 import { Colors } from '@/lib/colors'
-import { formatEventDate, formatReleaseDate, formatTime12Hour } from '@/lib/utils'
+import {
+  formatEventDate,
+  formatReleaseDate,
+  formatTime12Hour,
+  getEventTrueDate,
+  normalizeEventDateToMountainTime,
+} from '@/lib/utils'
 import { BeerRelease, Event, FoodTruck, HappyHourDeal, ProposedBeerRelease, ProposedEvent } from '@/types/supabase'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import {
@@ -40,6 +46,41 @@ export function formatEventRecurrence(event: RecurrenceFields): string {
 
 function formatCardEventDate(eventDate: string | null): string {
   return eventDate ? formatEventDate(eventDate) : '—'
+}
+
+function AdminEventDateLabel({
+  eventDate,
+  trueEventDate,
+  recurring,
+}: {
+  eventDate: string | null
+  trueEventDate?: string | null
+  recurring: boolean
+}) {
+  const display = formatCardEventDate(eventDate)
+  if (!recurring || !eventDate) {
+    return (
+      <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+        {display}
+      </p>
+    )
+  }
+  const occurrence = normalizeEventDateToMountainTime(eventDate)
+  const trueDate = trueEventDate?.trim()
+    ? normalizeEventDateToMountainTime(trueEventDate)
+    : occurrence
+  const showTrue = trueDate !== occurrence
+  return (
+    <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+      {display}
+      {showTrue ? (
+        <span className="text-[10px] font-normal" style={{ color: Colors.textMuted }}>
+          {' '}
+          ({formatEventDate(trueDate)})
+        </span>
+      ) : null}
+    </p>
+  )
 }
 
 function formatCardReleaseDate(releaseDate: string | null): string {
@@ -193,6 +234,7 @@ function EventCardMeta({
   breweryName,
   showBreweryName,
   eventDate,
+  trueEventDate,
   title,
   featured,
   recurring,
@@ -201,6 +243,7 @@ function EventCardMeta({
   breweryName?: string
   showBreweryName?: boolean
   eventDate: string | null
+  trueEventDate?: string | null
   title: string | null
   featured: boolean
   recurring: boolean
@@ -213,9 +256,11 @@ function EventCardMeta({
           {breweryName}
         </p>
       )}
-      <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
-        {formatCardEventDate(eventDate)}
-      </p>
+      <AdminEventDateLabel
+        eventDate={eventDate}
+        trueEventDate={trueEventDate}
+        recurring={recurring}
+      />
       <div className="flex items-start gap-1.5">
         {(featured || recurring) && (
           <span className="flex items-center gap-1 flex-shrink-0 pt-0.5">
@@ -295,6 +340,7 @@ export function EventAdminCard({
           breweryName={breweryName}
           showBreweryName={showBreweryName}
           eventDate={event.event_date}
+          trueEventDate={event.true_event_date ?? getEventTrueDate(event)}
           title={event.title}
           featured={event.featured}
           recurring={recurring}
@@ -354,6 +400,7 @@ export function ProposedEventAdminCard({
           breweryName={breweryName}
           showBreweryName={showBreweryName}
           eventDate={proposed.event_date}
+          trueEventDate={proposed.event_date}
           title={proposed.title}
           featured={featured}
           recurring={recurring}

@@ -5,6 +5,11 @@ import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
 import { Event } from '@/types/supabase'
 import type { UpdateEventPayload } from '@/app/admin/actions'
+import {
+  formatEventDate,
+  getEventTrueDate,
+  normalizeEventDateToMountainTime,
+} from '@/lib/utils'
 
 function eventDateForInput(eventDate: string): string {
   if (!eventDate) return ''
@@ -28,8 +33,20 @@ export function EventFormModal({
   onSave: (data: UpdateEventPayload) => Promise<{ ok: boolean; error?: string }>
   onClose: () => void
 }) {
+  const trueDateForEdit = event ? getEventTrueDate(event) : ''
+  const occurrenceDate = event ? normalizeEventDateToMountainTime(event.event_date) : ''
+  const isRecurringEvent = !!(
+    event?.is_recurring ||
+    event?.is_recurring_biweekly ||
+    event?.is_recurring_monthly
+  )
+  const showOccurrenceHint =
+    isRecurringEvent && occurrenceDate && trueDateForEdit && occurrenceDate !== trueDateForEdit
+
   const [title, setTitle] = useState(event?.title ?? '')
-  const [eventDate, setEventDate] = useState(event ? eventDateForInput(event.event_date) : '')
+  const [eventDate, setEventDate] = useState(
+    event ? eventDateForInput(trueDateForEdit || event.event_date) : ''
+  )
   const [startTime, setStartTime] = useState(event?.start_time ?? '')
   const [endTime, setEndTime] = useState(event?.end_time ?? '')
   const [costRaw, setCostRaw] = useState(
@@ -120,6 +137,12 @@ export function EventFormModal({
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
               Event date
+              {isRecurringEvent ? (
+                <span className="text-[11px] font-normal" style={{ color: Colors.textMuted }}>
+                  {' '}
+                  (True date)
+                </span>
+              ) : null}
             </label>
             <input
               type="date"
@@ -132,6 +155,12 @@ export function EventFormModal({
                 backgroundColor: Colors.surface,
               }}
             />
+            {showOccurrenceHint ? (
+              <p className="text-[11px] mt-1" style={{ color: Colors.textMuted }}>
+                Showing on site as {formatEventDate(occurrenceDate)}{' '}
+                <span>({formatEventDate(trueDateForEdit)})</span>
+              </p>
+            ) : null}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

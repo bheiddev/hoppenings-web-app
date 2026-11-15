@@ -60,15 +60,15 @@ function getGscConfig():
   }
 }
 
-function mapRows(
-  rows: {
-    keys?: string[] | null
-    clicks?: number | null
-    impressions?: number | null
-    ctr?: number | null
-    position?: number | null
-  }[] | null | undefined
-): SeoRow[] {
+type GscApiRow = {
+  keys?: string[] | null
+  clicks?: number | null
+  impressions?: number | null
+  ctr?: number | null
+  position?: number | null
+}
+
+function mapRows(rows: GscApiRow[] | null | undefined): SeoRow[] {
   return (
     rows?.map((row) => ({
       label: row.keys?.[0] || '(not set)',
@@ -78,6 +78,45 @@ function mapRows(
       position: row.position ?? 0,
     })) ?? []
   )
+}
+
+const QUERY_PAGE_SIZE = 25000
+
+type SearchConsoleClient = ReturnType<typeof google.searchconsole>
+
+/**
+ * GSC returns query rows sorted by clicks, so a small rowLimit misses most
+ * impression volume. Paginate through the full query dimension set, then the
+ * admin UI can re-rank by impressions (including zero-click queries).
+ */
+async function fetchAllQueryRows(
+  searchconsole: SearchConsoleClient,
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<GscApiRow[]> {
+  const all: GscApiRow[] = []
+  let startRow = 0
+
+  for (;;) {
+    const res = await searchconsole.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        startDate,
+        endDate,
+        dimensions: ['query'],
+        rowLimit: QUERY_PAGE_SIZE,
+        startRow,
+      },
+    })
+    const batch = res.data.rows ?? []
+    if (batch.length === 0) break
+    all.push(...batch)
+    if (batch.length < QUERY_PAGE_SIZE) break
+    startRow += batch.length
+  }
+
+  return all
 }
 
 /**
@@ -92,10 +131,11 @@ export async function getSeoAnalyticsSummary(): Promise<SeoAnalyticsResult> {
   const { siteUrl, clientEmail, privateKey } = config
 
   // GSC usually lags ~2–3 days; end on day-3 for mostly final data.
+  // Last ~90 days (3 months) to match the default Search Console UI window.
   const end = new Date()
   end.setUTCDate(end.getUTCDate() - 3)
   const start = new Date(end)
-  start.setUTCDate(start.getUTCDate() - 27)
+  start.setUTCDate(start.getUTCDate() - 89)
   const startDate = isoDate(start)
   const endDate = isoDate(end)
 
@@ -108,28 +148,26 @@ export async function getSeoAnalyticsSummary(): Promise<SeoAnalyticsResult> {
     const searchconsole = google.searchconsole({ version: 'v1', auth })
 
     const base = { startDate, endDate }
-    const [totalsRes, queriesRes, pagesRes, datesRes] = await Promise.all([
+    const [totalsRes, queryRows, pagesRes, datesRes] = await Promise.all([
       searchconsole.searchanalytics.query({
         siteUrl,
         requestBody: { ...base },
       }),
+      fetchAllQueryRows(searchconsole, siteUrl, startDate, endDate),
       searchconsole.searchanalytics.query({
         siteUrl,
-        // GSC returns rows sorted by clicks; pull a wide set so we can re-rank
-        // by impressions (including zero-click queries) in the admin UI.
-        requestBody: { ...base, dimensions: ['query'], rowLimit: 250 },
+        requestBody: { ...base, dimensions: ['page'], rowLimit: 25 },
       }),
       searchconsole.searchanalytics.query({
         siteUrl,
-        requestBody: { ...base, dimensions: ['page'], rowLimit: 15 },
-      }),
-      searchconsole.searchanalytics.query({
-        siteUrl,
-        requestBody: { ...base, dimensions: ['date'], rowLimit: 40 },
+        requestBody: { ...base, dimensions: ['date'], rowLimit: 100 },
       }),
     ])
 
     const totals = totalsRes.data.rows?.[0]
+    const queries = mapRows(queryRows).sort(
+      (a, b) => b.impressions - a.impressions || b.clicks - a.clicks
+    )
 
     return {
       ok: true,
@@ -140,7 +178,7 @@ export async function getSeoAnalyticsSummary(): Promise<SeoAnalyticsResult> {
         impressions: totals?.impressions ?? 0,
         ctr: totals?.ctr ?? 0,
         position: totals?.position ?? 0,
-        queries: mapRows(queriesRes.data.rows),
+        queries,
         pages: mapRows(pagesRes.data.rows),
         dates: mapRows(datesRes.data.rows),
       },

@@ -44,6 +44,11 @@ export interface Event {
   title: string;
   brewery_id: string;
   event_date: string;
+  /**
+   * Original events_base.event_date on expanded recurring rows.
+   * When set and different from event_date, admin UI shows it as the True date.
+   */
+  true_event_date?: string | null;
   start_time: string | null;
   end_time: string | null;
   cost: number | null;

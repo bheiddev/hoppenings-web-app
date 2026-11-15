@@ -9,6 +9,7 @@ import {
   recordReleaseDeletedRedirects,
   recordReleaseRenamedRedirects,
 } from '@/lib/slugRedirects'
+import { getEventsBaseId } from '@/lib/utils'
 
 const ADMIN_PATH = '/admin'
 
@@ -112,15 +113,7 @@ async function fetchReleaseForSlugRedirects(
 
 /** Expanded recurring rows use synthetic ids `{uuid}-{YYYY-MM-DD}`; DB expects the base UUID. */
 function normalizeEventsBaseId(raw: string): string {
-  const trimmed = raw.trim()
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
-    return trimmed
-  }
-  const m = trimmed.match(
-    /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-\d{4}-\d{2}-\d{2}$/i
-  )
-  if (m) return m[1]
-  return trimmed
+  return getEventsBaseId(raw)
 }
 
 function getAdmin() {

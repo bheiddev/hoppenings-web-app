@@ -388,7 +388,7 @@ export function endOfNextMountainWeek(todayYmd?: string): string {
 
 /**
  * Whether a (possibly expanded) event should appear on listing / admin content
- * pickers: no biweekly/monthly; weekly occurrences only through next week.
+ * pickers: today or future only; no biweekly/monthly; weekly only through next week.
  */
 export function shouldShowEventOnListings(
   event: Pick<
@@ -398,10 +398,58 @@ export function shouldShowEventOnListings(
   todayYmd?: string
 ): boolean {
   if (event.is_recurring_biweekly || event.is_recurring_monthly) return false
-  if (!event.is_recurring) return true
   const today = todayYmd ?? getTodayMountainDateString()
   const ymd = normalizeEventDateToMountainTime(event.event_date)
+  if (compareDateStrings(ymd, today) < 0) return false
+  if (!event.is_recurring) return true
   return compareDateStrings(ymd, endOfNextMountainWeek(today)) <= 0
+}
+
+/** Strip synthetic `uuid-YYYY-MM-DD` ids from expandRecurringEvents back to the DB UUID. */
+export function getEventsBaseId(rawId: string): string {
+  const trimmed = rawId.trim()
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return trimmed
+  }
+  const m = trimmed.match(
+    /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-\d{4}-\d{2}-\d{2}$/i
+  )
+  if (m) return m[1]
+  return trimmed
+}
+
+/** Stored / True date for admin edit forms (falls back to occurrence date). */
+export function getEventTrueDate(event: Pick<Event, 'event_date' | 'true_event_date'>): string {
+  const trueDate = event.true_event_date?.trim()
+  if (trueDate) return normalizeEventDateToMountainTime(trueDate)
+  return normalizeEventDateToMountainTime(event.event_date)
+}
+
+/**
+ * One admin row per events_base record among expanded occurrences that already
+ * passed frontend listing rules — soonest occurrence kept for display.
+ */
+export function dedupeExpandedEventsForAdminEdit(events: Event[]): Event[] {
+  const byBaseId = new Map<string, Event>()
+  for (const event of events) {
+    const baseId = getEventsBaseId(event.id)
+    const existing = byBaseId.get(baseId)
+    if (
+      !existing ||
+      compareDateStrings(
+        normalizeEventDateToMountainTime(event.event_date),
+        normalizeEventDateToMountainTime(existing.event_date)
+      ) < 0
+    ) {
+      byBaseId.set(baseId, event)
+    }
+  }
+  return [...byBaseId.values()].sort((a, b) =>
+    compareDateStrings(
+      normalizeEventDateToMountainTime(a.event_date),
+      normalizeEventDateToMountainTime(b.event_date)
+    )
+  )
 }
 
 /**
@@ -469,6 +517,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
             ...event,
             id: `${event.id}-${currentDateStr}`,
             event_date: currentDateStr,
+            true_event_date: baseEventDateMountain,
           });
         }
         currentDateStr = addDaysToDateString(currentDateStr, 7);
@@ -483,6 +532,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         expandedEvents.push({
           ...event,
           event_date: normalizedDate,
+          true_event_date: normalizedDate,
         });
       } else {
         // Filter past events using compareDateStrings for consistency
@@ -492,6 +542,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
           expandedEvents.push({
             ...event,
             event_date: normalizedDate,
+            true_event_date: normalizedDate,
           });
         }
       }

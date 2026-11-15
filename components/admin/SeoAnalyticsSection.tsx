@@ -57,12 +57,14 @@ function SeoTable({
   rows,
   labelHeader,
   formatLabel,
+  maxHeightClass = 'max-h-80',
 }: {
   title: string
   description: string
   rows: SeoRow[]
   labelHeader: string
   formatLabel?: (value: string) => string
+  maxHeightClass?: string
 }) {
   return (
     <div className="rounded-lg border overflow-hidden" style={{ borderColor: Colors.dividerLight }}>
@@ -79,7 +81,7 @@ function SeoTable({
           No data yet.
         </p>
       ) : (
-        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+        <div className={`overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
           <table className="w-full text-left text-sm border-collapse min-w-[28rem]">
             <thead className="sticky top-0" style={{ backgroundColor: Colors.surface }}>
               <tr>
@@ -149,9 +151,16 @@ export function SeoAnalyticsSection({
   }))
 
   const queryRows = result.ok ? result.data.queries : []
-  const topQueriesByImpressions = [...queryRows]
-    .sort((a, b) => b.impressions - a.impressions || b.clicks - a.clicks)
-    .slice(0, 50)
+  const topQueriesByImpressions = queryRows
+  const queryImpressionsCovered = topQueriesByImpressions.reduce(
+    (sum, row) => sum + row.impressions,
+    0
+  )
+  const totalImpressions = result.ok ? result.data.impressions : 0
+  const queryCoveragePct =
+    totalImpressions > 0
+      ? Math.min(100, Math.round((queryImpressionsCovered / totalImpressions) * 1000) / 10)
+      : 0
   const breweryMatches = matchSeoQueriesToBreweries(queryRows, breweries)
   const matchedQueryCount = breweryMatches.reduce((sum, row) => sum + row.queries.length, 0)
   const matchedClickCount = breweryMatches.reduce((sum, row) => sum + row.clicks, 0)
@@ -170,8 +179,8 @@ export function SeoAnalyticsSection({
             Web SEO performance
           </h2>
           <p className="text-xs mt-1 max-w-xl" style={{ color: Colors.textMuted }}>
-            How hoppeningsco.com shows up in Google Search — visibility, clicks, and which queries and
-            pages are driving traffic. Search Console data typically lags 2–3 days.
+            How hoppeningsco.com shows up in Google Search over the last ~3 months — visibility, clicks,
+            and which queries and pages are driving traffic. Search Console data typically lags 2–3 days.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -342,9 +351,10 @@ export function SeoAnalyticsSection({
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <SeoTable
               title="Top queries"
-              description="Search phrases that showed your site in Google — ranked by impressions, including queries with no clicks yet."
+              description={`All ${topQueriesByImpressions.length.toLocaleString()} Search Console queries, ranked by impressions (incl. zero-click). Covering ${queryImpressionsCovered.toLocaleString()} of ${totalImpressions.toLocaleString()} total impressions (${queryCoveragePct}%). Anonymized queries are omitted by Google, so this often won’t reach 100%.`}
               rows={topQueriesByImpressions}
               labelHeader="Query"
+              maxHeightClass="max-h-[32rem]"
             />
             <SeoTable
               title="Top pages"

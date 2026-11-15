@@ -1,6 +1,6 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
-import { shouldShowEventOnListings } from '@/lib/utils'
+import { dedupeExpandedEventsForAdminEdit, shouldShowEventOnListings } from '@/lib/utils'
 import { AddBreweryControl } from '@/components/AddBreweryControl'
 import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
@@ -76,7 +76,9 @@ export function BreweriesEventsRegionContent({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start overflow-x-hidden">
                 <div className="min-w-0">
                   <EventsTableWithDelete
-                    events={events.filter((event) => shouldShowEventOnListings(event))}
+                    events={dedupeExpandedEventsForAdminEdit(
+                      events.filter((event) => shouldShowEventOnListings(event))
+                    )}
                     title="Events (events_base)"
                     breweryId={brewery.id}
                   />
