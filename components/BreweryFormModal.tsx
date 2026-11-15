@@ -1,8 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import {
+  BREWERY_DAYS,
+  BreweryHoursFields,
+  type BreweryDayHours,
+  type BreweryDayKey,
+} from '@/components/BreweryHoursFields'
+import { ImageDropField } from '@/components/ImageDropField'
 import { createBrewery, upsertBreweryHours, type BreweryHoursPayload } from '@/app/admin/actions'
 
 const inputStyle = {
@@ -11,66 +18,9 @@ const inputStyle = {
   backgroundColor: Colors.surface,
 } as const
 
-const DAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-] as const
-
-type DayKey = (typeof DAYS)[number]
-
-function FilePreview({ file, label }: { file: File | null; label: string }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null)
-      return
-    }
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
-
-  return (
-    <div className="min-w-0 w-40 space-y-2">
-      <p
-        className="text-xs font-semibold uppercase tracking-wide"
-        style={{ color: Colors.textSecondary }}
-      >
-        {label}
-      </p>
-      {previewUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- local blob preview before upload
-        <img
-          src={previewUrl}
-          alt={label}
-          className="w-full rounded-lg border object-cover aspect-[2/3]"
-          style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
-        />
-      ) : (
-        <div
-          className="flex items-center justify-center border rounded-lg text-sm aspect-[2/3]"
-          style={{
-            borderColor: Colors.dividerLight,
-            backgroundColor: Colors.surfaceLight,
-            color: Colors.textMuted,
-          }}
-        >
-          No image
-        </div>
-      )}
-    </div>
-  )
-}
-
-function emptyDayHours(): Record<DayKey, { open: string; close: string }> {
-  const initial = {} as Record<DayKey, { open: string; close: string }>
-  for (const day of DAYS) {
+function emptyDayHours(): BreweryDayHours {
+  const initial = {} as BreweryDayHours
+  for (const day of BREWERY_DAYS) {
     initial[day] = { open: '', close: '' }
   }
   return initial
@@ -98,8 +48,18 @@ export function BreweryFormModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function setDayField(day: DayKey, field: 'open' | 'close', value: string) {
+  function setDayField(day: BreweryDayKey, field: 'open' | 'close', value: string) {
     setDayHours((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }))
+  }
+
+  function copyHoursFromPreviousDay(day: BreweryDayKey) {
+    const index = BREWERY_DAYS.indexOf(day)
+    if (index <= 0) return
+    const previousDay = BREWERY_DAYS[index - 1]
+    setDayHours((prev) => ({
+      ...prev,
+      [day]: { open: prev[previousDay].open, close: prev[previousDay].close },
+    }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,7 +85,7 @@ export function BreweryFormModal({
       }
 
       const hoursPayload = {} as BreweryHoursPayload
-      for (const day of DAYS) {
+      for (const day of BREWERY_DAYS) {
         hoursPayload[`${day}_open`] = dayHours[day].open || null
         hoursPayload[`${day}_close`] = dayHours[day].close || null
       }
@@ -287,32 +247,20 @@ export function BreweryFormModal({
               </div>
             </div>
             <div className="flex flex-wrap gap-4">
-              <div className="space-y-2">
-                <FilePreview file={breweryImage} label="Brewery image" />
-                <p className="text-[11px]" style={{ color: Colors.textMuted }}>
-                  Bucket <span className="font-mono">brewery-images</span>
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setBreweryImage(e.target.files?.[0] ?? null)}
-                  className="block w-40 text-sm"
-                  style={{ color: Colors.textDark }}
-                />
-              </div>
-              <div className="space-y-2">
-                <FilePreview file={tapImage} label="Tap list image" />
-                <p className="text-[11px]" style={{ color: Colors.textMuted }}>
-                  Bucket <span className="font-mono">Tap Images</span>
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setTapImage(e.target.files?.[0] ?? null)}
-                  className="block w-40 text-sm"
-                  style={{ color: Colors.textDark }}
-                />
-              </div>
+              <ImageDropField
+                label="Brewery image"
+                bucketHint="brewery-images"
+                file={breweryImage}
+                onFileChange={setBreweryImage}
+                disabled={saving}
+              />
+              <ImageDropField
+                label="Tap list image"
+                bucketHint="Tap Images"
+                file={tapImage}
+                onFileChange={setTapImage}
+                disabled={saving}
+              />
             </div>
           </section>
 
@@ -324,36 +272,14 @@ export function BreweryFormModal({
               Hours
             </p>
             <p className="text-xs" style={{ color: Colors.textMuted }}>
-              Leave open/close blank for closed days.
+              Leave open/close blank for closed days. Use Copy to match the previous day.
             </p>
-            <div className="space-y-2">
-              {DAYS.map((day) => (
-                <div
-                  key={day}
-                  className="grid grid-cols-[6.5rem_1fr_1fr] gap-2 items-center"
-                >
-                  <span className="text-sm capitalize" style={{ color: Colors.textDark }}>
-                    {day}
-                  </span>
-                  <input
-                    type="time"
-                    value={dayHours[day].open}
-                    onChange={(e) => setDayField(day, 'open', e.target.value)}
-                    className="w-full px-2 py-1.5 border rounded text-sm"
-                    style={inputStyle}
-                    aria-label={`${day} open`}
-                  />
-                  <input
-                    type="time"
-                    value={dayHours[day].close}
-                    onChange={(e) => setDayField(day, 'close', e.target.value)}
-                    className="w-full px-2 py-1.5 border rounded text-sm"
-                    style={inputStyle}
-                    aria-label={`${day} close`}
-                  />
-                </div>
-              ))}
-            </div>
+            <BreweryHoursFields
+              dayHours={dayHours}
+              onChange={setDayField}
+              onCopyFromPrevious={copyHoursFromPreviousDay}
+              disabled={saving}
+            />
           </section>
 
           {error ? (

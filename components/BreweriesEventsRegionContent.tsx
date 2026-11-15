@@ -1,5 +1,6 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
+import { shouldShowEventOnListings } from '@/lib/utils'
 import { AddBreweryControl } from '@/components/AddBreweryControl'
 import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
@@ -75,14 +76,23 @@ export function BreweriesEventsRegionContent({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start overflow-x-hidden">
                 <div className="min-w-0">
                   <EventsTableWithDelete
-                    events={events}
+                    events={events.filter((event) => shouldShowEventOnListings(event))}
                     title="Events (events_base)"
                     breweryId={brewery.id}
                   />
                 </div>
                 <div className="min-w-0">
                   <ProposedEventsTable
-                    proposed={proposedEvents}
+                    proposed={proposedEvents.filter((proposed) =>
+                      proposed.event_date?.trim()
+                        ? shouldShowEventOnListings({
+                            event_date: proposed.event_date,
+                            is_recurring: Boolean(proposed.is_recurring),
+                            is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),
+                            is_recurring_monthly: Boolean(proposed.is_recurring_monthly),
+                          })
+                        : !proposed.is_recurring_biweekly && !proposed.is_recurring_monthly
+                    )}
                     title="Proposed events (proposed_events)"
                   />
                 </div>

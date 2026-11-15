@@ -20,6 +20,8 @@ import { getCouponsTapTrackersOverview } from '@/lib/adminCouponsTapTrackers'
 import { getBreweryAdminProfiles } from '@/lib/breweryStaffProfiles'
 import { getMobileAnalyticsSummary } from '@/lib/ga4'
 import { getSeoAnalyticsSummary } from '@/lib/gsc'
+import { generateBrewerySlug } from '@/lib/slug'
+import type { SeoBreweryRef } from '@/lib/seoBreweryQueryMatches'
 
 /** Fixed admin tab order for region content panels. */
 const REGION_TAB_ORDER: { slug: string; label: string }[] = [
@@ -70,6 +72,14 @@ export default async function AdminPage() {
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
   const bucketBySlug = new Map(regionBuckets.map((b) => [b.slug, b]))
+  const seoBreweries: SeoBreweryRef[] = breweriesWithData.map(({ brewery }) => ({
+    id: brewery.id,
+    name: brewery.name,
+    region: brewery.Region,
+    latitude: brewery.latitude,
+    longitude: brewery.longitude,
+    slug: generateBrewerySlug(brewery.name, brewery.location, brewery.id),
+  }))
 
   const tabs: AdminHomeTab[] = [
     {
@@ -80,7 +90,7 @@ export default async function AdminPage() {
     {
       id: 'seo',
       label: 'Website Analytics',
-      panel: <SeoAnalyticsSection result={seo} />,
+      panel: <SeoAnalyticsSection result={seo} breweries={seoBreweries} />,
     },
     {
       id: 'brewery-visits',

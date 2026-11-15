@@ -1,5 +1,6 @@
 import type { HappyHourDayOfWeek, HappyHourDeal } from '@/types/supabase'
 import { getMountainWeekdayIndex } from '@/lib/foodTrucks'
+import { getTodayMountainDateString } from '@/lib/utils'
 
 /**
  * Public site surfaces for happy hour / deals (brewery pages, Hoppening Tonight, etc.).
@@ -50,6 +51,20 @@ export function happyHourDealShowsOnDate(deal: HappyHourDeal, ymd: string): bool
   const dealDate = normalizeHappyHourDealDate(deal.deal_date)
   if (dealDate) return dealDate === ymd
   return deal.day_of_week === dayOfWeekFromYmd(ymd)
+}
+
+/**
+ * Admin listing filter: hide past-dated deals. Rows without deal_date
+ * (legacy weekday schedule) are treated as ongoing.
+ */
+export function happyHourDealIsTodayOrFuture(
+  deal: HappyHourDeal,
+  todayYmd?: string
+): boolean {
+  const dealDate = normalizeHappyHourDealDate(deal.deal_date)
+  if (!dealDate) return true
+  const today = todayYmd ?? getTodayMountainDateString()
+  return dealDate >= today
 }
 
 /** True when the deal's hour window covers `hour` (0–23). Null bounds = open-ended / all day. */

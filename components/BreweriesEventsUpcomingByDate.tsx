@@ -45,11 +45,15 @@ import {
 } from '@/app/admin/actions'
 import { BreweryWithData } from '@/lib/breweriesEventsRegions'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
-import { happyHourDealShowsOnDate } from '@/lib/happyHourDeals'
+import {
+  happyHourDealIsTodayOrFuture,
+  happyHourDealShowsOnDate,
+} from '@/lib/happyHourDeals'
 import {
   formatEventDateShort,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
+  shouldShowEventOnListings,
 } from '@/lib/utils'
 import {
   BeerRelease,
@@ -269,6 +273,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     happyHourDeals,
   } of regionBreweries) {
     for (const event of events) {
+      if (!shouldShowEventOnListings(event)) continue
       const d = normalizeEventDateToMountainTime(event.event_date)
       if (d >= weekStart && d <= weekEnd) {
         eventsByDay.get(d)!.push({
@@ -281,6 +286,17 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     for (const proposed of proposedEvents) {
       if (seenProposedIds.has(proposed.id)) continue
       if (!proposed.event_date?.trim()) continue
+      // Same recurrence rules as live events: skip biweekly/monthly; weekly only this+next week.
+      if (
+        !shouldShowEventOnListings({
+          event_date: proposed.event_date,
+          is_recurring: Boolean(proposed.is_recurring),
+          is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),
+          is_recurring_monthly: Boolean(proposed.is_recurring_monthly),
+        })
+      ) {
+        continue
+      }
       const d = normalizeEventDateToMountainTime(proposed.event_date)
       if (d >= weekStart && d <= weekEnd && proposedByDay.has(d)) {
         seenProposedIds.add(proposed.id)
@@ -331,6 +347,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
       }
     }
     for (const deal of happyHourDeals) {
+      if (!happyHourDealIsTodayOrFuture(deal, weekStart)) continue
       for (const d of dates) {
         if (happyHourDealShowsOnDate(deal, d)) {
           happyHourDealsByDay.get(d)!.push({
@@ -779,117 +796,6 @@ export function BreweriesEventsUpcomingByDate({
                   style={{ backgroundColor: Colors.surfaceMedium }}
                 >
                   {(() => {
-                    const proposedByBrewery = groupByBrewery(dayProposed)
-                    const eventsByBrewery = groupByBrewery(dayEvents)
-                    const proposedMap = new Map(proposedByBrewery.map((g) => [g.breweryId, g.items]))
-                    const eventsMap = new Map(eventsByBrewery.map((g) => [g.breweryId, g.items]))
-                    const eventBreweries = breweryIdsUnion(proposedByBrewery, eventsByBrewery)
-
-                    if (eventBreweries.length === 0) {
-                      return (
-                        <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
-                          No proposed or live events
-                        </p>
-                      )
-                    }
-
-                    return (
-                      <div className="flex flex-col gap-3">
-                        {eventBreweries.map(({ breweryId, breweryName }) => {
-                          const proposed = proposedMap.get(breweryId) ?? []
-                          const events = eventsMap.get(breweryId) ?? []
-                          const rejectAllKey = `reject-all:proposed:${breweryId}:${ymd}`
-                          const deleteAllEventsKey = `delete-all:events:${breweryId}:${ymd}`
-                          return (
-                            <BreweryPairSection
-                              key={`events-${breweryId}`}
-                              breweryName={breweryName}
-                              left={
-                                <PairColumn
-                                  label={`Proposed (${proposed.length})`}
-                                  action={
-                                    <AdminDeleteAllButton
-                                      count={proposed.length}
-                                      itemLabel="proposed events"
-                                      scopeLabel={breweryName}
-                                      disabled={pendingKey !== null}
-                                      loading={pendingKey === rejectAllKey}
-                                      onConfirm={() =>
-                                        handleRejectAllProposed(
-                                          proposed.map((p) => p.id),
-                                          rejectAllKey
-                                        )
-                                      }
-                                    />
-                                  }
-                                >
-                                  {proposed.length === 0 ? (
-                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                                      None
-                                    </p>
-                                  ) : (
-                                    proposed.map((p) => (
-                                      <ProposedEventAdminCard
-                                        key={p.id}
-                                        proposed={p}
-                                        breweryName={p.breweryName}
-                                        onEdit={() => setEditingProposed({ ...p })}
-                                        onAccept={() => handleAcceptProposed(p)}
-                                        onReject={() => handleRejectProposed(p.id)}
-                                        actionsDisabled={pendingKey !== null}
-                                        acceptLoading={pendingKey === acceptProposedKey(p.id)}
-                                        rejectLoading={pendingKey === rejectProposedKey(p.id)}
-                                      />
-                                    ))
-                                  )}
-                                </PairColumn>
-                              }
-                              right={
-                                <PairColumn
-                                  label={`Events (${events.length})`}
-                                  action={
-                                    <AdminDeleteAllButton
-                                      count={events.length}
-                                      itemLabel="events"
-                                      scopeLabel={breweryName}
-                                      disabled={pendingKey !== null}
-                                      loading={pendingKey === deleteAllEventsKey}
-                                      onConfirm={() =>
-                                        handleDeleteAllEvents(
-                                          events.map((e) => e.id),
-                                          deleteAllEventsKey
-                                        )
-                                      }
-                                    />
-                                  }
-                                >
-                                  {events.length === 0 ? (
-                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                                      None
-                                    </p>
-                                  ) : (
-                                    events.map((e) => (
-                                      <EventAdminCard
-                                        key={`${e.id}-${e.event_date}`}
-                                        event={e}
-                                        breweryName={e.breweryName}
-                                        onEdit={() => setEditing({ ...e })}
-                                        onDelete={() => handleDeleteEvent(e.id)}
-                                        actionsDisabled={pendingKey !== null}
-                                        deleteLoading={pendingKey === `delete:event:${e.id}`}
-                                      />
-                                    ))
-                                  )}
-                                </PairColumn>
-                              }
-                            />
-                          )
-                        })}
-                      </div>
-                    )
-                  })()}
-
-                  {(() => {
                     const proposedByBrewery = groupByBrewery(dayProposedBeers)
                     const releasesByBrewery = groupByBrewery(dayReleases)
                     const proposedMap = new Map(proposedByBrewery.map((g) => [g.breweryId, g.items]))
@@ -1001,43 +907,6 @@ export function BreweriesEventsUpcomingByDate({
                   })()}
 
                   <ForecastCategoryBlock
-                    label={`Food trucks (${dayFoodTrucks.length})`}
-                    action={
-                      <AdminDeleteAllButton
-                        count={dayFoodTrucks.length}
-                        itemLabel="food trucks"
-                        disabled={pendingKey !== null}
-                        loading={pendingKey === `delete-all:food-trucks:${ymd}`}
-                        onConfirm={() =>
-                          handleDeleteAllFoodTrucks(
-                            dayFoodTrucks.map((t) => t.id),
-                            `delete-all:food-trucks:${ymd}`
-                          )
-                        }
-                      />
-                    }
-                  >
-                    {dayFoodTrucks.length === 0 ? (
-                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                        No food trucks
-                      </p>
-                    ) : (
-                      dayFoodTrucks.map((t) => (
-                        <FoodTruckAdminCard
-                          key={`${t.id}-${ymd}`}
-                          foodTruck={t}
-                          breweryName={t.breweryName}
-                          showBreweryName
-                          onEdit={() => setEditingFoodTruck({ ...t })}
-                          onDelete={() => handleDeleteFoodTruck(t.id)}
-                          actionsDisabled={pendingKey !== null}
-                          deleteLoading={pendingKey === `delete:food-truck:${t.id}`}
-                        />
-                      ))
-                    )}
-                  </ForecastCategoryBlock>
-
-                  <ForecastCategoryBlock
                     label={`Happy hour & deals (${dayHappyHourDeals.length})`}
                     action={
                       <AdminDeleteAllButton
@@ -1069,6 +938,154 @@ export function BreweriesEventsUpcomingByDate({
                           onDelete={() => handleDeleteHappyHourDeal(deal.id)}
                           actionsDisabled={pendingKey !== null}
                           deleteLoading={pendingKey === `delete:happy-hour:${deal.id}`}
+                        />
+                      ))
+                    )}
+                  </ForecastCategoryBlock>
+
+                  {(() => {
+                    const proposedByBrewery = groupByBrewery(dayProposed)
+                    const eventsByBrewery = groupByBrewery(dayEvents)
+                    const proposedMap = new Map(proposedByBrewery.map((g) => [g.breweryId, g.items]))
+                    const eventsMap = new Map(eventsByBrewery.map((g) => [g.breweryId, g.items]))
+                    const eventBreweries = breweryIdsUnion(proposedByBrewery, eventsByBrewery)
+
+                    if (eventBreweries.length === 0) {
+                      return (
+                        <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
+                          No proposed or live events
+                        </p>
+                      )
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {eventBreweries.map(({ breweryId, breweryName }) => {
+                          const proposed = proposedMap.get(breweryId) ?? []
+                          const events = eventsMap.get(breweryId) ?? []
+                          const rejectAllKey = `reject-all:proposed:${breweryId}:${ymd}`
+                          const deleteAllEventsKey = `delete-all:events:${breweryId}:${ymd}`
+                          return (
+                            <BreweryPairSection
+                              key={`events-${breweryId}`}
+                              breweryName={breweryName}
+                              left={
+                                <PairColumn
+                                  label={`Proposed (${proposed.length})`}
+                                  action={
+                                    <AdminDeleteAllButton
+                                      count={proposed.length}
+                                      itemLabel="proposed events"
+                                      scopeLabel={breweryName}
+                                      disabled={pendingKey !== null}
+                                      loading={pendingKey === rejectAllKey}
+                                      onConfirm={() =>
+                                        handleRejectAllProposed(
+                                          proposed.map((p) => p.id),
+                                          rejectAllKey
+                                        )
+                                      }
+                                    />
+                                  }
+                                >
+                                  {proposed.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    proposed.map((p) => (
+                                      <ProposedEventAdminCard
+                                        key={p.id}
+                                        proposed={p}
+                                        breweryName={p.breweryName}
+                                        onEdit={() => setEditingProposed({ ...p })}
+                                        onAccept={() => handleAcceptProposed(p)}
+                                        onReject={() => handleRejectProposed(p.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        acceptLoading={pendingKey === acceptProposedKey(p.id)}
+                                        rejectLoading={pendingKey === rejectProposedKey(p.id)}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                              right={
+                                <PairColumn
+                                  label={`Events (${events.length})`}
+                                  action={
+                                    <AdminDeleteAllButton
+                                      count={events.length}
+                                      itemLabel="events"
+                                      scopeLabel={breweryName}
+                                      disabled={pendingKey !== null}
+                                      loading={pendingKey === deleteAllEventsKey}
+                                      onConfirm={() =>
+                                        handleDeleteAllEvents(
+                                          events.map((e) => e.id),
+                                          deleteAllEventsKey
+                                        )
+                                      }
+                                    />
+                                  }
+                                >
+                                  {events.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      None
+                                    </p>
+                                  ) : (
+                                    events.map((e) => (
+                                      <EventAdminCard
+                                        key={`${e.id}-${e.event_date}`}
+                                        event={e}
+                                        breweryName={e.breweryName}
+                                        onEdit={() => setEditing({ ...e })}
+                                        onDelete={() => handleDeleteEvent(e.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        deleteLoading={pendingKey === `delete:event:${e.id}`}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                            />
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+
+                  <ForecastCategoryBlock
+                    label={`Food trucks (${dayFoodTrucks.length})`}
+                    action={
+                      <AdminDeleteAllButton
+                        count={dayFoodTrucks.length}
+                        itemLabel="food trucks"
+                        disabled={pendingKey !== null}
+                        loading={pendingKey === `delete-all:food-trucks:${ymd}`}
+                        onConfirm={() =>
+                          handleDeleteAllFoodTrucks(
+                            dayFoodTrucks.map((t) => t.id),
+                            `delete-all:food-trucks:${ymd}`
+                          )
+                        }
+                      />
+                    }
+                  >
+                    {dayFoodTrucks.length === 0 ? (
+                      <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                        No food trucks
+                      </p>
+                    ) : (
+                      dayFoodTrucks.map((t) => (
+                        <FoodTruckAdminCard
+                          key={`${t.id}-${ymd}`}
+                          foodTruck={t}
+                          breweryName={t.breweryName}
+                          showBreweryName
+                          onEdit={() => setEditingFoodTruck({ ...t })}
+                          onDelete={() => handleDeleteFoodTruck(t.id)}
+                          actionsDisabled={pendingKey !== null}
+                          deleteLoading={pendingKey === `delete:food-truck:${t.id}`}
                         />
                       ))
                     )}

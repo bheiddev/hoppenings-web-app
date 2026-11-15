@@ -5,6 +5,13 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Colors } from '@/lib/colors'
 import { AdminButton } from '@/components/breweriesEventsAdminButtons'
+import {
+  BREWERY_DAYS,
+  BreweryHoursFields,
+  type BreweryDayHours,
+  type BreweryDayKey,
+} from '@/components/BreweryHoursFields'
+import { ImageDropField } from '@/components/ImageDropField'
 import { updateBrewery, upsertBreweryHours, type BreweryHoursPayload } from '@/app/admin/actions'
 import { formatDays, formatTime, groupHours, getBreweryAmenities } from '@/lib/breweryUtils'
 import type { Brewery, BreweryHours } from '@/types/supabase'
@@ -14,18 +21,6 @@ const inputStyle = {
   color: Colors.textDark,
   backgroundColor: Colors.surface,
 } as const
-
-const DAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-] as const
-
-type DayKey = (typeof DAYS)[number]
 
 function timeForInput(raw: string | null | undefined): string {
   if (!raw) return ''
@@ -79,28 +74,6 @@ function ImagePreview({
   )
 }
 
-function CheckboxField({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: (next: boolean) => void
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm" style={{ color: Colors.textDark }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="rounded"
-      />
-      {label}
-    </label>
-  )
-}
-
 function BrewerySettingsModal({
   brewery,
   hours,
@@ -115,7 +88,6 @@ function BrewerySettingsModal({
   const [name, setName] = useState(brewery.name)
   const [address, setAddress] = useState(brewery.address)
   const [phone, setPhone] = useState(brewery.phone)
-  const [description, setDescription] = useState(brewery.description)
   const [location, setLocation] = useState(brewery.location ?? brewery.Region ?? '')
   const [region, setRegion] = useState(brewery.Region ?? '')
   const [latitude, setLatitude] = useState(
@@ -124,16 +96,11 @@ function BrewerySettingsModal({
   const [longitude, setLongitude] = useState(
     brewery.longitude != null ? String(brewery.longitude) : ''
   )
-  const [isPetFriendly, setIsPetFriendly] = useState(Boolean(brewery.is_pet_friendly))
-  const [hasOutdoorSeating, setHasOutdoorSeating] = useState(Boolean(brewery.has_outdoor_seating))
-  const [hasFoodTrucks, setHasFoodTrucks] = useState(Boolean(brewery.has_food_trucks))
-  const [hasWifi, setHasWifi] = useState(Boolean(brewery.has_wifi))
-  const [hasNaBeer, setHasNaBeer] = useState(Boolean(brewery.has_na_beer))
   const [breweryImage, setBreweryImage] = useState<File | null>(null)
   const [tapImage, setTapImage] = useState<File | null>(null)
-  const [dayHours, setDayHours] = useState<Record<DayKey, { open: string; close: string }>>(() => {
-    const initial = {} as Record<DayKey, { open: string; close: string }>
-    for (const day of DAYS) {
+  const [dayHours, setDayHours] = useState<BreweryDayHours>(() => {
+    const initial = {} as BreweryDayHours
+    for (const day of BREWERY_DAYS) {
       initial[day] = {
         open: timeForInput(hours?.[`${day}_open` as keyof BreweryHours] as string | null),
         close: timeForInput(hours?.[`${day}_close` as keyof BreweryHours] as string | null),
@@ -144,8 +111,18 @@ function BrewerySettingsModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function setDayField(day: DayKey, field: 'open' | 'close', value: string) {
+  function setDayField(day: BreweryDayKey, field: 'open' | 'close', value: string) {
     setDayHours((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }))
+  }
+
+  function copyHoursFromPreviousDay(day: BreweryDayKey) {
+    const index = BREWERY_DAYS.indexOf(day)
+    if (index <= 0) return
+    const previousDay = BREWERY_DAYS[index - 1]
+    setDayHours((prev) => ({
+      ...prev,
+      [day]: { open: prev[previousDay].open, close: prev[previousDay].close },
+    }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -158,16 +135,10 @@ function BrewerySettingsModal({
       formData.set('name', name)
       formData.set('address', address)
       formData.set('phone', phone)
-      formData.set('description', description)
       formData.set('region', region)
       formData.set('location', location)
       formData.set('latitude', latitude)
       formData.set('longitude', longitude)
-      formData.set('is_pet_friendly', String(isPetFriendly))
-      formData.set('has_outdoor_seating', String(hasOutdoorSeating))
-      formData.set('has_food_trucks', String(hasFoodTrucks))
-      formData.set('has_wifi', String(hasWifi))
-      formData.set('has_na_beer', String(hasNaBeer))
       if (breweryImage) formData.set('brewery_image', breweryImage)
       if (tapImage) formData.set('tap_image', tapImage)
 
@@ -178,7 +149,7 @@ function BrewerySettingsModal({
       }
 
       const hoursPayload = {} as BreweryHoursPayload
-      for (const day of DAYS) {
+      for (const day of BREWERY_DAYS) {
         hoursPayload[`${day}_open`] = dayHours[day].open || null
         hoursPayload[`${day}_close`] = dayHours[day].close || null
       }
@@ -262,19 +233,6 @@ function BrewerySettingsModal({
                 style={inputStyle}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
-                Description
-              </label>
-              <textarea
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border rounded"
-                style={inputStyle}
-              />
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
@@ -329,38 +287,23 @@ function BrewerySettingsModal({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <CheckboxField label="Pet friendly" checked={isPetFriendly} onChange={setIsPetFriendly} />
-              <CheckboxField
-                label="Outdoor seating"
-                checked={hasOutdoorSeating}
-                onChange={setHasOutdoorSeating}
-              />
-              <CheckboxField label="Food trucks" checked={hasFoodTrucks} onChange={setHasFoodTrucks} />
-              <CheckboxField label="Wifi" checked={hasWifi} onChange={setHasWifi} />
-              <CheckboxField label="NA beer" checked={hasNaBeer} onChange={setHasNaBeer} />
-            </div>
             <div className="flex flex-wrap gap-4">
-              <div className="space-y-2">
-                <ImagePreview src={brewery.image_url} label="Brewery image" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setBreweryImage(e.target.files?.[0] ?? null)}
-                  className="block w-40 text-sm"
-                  style={{ color: Colors.textDark }}
-                />
-              </div>
-              <div className="space-y-2">
-                <ImagePreview src={brewery.tap_image} label="Tap list image" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setTapImage(e.target.files?.[0] ?? null)}
-                  className="block w-40 text-sm"
-                  style={{ color: Colors.textDark }}
-                />
-              </div>
+              <ImageDropField
+                label="Brewery image"
+                bucketHint="brewery-images"
+                file={breweryImage}
+                onFileChange={setBreweryImage}
+                existingSrc={brewery.image_url}
+                disabled={saving}
+              />
+              <ImageDropField
+                label="Tap list image"
+                bucketHint="Tap Images"
+                file={tapImage}
+                onFileChange={setTapImage}
+                existingSrc={brewery.tap_image}
+                disabled={saving}
+              />
             </div>
           </section>
 
@@ -372,36 +315,14 @@ function BrewerySettingsModal({
               Hours
             </p>
             <p className="text-xs" style={{ color: Colors.textMuted }}>
-              Leave open/close blank for closed days.
+              Leave open/close blank for closed days. Use Copy to match the previous day.
             </p>
-            <div className="space-y-2">
-              {DAYS.map((day) => (
-                <div
-                  key={day}
-                  className="grid grid-cols-[6.5rem_1fr_1fr] gap-2 items-center"
-                >
-                  <span className="text-sm capitalize" style={{ color: Colors.textDark }}>
-                    {day}
-                  </span>
-                  <input
-                    type="time"
-                    value={dayHours[day].open}
-                    onChange={(e) => setDayField(day, 'open', e.target.value)}
-                    className="w-full px-2 py-1.5 border rounded text-sm"
-                    style={inputStyle}
-                    aria-label={`${day} open`}
-                  />
-                  <input
-                    type="time"
-                    value={dayHours[day].close}
-                    onChange={(e) => setDayField(day, 'close', e.target.value)}
-                    className="w-full px-2 py-1.5 border rounded text-sm"
-                    style={inputStyle}
-                    aria-label={`${day} close`}
-                  />
-                </div>
-              ))}
-            </div>
+            <BreweryHoursFields
+              dayHours={dayHours}
+              onChange={setDayField}
+              onCopyFromPrevious={copyHoursFromPreviousDay}
+              disabled={saving}
+            />
           </section>
 
           {error ? (

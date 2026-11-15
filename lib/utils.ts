@@ -356,23 +356,76 @@ export function isEventToday(eventDate: string): boolean {
   return normalizeEventDateToMountainTime(eventDate) === getTodayMountainDateString();
 }
 
+/** Mountain weekday index (0=Sun … 6=Sat) for a YYYY-MM-DD date string. */
+function mountainWeekdayIndexFromYmd(ymd: string): number {
+  const probe = new Date(`${ymd}T12:00:00.000Z`)
+  const weekday = probe.toLocaleDateString('en-US', {
+    timeZone: 'America/Denver',
+    weekday: 'short',
+  })
+  const map: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  }
+  return map[weekday] ?? 0
+}
+
 /**
- * Expand recurring events to 12 weeks (for detail page generation)
- * @param events - Array of events to expand
- * @param filterPastEvents - If true, filter out past events. If false, include all events including past ones. Defaults to true.
+ * End of next Mountain calendar week (Sat), Sunday-start weeks.
+ * Weekly recurring events only expand / show through this date (public + admin).
+ */
+export function endOfNextMountainWeek(todayYmd?: string): string {
+  const today = todayYmd ?? getTodayMountainDateString()
+  const weekday = mountainWeekdayIndexFromYmd(today)
+  const weekStart = addDaysToDateString(today, -weekday)
+  return addDaysToDateString(weekStart, 13)
+}
+
+/**
+ * Whether a (possibly expanded) event should appear on listing / admin content
+ * pickers: no biweekly/monthly; weekly occurrences only through next week.
+ */
+export function shouldShowEventOnListings(
+  event: Pick<
+    Event,
+    'event_date' | 'is_recurring' | 'is_recurring_biweekly' | 'is_recurring_monthly'
+  >,
+  todayYmd?: string
+): boolean {
+  if (event.is_recurring_biweekly || event.is_recurring_monthly) return false
+  if (!event.is_recurring) return true
+  const today = todayYmd ?? getTodayMountainDateString()
+  const ymd = normalizeEventDateToMountainTime(event.event_date)
+  return compareDateStrings(ymd, endOfNextMountainWeek(today)) <= 0
+}
+
+/**
+ * Expand weekly recurring events for this Mountain week + next week only.
+ * Biweekly/monthly templates are not shown on public or admin content listings.
+ * @param filterPastEvents - If true, filter out past events. Defaults to true.
  */
 export function expandRecurringEvents(events: Event[], filterPastEvents: boolean = true): Event[] {
   const mountainTime = getMountainTimeNow();
   const todayMountain = mountainTime.date;
+  const weeklyEndDateStr = endOfNextMountainWeek(todayMountain);
   const expandedEvents: Event[] = [];
   
   events.forEach((event) => {
     // Normalize the base event date to Mountain Time for comparison
     const baseEventDateMountain = normalizeEventDateToMountainTime(event.event_date);
+
+    // Biweekly / monthly: intentionally omitted from public event surfaces.
+    if (event.is_recurring_biweekly || event.is_recurring_monthly) {
+      return;
+    }
     
     if (event.is_recurring) {
-      // Weekly recurring - expand for next 12 weeks
-      // Start from today if base date is in the past, otherwise start from base date
+      // Weekly recurring — only this calendar week and the next.
       let currentDateStr = baseEventDateMountain;
       
       // For past events, find the next occurrence (or today if today is a valid occurrence)
@@ -398,8 +451,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         currentDateStr = todayMountain;
       }
       
-      const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
-      
       // Ensure we start from today or later when filtering (safety check)
       if (filterPastEvents) {
         while (compareDateStrings(currentDateStr, todayMountain) < 0) {
@@ -408,7 +459,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
         }
       }
       
-      while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
+      while (compareDateStrings(currentDateStr, weeklyEndDateStr) <= 0) {
         // For filtering: only include events from today forward using compareDateStrings
         // For non-filtering: include all events
         const shouldInclude = !filterPastEvents || compareDateStrings(currentDateStr, todayMountain) >= 0;
@@ -421,133 +472,6 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
           });
         }
         currentDateStr = addDaysToDateString(currentDateStr, 7);
-      }
-    } else if (event.is_recurring_biweekly) {
-      // Bi-weekly recurring - expand for next 12 weeks
-      // Start from today if base date is in the past, otherwise start from base date
-      let currentDateStr = baseEventDateMountain;
-      
-      // For past events, find the next occurrence (or today if today is a valid occurrence)
-      if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
-        // Calculate how many biweeks to add
-        const [baseYear, baseMonth, baseDay] = baseEventDateMountain.split('-').map(Number);
-        const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
-        const baseDate = new Date(baseYear, baseMonth - 1, baseDay);
-        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
-        const daysDiff = Math.floor((todayDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
-        const biweeksPast = Math.floor(daysDiff / 14);
-        const daysRemainder = daysDiff % 14;
-        
-        // If today is exactly a multiple of 14 days from base date, start from today
-        // Otherwise, start from the next occurrence
-        if (daysRemainder === 0) {
-          currentDateStr = todayMountain;
-        } else {
-          currentDateStr = addDaysToDateString(baseEventDateMountain, (biweeksPast + 1) * 14);
-        }
-      } else if (compareDateStrings(baseEventDateMountain, todayMountain) === 0) {
-        // Base date is today, start from today
-        currentDateStr = todayMountain;
-      }
-      
-      const endDateStr = addDaysToDateString(todayMountain, 12 * 7); // 12 weeks from today
-      
-      // Ensure we start from today or later when filtering (safety check)
-      if (filterPastEvents) {
-        while (compareDateStrings(currentDateStr, todayMountain) < 0) {
-          // If calculated date is still in the past, advance to next occurrence
-          currentDateStr = addDaysToDateString(currentDateStr, 14);
-        }
-      }
-      
-      while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
-        // For filtering: only include events from today forward using compareDateStrings
-        // For non-filtering: include all events
-        const shouldInclude = !filterPastEvents || compareDateStrings(currentDateStr, todayMountain) >= 0;
-        
-        if (shouldInclude) {
-          expandedEvents.push({
-            ...event,
-            id: `${event.id}-${currentDateStr}`,
-            event_date: currentDateStr,
-          });
-        }
-        currentDateStr = addDaysToDateString(currentDateStr, 14);
-      }
-    } else if (event.is_recurring_monthly) {
-      // Monthly recurring - expand for next 3 months (12 weeks ≈ 3 months)
-      // Start from today if base date is in the past, otherwise start from base date
-      let currentDateStr = baseEventDateMountain;
-      
-      // For past events, find the next occurrence (or today if today is a valid occurrence)
-      if (compareDateStrings(baseEventDateMountain, todayMountain) < 0) {
-        const [year, month, day] = baseEventDateMountain.split('-').map(Number);
-        let currentDate = new Date(year, month - 1, day);
-        const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
-        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
-        
-        // Keep incrementing months until we're at or past today
-        while (currentDate < todayDate) {
-          currentDate.setMonth(currentDate.getMonth() + 1);
-        }
-        
-        // If the calculated date matches today exactly (same day of month), use today
-        const calculatedDateStr = currentDate.toLocaleDateString('en-CA', {
-          timeZone: 'America/Denver'
-        });
-        if (calculatedDateStr === todayMountain) {
-          currentDateStr = todayMountain;
-        } else {
-          currentDateStr = calculatedDateStr;
-        }
-      } else if (compareDateStrings(baseEventDateMountain, todayMountain) === 0) {
-        // Base date is today, start from today
-        currentDateStr = todayMountain;
-      }
-      
-      // Calculate end date (3 months from today)
-      const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
-      const endDate = new Date(todayYear, todayMonth - 1, todayDay);
-      endDate.setMonth(endDate.getMonth() + 3);
-      const endDateStr = endDate.toLocaleDateString('en-CA', {
-        timeZone: 'America/Denver'
-      });
-      
-      // Parse current date string to Date for month arithmetic
-      const [currYear, currMonth, currDay] = currentDateStr.split('-').map(Number);
-      let currentDate = new Date(currYear, currMonth - 1, currDay);
-      const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
-      const endDateObj = new Date(endYear, endMonth - 1, endDay);
-      
-      // Ensure we start from today or later when filtering
-      if (filterPastEvents) {
-        const currentDateStrCheck = currentDate.toLocaleDateString('en-CA', {
-          timeZone: 'America/Denver'
-        });
-        if (compareDateStrings(currentDateStrCheck, todayMountain) < 0) {
-          // Reset to today's date components
-          const [todayYear, todayMonth, todayDay] = todayMountain.split('-').map(Number);
-          currentDate = new Date(todayYear, todayMonth - 1, todayDay);
-        }
-      }
-      
-      while (currentDate <= endDateObj) {
-        const dateStr = currentDate.toLocaleDateString('en-CA', {
-          timeZone: 'America/Denver'
-        });
-        
-        // For filtering: only include events from today forward using compareDateStrings
-        // For non-filtering: include all events
-        const shouldInclude = !filterPastEvents || compareDateStrings(dateStr, todayMountain) >= 0;
-        
-        if (shouldInclude) {
-          expandedEvents.push({
-            ...event,
-            id: `${event.id}-${dateStr}`,
-            event_date: dateStr,
-          });
-        }
-        currentDate.setMonth(currentDate.getMonth() + 1);
       }
     } else {
       // One-time events - normalize date first, then check if should be shown

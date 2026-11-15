@@ -18,6 +18,7 @@ import {
   AdminColumnShell,
   HappyHourDealAdminCard,
 } from '@/components/breweriesEventsAdminCards'
+import { happyHourDealIsTodayOrFuture } from '@/lib/happyHourDeals'
 
 function deleteDealKey(dealId: string) {
   return `delete:happy-hour:${dealId}`
@@ -39,6 +40,7 @@ export function HappyHourDealsTableWithActions({
   const [editing, setEditing] = useState<HappyHourDeal | null>(null)
   const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const visibleDeals = deals.filter((deal) => happyHourDealIsTodayOrFuture(deal))
 
   async function handleDelete(dealId: string) {
     setActionError(null)
@@ -55,7 +57,7 @@ export function HappyHourDealsTableWithActions({
   }
 
   async function handleDeleteAll() {
-    const ids = deals.map((d) => d.id)
+    const ids = visibleDeals.map((d) => d.id)
     if (ids.length === 0) return
     setActionError(null)
     setPendingKey('delete-all:happy-hour')
@@ -89,7 +91,7 @@ export function HappyHourDealsTableWithActions({
           action={
             <div className="flex items-center gap-1.5 shrink-0">
               <AdminDeleteAllButton
-                count={deals.length}
+                count={visibleDeals.length}
                 itemLabel="happy hour deals"
                 disabled={pendingKey !== null}
                 loading={pendingKey === 'delete-all:happy-hour'}
@@ -110,12 +112,12 @@ export function HappyHourDealsTableWithActions({
           }
         />
         <AdminColumnScrollBody>
-          {deals.length === 0 ? (
+          {visibleDeals.length === 0 ? (
             <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
               No happy hour / deals
             </p>
           ) : (
-            deals.map((deal) => (
+            visibleDeals.map((deal) => (
               <HappyHourDealAdminCard
                 key={deal.id}
                 deal={deal}

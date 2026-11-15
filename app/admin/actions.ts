@@ -971,7 +971,6 @@ export async function updateBrewery(formData: FormData) {
   const name = formText(formData, 'name')
   const address = formText(formData, 'address')
   const phone = formText(formData, 'phone')
-  const description = formText(formData, 'description')
   const region = formText(formData, 'region')
   const location = formText(formData, 'location') || region || null
 
@@ -979,18 +978,12 @@ export async function updateBrewery(formData: FormData) {
   if (!name) return { ok: false as const, error: 'Name is required' }
   if (!address) return { ok: false as const, error: 'Address is required' }
   if (!phone) return { ok: false as const, error: 'Phone is required' }
-  if (!description) return { ok: false as const, error: 'Description is required' }
 
+  // Description + amenity flags are no longer edited in admin UI; leave existing DB values.
   const patch: Record<string, unknown> = {
     name,
     address,
     phone,
-    description,
-    is_pet_friendly: formBool(formData, 'is_pet_friendly'),
-    has_outdoor_seating: formBool(formData, 'has_outdoor_seating'),
-    has_food_trucks: formBool(formData, 'has_food_trucks'),
-    has_wifi: formBool(formData, 'has_wifi'),
-    has_na_beer: formBool(formData, 'has_na_beer'),
     latitude: formOptionalNumber(formData, 'latitude'),
     longitude: formOptionalNumber(formData, 'longitude'),
     location,

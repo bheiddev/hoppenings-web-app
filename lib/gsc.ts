@@ -115,7 +115,9 @@ export async function getSeoAnalyticsSummary(): Promise<SeoAnalyticsResult> {
       }),
       searchconsole.searchanalytics.query({
         siteUrl,
-        requestBody: { ...base, dimensions: ['query'], rowLimit: 15 },
+        // GSC returns rows sorted by clicks; pull a wide set so we can re-rank
+        // by impressions (including zero-click queries) in the admin UI.
+        requestBody: { ...base, dimensions: ['query'], rowLimit: 250 },
       }),
       searchconsole.searchanalytics.query({
         siteUrl,

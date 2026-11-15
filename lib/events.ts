@@ -66,14 +66,12 @@ function mapEventRow(event: Record<string, unknown>): Event {
   }
 }
 
-/** Recurring templates (old event_date anchors) — fetched separately from upcoming one-time rows. */
+/** Weekly recurring templates — biweekly/monthly are not shown on public listings. */
 async function fetchRecurringEventRows(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events_base')
     .select(EVENTS_BASE_SELECT)
-    .or(
-      'is_recurring.eq.true,is_recurring_biweekly.eq.true,is_recurring_monthly.eq.true'
-    )
+    .eq('is_recurring', true)
 
   if (error) {
     console.error('Error fetching recurring events:', error)

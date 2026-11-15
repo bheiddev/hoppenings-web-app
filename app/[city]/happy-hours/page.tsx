@@ -84,7 +84,7 @@ export default async function CityHappyHoursPage({
 
   return (
     <PoshPageShell>
-      <div className="mx-auto max-w-7xl px-6 pb-16 pt-24 sm:px-10 lg:px-12 lg:pb-20 lg:pt-28">
+      <div className="mx-auto max-w-7xl px-6 pb-16 pt-8 sm:px-10 lg:px-12 lg:pb-20 lg:pt-10">
         <div className="mb-3 flex items-center gap-2 [&_p]:mb-0">
           <BackLink
             fallbackHref={`/${citySlug}`}

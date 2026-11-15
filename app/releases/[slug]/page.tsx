@@ -130,7 +130,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
 
       <div
         className={`mx-auto max-w-4xl px-6 sm:px-10 lg:px-12 lg:pb-14 ${
-          heroBrewery?.image_url ? 'py-10 lg:pt-14' : 'pb-10 pt-24 lg:pb-14 lg:pt-28'
+          heroBrewery?.image_url ? 'py-10 lg:pt-14' : 'pb-10 pt-8 lg:pb-14 lg:pt-10'
         }`}
       >
         <BackLink

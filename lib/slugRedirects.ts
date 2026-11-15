@@ -34,7 +34,7 @@ export type SlugRedirectRow = {
 
 /** How far back to tombstone dated recurring occurrence URLs on delete/rename. */
 const EVENT_REDIRECT_LOOKBACK_DAYS = 180
-/** How far forward (matches expandRecurringEvents ~12 weeks). */
+/** How far forward for redirect tombstones (broader than public expand window). */
 const EVENT_REDIRECT_LOOKAHEAD_DAYS = 84
 
 const MAX_REDIRECT_HOPS = 5

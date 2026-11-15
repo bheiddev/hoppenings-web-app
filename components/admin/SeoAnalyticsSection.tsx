@@ -1,6 +1,12 @@
+import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 import { AnalyticsRefreshButton } from '@/components/admin/AnalyticsRefreshButton'
+import { NearbyBreweriesMap, type NearbyBreweryPin } from '@/components/NearbyBreweriesMap'
 import type { SeoAnalyticsResult, SeoRow } from '@/lib/gsc'
+import {
+  matchSeoQueriesToBreweries,
+  type SeoBreweryRef,
+} from '@/lib/seoBreweryQueryMatches'
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -120,7 +126,36 @@ function SeoTable({
   )
 }
 
-export function SeoAnalyticsSection({ result }: { result: SeoAnalyticsResult }) {
+export function SeoAnalyticsSection({
+  result,
+  breweries,
+}: {
+  result: SeoAnalyticsResult
+  breweries: SeoBreweryRef[]
+}) {
+  const mappedBreweries = breweries.filter(
+    (b): b is SeoBreweryRef & { latitude: number; longitude: number } =>
+      b.latitude != null && b.longitude != null
+  )
+  const mapPins: NearbyBreweryPin[] = mappedBreweries.map((b) => ({
+    id: b.id,
+    name: b.name,
+    slug: b.slug,
+    latitude: b.latitude,
+    longitude: b.longitude,
+    location: b.region,
+    miles: null,
+    isCurrent: false,
+  }))
+
+  const queryRows = result.ok ? result.data.queries : []
+  const topQueriesByImpressions = [...queryRows]
+    .sort((a, b) => b.impressions - a.impressions || b.clicks - a.clicks)
+    .slice(0, 50)
+  const breweryMatches = matchSeoQueriesToBreweries(queryRows, breweries)
+  const matchedQueryCount = breweryMatches.reduce((sum, row) => sum + row.queries.length, 0)
+  const matchedClickCount = breweryMatches.reduce((sum, row) => sum + row.clicks, 0)
+
   return (
     <section
       className="border rounded-xl p-6 w-full"
@@ -178,11 +213,137 @@ export function SeoAnalyticsSection({ result }: { result: SeoAnalyticsResult }) 
             />
           </div>
 
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-6 mb-8">
+            <div
+              className="rounded-lg border overflow-hidden"
+              style={{ borderColor: Colors.dividerLight }}
+            >
+              <div className="px-3 py-2" style={{ backgroundColor: Colors.surfaceLight }}>
+                <p className="text-sm font-semibold" style={{ color: Colors.textDark }}>
+                  Brewery map
+                </p>
+                <p className="text-[11px] mt-0.5 leading-snug" style={{ color: Colors.textMuted }}>
+                  All uploaded breweries with coordinates ({mappedBreweries.length} mapped
+                  {breweries.length > mappedBreweries.length
+                    ? ` · ${breweries.length - mappedBreweries.length} missing lat/lng`
+                    : ''}
+                  ).
+                </p>
+              </div>
+              {mapPins.length === 0 ? (
+                <p className="p-4 text-sm" style={{ color: Colors.textSecondary }}>
+                  No breweries with latitude/longitude yet. Add coordinates when creating or editing a
+                  brewery.
+                </p>
+              ) : (
+                <NearbyBreweriesMap pins={mapPins} heightClass="h-[260px] w-full sm:h-[300px]" />
+              )}
+            </div>
+
+            <div
+              className="rounded-lg border overflow-hidden"
+              style={{ borderColor: Colors.dividerLight }}
+            >
+              <div className="px-3 py-2" style={{ backgroundColor: Colors.surfaceLight }}>
+                <p className="text-sm font-semibold" style={{ color: Colors.textDark }}>
+                  Queries tied to breweries
+                </p>
+                <p className="text-[11px] mt-0.5 leading-snug" style={{ color: Colors.textMuted }}>
+                  Best-effort name match from Search Console queries (e.g. “redleg run club” → Red Leg
+                  Brewing). Not perfect — use as a signal, not a scorecard.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 p-3 border-b" style={{ borderColor: Colors.dividerLight }}>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: Colors.textMuted }}>
+                    Breweries hit
+                  </p>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: Colors.primaryDark }}>
+                    {breweryMatches.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: Colors.textMuted }}>
+                    Queries matched
+                  </p>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: Colors.primaryDark }}>
+                    {matchedQueryCount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: Colors.textMuted }}>
+                    Matched clicks
+                  </p>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: Colors.primaryDark }}>
+                    {matchedClickCount.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {breweryMatches.length === 0 ? (
+                <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                  No query-to-brewery name matches in this range yet.
+                </p>
+              ) : (
+                <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                  <table className="w-full text-left text-sm border-collapse min-w-[22rem]">
+                    <thead className="sticky top-0" style={{ backgroundColor: Colors.surface }}>
+                      <tr>
+                        <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                          Brewery
+                        </th>
+                        <th className="p-2 font-medium" style={{ color: Colors.textDark }}>
+                          Sample queries
+                        </th>
+                        <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
+                          Clicks
+                        </th>
+                        <th className="p-2 font-medium text-right" style={{ color: Colors.textDark }}>
+                          Impr.
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ color: Colors.textDark }}>
+                      {breweryMatches.map((row) => (
+                        <tr key={row.breweryId} className="border-t align-top" style={{ borderColor: Colors.dividerLight }}>
+                          <td className="p-2">
+                            <Link
+                              href={`/breweries/${row.slug}`}
+                              className="font-medium hover:underline"
+                              style={{ color: Colors.primaryDark }}
+                            >
+                              {row.breweryName}
+                            </Link>
+                            {row.region ? (
+                              <p className="text-[11px]" style={{ color: Colors.textMuted }}>
+                                {row.region}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="p-2 text-[12px]" style={{ color: Colors.textSecondary }}>
+                            {row.queries
+                              .slice(0, 3)
+                              .map((q) => q.query)
+                              .join(' · ')}
+                            {row.queries.length > 3 ? ` · +${row.queries.length - 3} more` : ''}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{row.clicks.toLocaleString()}</td>
+                          <td className="p-2 text-right tabular-nums" style={{ color: Colors.textSecondary }}>
+                            {row.impressions.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <SeoTable
               title="Top queries"
-              description="Search phrases people typed that led to your site — ranked by clicks."
-              rows={result.data.queries}
+              description="Search phrases that showed your site in Google — ranked by impressions, including queries with no clicks yet."
+              rows={topQueriesByImpressions}
               labelHeader="Query"
             />
             <SeoTable

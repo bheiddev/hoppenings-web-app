@@ -156,7 +156,14 @@ function NearbyBreweriesMapInner({ pins }: { pins: NearbyBreweryPin[] }) {
   )
 }
 
-export function NearbyBreweriesMap({ pins }: { pins: NearbyBreweryPin[] }) {
+export function NearbyBreweriesMap({
+  pins,
+  heightClass = 'h-[320px] w-full sm:h-[380px]',
+}: {
+  pins: NearbyBreweryPin[]
+  /** Tailwind height classes for the map viewport. */
+  heightClass?: string
+}) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   if (pins.length === 0) return null
@@ -164,7 +171,7 @@ export function NearbyBreweriesMap({ pins }: { pins: NearbyBreweryPin[] }) {
   if (!apiKey) {
     return (
       <div
-        className="flex h-[320px] w-full items-center justify-center px-6 text-center sm:h-[380px]"
+        className={`flex w-full items-center justify-center px-6 text-center ${heightClass}`}
         style={{ backgroundColor: Colors.surfaceDark, color: 'rgba(249,247,242,0.65)' }}
       >
         <p className="text-sm" style={{ fontFamily: 'var(--font-be-vietnam-pro)' }}>
@@ -176,7 +183,7 @@ export function NearbyBreweriesMap({ pins }: { pins: NearbyBreweryPin[] }) {
 
   return (
     <APIProvider apiKey={apiKey}>
-      <div className="h-[320px] w-full sm:h-[380px]">
+      <div className={heightClass}>
         <NearbyBreweriesMapInner pins={pins} />
       </div>
     </APIProvider>
