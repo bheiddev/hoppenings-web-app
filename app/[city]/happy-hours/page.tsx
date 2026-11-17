@@ -9,7 +9,12 @@ import {
   formatHappyHourWindow,
   getHappyHourDealsForCalendarDate,
 } from '@/lib/happyHourDeals'
-import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterBreweriesForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
+} from '@/lib/seoCities'
 import {
   formatRelativeEventDateHeading,
   getMountainDateRangeFromToday,
@@ -23,7 +28,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).map((city) => ({ city }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
 export async function generateMetadata({
@@ -32,9 +38,10 @@ export async function generateMetadata({
   params: Promise<{ city: string }>
 }): Promise<Metadata> {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) return { title: 'Not Found | Hoppenings' }
+  const region = await resolvePublicRegion(city)
+  if (!region) return { title: 'Not Found | Hoppenings' }
 
-  const cityName = CITY_CONFIG[city as CitySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const title = `Happy Hours in ${cityName} | Hoppenings`
   const description = `Find brewery happy hours and deals in ${cityName}. Browse by day with Hoppenings.`
 
@@ -52,10 +59,11 @@ export default async function CityHappyHoursPage({
   params: Promise<{ city: string }>
 }) {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) notFound()
+  const region = await resolvePublicRegion(city)
+  if (!region) notFound()
 
-  const citySlug = city as CitySlug
-  const cityName = CITY_CONFIG[citySlug].name
+  const citySlug = region.slug
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const breweries = await getAllBreweriesWithSlugs()
   const cityBreweries = filterBreweriesForCity(breweries, citySlug)
   const breweryById = new Map(cityBreweries.map((brewery) => [brewery.id, brewery]))

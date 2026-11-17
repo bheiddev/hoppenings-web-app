@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
-import { ACTIVITY_CONFIG, CITY_CONFIG } from '@/lib/seoCities'
+import { ACTIVITY_CONFIG, listPublicRegionBuckets } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
@@ -28,14 +28,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/breweries`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
   ]
 
-  const cityPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).map((city) => ({
+  const regionSlugs = (await listPublicRegionBuckets()).map((bucket) => bucket.slug)
+
+  const cityPages: MetadataRoute.Sitemap = regionSlugs.map((city) => ({
     url: `${BASE_URL}/${city}`,
     lastModified: now,
     changeFrequency: 'daily' as const,
     priority: 0.85,
   }))
 
-  const cityCategoryPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) => ([
+  const cityCategoryPages: MetadataRoute.Sitemap = regionSlugs.flatMap((city) => ([
     {
       url: `${BASE_URL}/${city}/events`,
       lastModified: now,
@@ -54,9 +56,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily' as const,
       priority: 0.8,
     },
+    {
+      url: `${BASE_URL}/${city}/happy-hours`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
   ]))
 
-  const cityActivityPages: MetadataRoute.Sitemap = Object.keys(CITY_CONFIG).flatMap((city) =>
+  const cityActivityPages: MetadataRoute.Sitemap = regionSlugs.flatMap((city) =>
     Object.keys(ACTIVITY_CONFIG).map((activity) => ({
       url: `${BASE_URL}/${city}/${activity}`,
       lastModified: now,

@@ -12,7 +12,12 @@ import {
   getBreweryHoursStatusLabel,
   isBreweryOpenIconStatus,
 } from '@/lib/breweryCardStatus'
-import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterBreweriesForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
+} from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 const STATUS_ICON_SIZE = 18
@@ -61,7 +66,8 @@ function StatusIcon({
 }
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).map((city) => ({ city }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
 export async function generateMetadata({
@@ -70,9 +76,10 @@ export async function generateMetadata({
   params: Promise<{ city: string }>
 }): Promise<Metadata> {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) return { title: 'Not Found | Hoppenings' }
+  const region = await resolvePublicRegion(city)
+  if (!region) return { title: 'Not Found | Hoppenings' }
 
-  const cityName = CITY_CONFIG[city as CitySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const title = `Breweries in ${cityName} | Hoppenings`
   const description = `Browse breweries, taprooms, and craft beer spots in ${cityName}.`
 
@@ -93,10 +100,11 @@ export default async function CityBreweriesPage({
   params: Promise<{ city: string }>
 }) {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) notFound()
+  const region = await resolvePublicRegion(city)
+  if (!region) notFound()
 
-  const citySlug = city as CitySlug
-  const cityName = CITY_CONFIG[citySlug].name
+  const citySlug = region.slug
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const [breweries, breweryCardContext] = await Promise.all([
     getAllBreweriesWithSlugs(),
     getBreweryCardContextMap(),
@@ -146,6 +154,7 @@ export default async function CityBreweriesPage({
               const hoursIcon = isOpen ? '/open.svg' : '/closed-sign.svg'
               const hasRelease = Boolean(context.hasNewRelease && context.releaseName)
               const hasEvent = Boolean(context.todayEventTitle)
+              const hasHappyHour = Boolean(context.happyHourTitle)
               const imageSrc = brewery.image_url || brewery.tap_image
 
               return (
@@ -177,24 +186,35 @@ export default async function CityBreweriesPage({
                       >
                         {brewery.name}
                       </span>
-                      <span
-                        className="relative mt-0.5 shrink-0"
-                        style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
-                        title={hoursLabel}
-                        aria-label={hoursLabel}
-                      >
-                        <Image
-                          src={hoursIcon}
-                          alt=""
-                          fill
-                          className="object-contain"
-                          style={{ filter: 'brightness(0) invert(1)' }}
-                          aria-hidden
-                        />
+                      <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
+                        <span
+                          className="relative"
+                          style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
+                          title={hoursLabel}
+                          aria-label={hoursLabel}
+                        >
+                          <Image
+                            src={hoursIcon}
+                            alt=""
+                            fill
+                            className="object-contain"
+                            style={{ filter: 'brightness(0) invert(1)' }}
+                            aria-hidden
+                          />
+                        </span>
+                        <span
+                          className="max-w-[7rem] text-right text-[11px] font-semibold uppercase leading-tight tracking-[0.08em]"
+                          style={{
+                            color: 'rgba(249, 247, 242, 0.78)',
+                            fontFamily: 'var(--font-be-vietnam-pro)',
+                          }}
+                        >
+                          {context.hoursRange || hoursLabel}
+                        </span>
                       </span>
                     </span>
 
-                    {hasRelease || hasEvent ? (
+                    {hasRelease || hasEvent || hasHappyHour ? (
                       <span className="mt-3 flex flex-col gap-2">
                         {hasRelease ? (
                           <span className="flex min-w-0 items-center gap-2">
@@ -227,6 +247,22 @@ export default async function CityBreweriesPage({
                               title={context.todayEventTitle ?? undefined}
                             >
                               {context.todayEventTitle}
+                            </span>
+                          </span>
+                        ) : null}
+
+                        {hasHappyHour ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <StatusIcon src="/happy-hour.svg" active />
+                            <span
+                              className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+                              style={{
+                                color: Colors.accent,
+                                fontFamily: 'var(--font-be-vietnam-pro)',
+                              }}
+                              title={context.happyHourTitle ?? undefined}
+                            >
+                              {context.happyHourTitle}
                             </span>
                           </span>
                         ) : null}

@@ -1,34 +1,45 @@
 import { supabase } from '@/lib/supabase'
+import { getHappyHourDealsForBreweryIds } from '@/lib/breweries'
 import { BreweryHours, FoodTruck } from '@/types/supabase'
 import { isReleaseInIndexableWindow } from '@/lib/contentExpiry'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
+import {
+  formatHappyHourWindow,
+  happyHourDealShowsOnDate,
+} from '@/lib/happyHourDeals'
 import { getTonightCarouselEvents } from '@/lib/events'
 import {
   BreweryEventIcon,
   BreweryHoursStatus,
   getBreweryHoursStatus,
+  getBreweryTodayHoursRange,
   matchBreweryEventIcon,
 } from '@/lib/breweryCardStatus'
 import { getTodayMountainDateString } from '@/lib/utils'
 
 export type BreweryCardContext = {
   hoursStatus: BreweryHoursStatus
+  /** Today's open–close window, e.g. "12pm–10pm". */
+  hoursRange: string | null
   hasFoodTruckToday: boolean
   todayEventIcon: BreweryEventIcon
   hasNewRelease: boolean
   releaseName: string | null
   todayEventTitle: string | null
   foodTruckName: string | null
+  happyHourTitle: string | null
 }
 
 export const DEFAULT_BREWERY_CARD_CONTEXT: BreweryCardContext = {
   hoursStatus: 'closed',
+  hoursRange: null,
   hasFoodTruckToday: false,
   todayEventIcon: 'generic',
   hasNewRelease: false,
   releaseName: null,
   todayEventTitle: null,
   foodTruckName: null,
+  happyHourTitle: null,
 }
 
 function breweryIdsForRelease(release: {
@@ -122,6 +133,22 @@ async function fetchRecentReleaseNamesByBrewery(): Promise<Map<string, string>> 
   return map
 }
 
+async function fetchHappyHourTitlesByBrewery(
+  breweryIds: string[],
+  today: string
+): Promise<Map<string, string>> {
+  const deals = await getHappyHourDealsForBreweryIds(breweryIds)
+  const map = new Map<string, string>()
+  for (const deal of deals) {
+    if (!happyHourDealShowsOnDate(deal, today)) continue
+    if (map.has(deal.brewery_id)) continue
+    const window = formatHappyHourWindow(deal.time_start, deal.time_end)
+    const title = deal.title?.trim() || 'Happy Hour'
+    map.set(deal.brewery_id, window ? `${title} · ${window}` : title)
+  }
+  return map
+}
+
 function pickTodayEventForBrewery(
   events: Awaited<ReturnType<typeof getTonightCarouselEvents>>,
   breweryId: string
@@ -154,6 +181,7 @@ export async function getBreweryCardContextMap(): Promise<Map<string, BreweryCar
       fetchRecentReleaseNamesByBrewery(),
       fetchAllBreweryIds(),
     ])
+  const happyHourByBrewery = await fetchHappyHourTitlesByBrewery(allBreweryIds, today)
 
   const foodTruckNameByBrewery = new Map<string, string>()
   for (const breweryId of allBreweryIds) {
@@ -174,20 +202,24 @@ export async function getBreweryCardContextMap(): Promise<Map<string, BreweryCar
     ...foodTruckNameByBrewery.keys(),
     ...todayEventByBrewery.keys(),
     ...releaseNamesByBrewery.keys(),
+    ...happyHourByBrewery.keys(),
   ])
 
   const map = new Map<string, BreweryCardContext>()
   for (const breweryId of breweryIds) {
+    const hours = hoursByBrewery.get(breweryId)
     const releaseName = releaseNamesByBrewery.get(breweryId) ?? null
     const todayEvent = todayEventByBrewery.get(breweryId)
     map.set(breweryId, {
-      hoursStatus: getBreweryHoursStatus(hoursByBrewery.get(breweryId)),
+      hoursStatus: getBreweryHoursStatus(hours),
+      hoursRange: getBreweryTodayHoursRange(hours),
       hasFoodTruckToday: foodTruckNameByBrewery.has(breweryId),
       todayEventIcon: todayEvent?.icon ?? 'generic',
       hasNewRelease: releaseName !== null,
       releaseName,
       todayEventTitle: todayEvent?.title ?? null,
       foodTruckName: foodTruckNameByBrewery.get(breweryId) ?? null,
+      happyHourTitle: happyHourByBrewery.get(breweryId) ?? null,
     })
   }
 

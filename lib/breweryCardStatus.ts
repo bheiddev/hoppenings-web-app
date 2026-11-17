@@ -43,6 +43,29 @@ function getMountainWeekdayIndex(dateYmd: string): number {
   return index >= 0 ? index : 0
 }
 
+function formatCompactHoursTime(time: string): string {
+  const match = time.trim().match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return time
+  const hour = parseInt(match[1], 10)
+  const minute = match[2]
+  const ampm = hour >= 12 ? 'pm' : 'am'
+  const displayHour = hour % 12 || 12
+  return minute === '00' ? `${displayHour}${ampm}` : `${displayHour}:${minute}${ampm}`
+}
+
+/** Today's open–close window for list UI (e.g. "12pm–10pm"), or null if closed/unknown. */
+export function getBreweryTodayHoursRange(
+  hours: BreweryHours | null | undefined,
+  now = getMountainTimeNow()
+): string | null {
+  if (!hours) return null
+  const dayName = DAY_FIELDS[getMountainWeekdayIndex(now.date)]
+  const openTime = hours[`${dayName}_open` as keyof BreweryHours] as string | null
+  const closeTime = hours[`${dayName}_close` as keyof BreweryHours] as string | null
+  if (!openTime || !closeTime) return null
+  return `${formatCompactHoursTime(openTime)}–${formatCompactHoursTime(closeTime)}`
+}
+
 export function getBreweryHoursStatus(
   hours: BreweryHours | null | undefined,
   now = getMountainTimeNow()

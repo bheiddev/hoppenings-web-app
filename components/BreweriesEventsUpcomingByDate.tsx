@@ -148,6 +148,92 @@ function CategoryBlock({
   )
 }
 
+type WithBrewery = { breweryId: string; breweryName: string }
+
+function groupByBrewery<T extends WithBrewery>(
+  items: T[]
+): { breweryId: string; breweryName: string; items: T[] }[] {
+  const map = new Map<string, { breweryId: string; breweryName: string; items: T[] }>()
+  for (const item of items) {
+    const existing = map.get(item.breweryId)
+    if (existing) {
+      existing.items.push(item)
+    } else {
+      map.set(item.breweryId, {
+        breweryId: item.breweryId,
+        breweryName: item.breweryName || 'Unknown brewery',
+        items: [item],
+      })
+    }
+  }
+  return [...map.values()].sort((a, b) => a.breweryName.localeCompare(b.breweryName))
+}
+
+function BreweryPairSection({
+  breweryName,
+  left,
+  right,
+}: {
+  breweryName: string
+  left: ReactNode
+  right: ReactNode
+}) {
+  return (
+    <div
+      className="border rounded-lg overflow-hidden"
+      style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
+    >
+      <div
+        className="px-3 py-2 border-b"
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
+      >
+        <h4
+          className="text-sm font-semibold leading-snug"
+          style={{ color: Colors.primaryDark, fontFamily: 'var(--font-fjalla-one)' }}
+        >
+          {breweryName}
+        </h4>
+      </div>
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:divide-x"
+        style={{ borderColor: Colors.dividerLight }}
+      >
+        <div className="min-w-0 border-b sm:border-b-0" style={{ borderColor: Colors.dividerLight }}>
+          {left}
+        </div>
+        <div className="min-w-0">{right}</div>
+      </div>
+    </div>
+  )
+}
+
+function PairColumn({
+  label,
+  action,
+  children,
+}: {
+  label: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col min-h-0">
+      <div
+        className="px-3 py-1.5 border-b text-xs font-semibold flex items-center justify-between gap-2"
+        style={{
+          borderColor: Colors.dividerLight,
+          color: Colors.textSecondary,
+          backgroundColor: Colors.surfaceMedium,
+        }}
+      >
+        <span className="min-w-0">{label}</span>
+        {action}
+      </div>
+      <AdminColumnScrollBody>{children}</AdminColumnScrollBody>
+    </div>
+  )
+}
+
 function CountStat({
   label,
   value,
@@ -766,83 +852,201 @@ export function BreweriesEventsUpcomingByDate({
                 ) : null}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <CategoryBlock
-                  label={`Proposed events (${dayProposed.length})`}
-                  action={
-                    <AdminDeleteAllButton
-                      count={dayProposed.length}
-                      itemLabel="proposed events"
-                      disabled={pendingKey !== null}
-                      loading={pendingKey === rejectAllProposedKey}
-                      onConfirm={() =>
-                        handleRejectAllProposed(
-                          dayProposed.map((p) => p.id),
-                          rejectAllProposedKey
-                        )
-                      }
-                    />
-                  }
+                <div
+                  className="border rounded-lg overflow-hidden min-w-0"
+                  style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
                 >
-                  {dayProposed.length === 0 ? (
-                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                      No proposed events
-                    </p>
-                  ) : (
-                    dayProposed.map((p) => (
-                      <ProposedEventAdminCard
-                        key={p.id}
-                        proposed={p}
-                        breweryName={p.breweryName}
-                        showBreweryName
-                        onEdit={() => setEditingProposed({ ...p })}
-                        onAccept={() => handleAcceptProposed(p)}
-                        onReject={() => handleRejectProposed(p.id)}
-                        actionsDisabled={pendingKey !== null}
-                        acceptLoading={pendingKey === acceptProposedKey(p.id)}
-                        rejectLoading={pendingKey === rejectProposedKey(p.id)}
+                  <AdminSectionHeader
+                    label={`Proposed events (${dayProposed.length})`}
+                    action={
+                      <AdminDeleteAllButton
+                        count={dayProposed.length}
+                        itemLabel="proposed events"
+                        disabled={pendingKey !== null}
+                        loading={pendingKey === rejectAllProposedKey}
+                        onConfirm={() =>
+                          handleRejectAllProposed(
+                            dayProposed.map((p) => p.id),
+                            rejectAllProposedKey
+                          )
+                        }
                       />
-                    ))
-                  )}
-                </CategoryBlock>
+                    }
+                  />
+                  <div
+                    className="p-3 flex flex-col gap-3 max-h-[32rem] overflow-y-auto"
+                    style={{ backgroundColor: Colors.surfaceMedium }}
+                  >
+                    {dayProposed.length === 0 ? (
+                      <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
+                        No proposed events
+                      </p>
+                    ) : (
+                      groupByBrewery(dayProposed).map(({ breweryId, breweryName, items: proposed }) => {
+                        const liveEvents = dayEvents.filter((e) => e.breweryId === breweryId)
+                        const rejectBreweryKey = `reject-all:proposed:${breweryId}:${ymd}`
+                        return (
+                          <BreweryPairSection
+                            key={`proposed-events-${breweryId}`}
+                            breweryName={breweryName}
+                            left={
+                              <PairColumn
+                                label={`Proposed (${proposed.length})`}
+                                action={
+                                  <AdminDeleteAllButton
+                                    count={proposed.length}
+                                    itemLabel="proposed events"
+                                    scopeLabel={breweryName}
+                                    disabled={pendingKey !== null}
+                                    loading={pendingKey === rejectBreweryKey}
+                                    onConfirm={() =>
+                                      handleRejectAllProposed(
+                                        proposed.map((p) => p.id),
+                                        rejectBreweryKey
+                                      )
+                                    }
+                                  />
+                                }
+                              >
+                                {proposed.map((p) => (
+                                  <ProposedEventAdminCard
+                                    key={p.id}
+                                    proposed={p}
+                                    onEdit={() => setEditingProposed({ ...p })}
+                                    onAccept={() => handleAcceptProposed(p)}
+                                    onReject={() => handleRejectProposed(p.id)}
+                                    actionsDisabled={pendingKey !== null}
+                                    acceptLoading={pendingKey === acceptProposedKey(p.id)}
+                                    rejectLoading={pendingKey === rejectProposedKey(p.id)}
+                                  />
+                                ))}
+                              </PairColumn>
+                            }
+                            right={
+                              <PairColumn label={`Also live today (${liveEvents.length})`}>
+                                {liveEvents.length === 0 ? (
+                                  <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                    No other events today
+                                  </p>
+                                ) : (
+                                  liveEvents.map((e) => (
+                                    <EventAdminCard
+                                      key={`compare-event-${e.id}-${e.event_date}`}
+                                      event={e}
+                                      onEdit={() => setEditing({ ...e })}
+                                      onDelete={() => handleDeleteEvent(e.id)}
+                                      actionsDisabled={pendingKey !== null}
+                                      deleteLoading={pendingKey === `delete:event:${e.id}`}
+                                    />
+                                  ))
+                                )}
+                              </PairColumn>
+                            }
+                          />
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
 
-                <CategoryBlock
-                  label={`Proposed beers (${dayProposedBeers.length})`}
-                  action={
-                    <AdminDeleteAllButton
-                      count={dayProposedBeers.length}
-                      itemLabel="proposed beer releases"
-                      disabled={pendingKey !== null}
-                      loading={pendingKey === rejectAllProposedBeersKey}
-                      onConfirm={() =>
-                        handleRejectAllProposedBeers(
-                          dayProposedBeers.map((p) => p.id),
-                          rejectAllProposedBeersKey
-                        )
-                      }
-                    />
-                  }
+                <div
+                  className="border rounded-lg overflow-hidden min-w-0"
+                  style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
                 >
-                  {dayProposedBeers.length === 0 ? (
-                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
-                      No proposed beer releases
-                    </p>
-                  ) : (
-                    dayProposedBeers.map((p) => (
-                      <ProposedBeerReleaseAdminCard
-                        key={p.id}
-                        proposed={p}
-                        breweryName={p.breweryName}
-                        showBreweryName
-                        onEdit={() => setEditingProposedBeer({ ...p })}
-                        onAccept={() => handleAcceptProposedBeer(p)}
-                        onReject={() => handleRejectProposedBeer(p.id)}
-                        actionsDisabled={pendingKey !== null}
-                        acceptLoading={pendingKey === acceptProposedBeerKey(p.id)}
-                        rejectLoading={pendingKey === rejectProposedBeerKey(p.id)}
+                  <AdminSectionHeader
+                    label={`Proposed beers (${dayProposedBeers.length})`}
+                    action={
+                      <AdminDeleteAllButton
+                        count={dayProposedBeers.length}
+                        itemLabel="proposed beer releases"
+                        disabled={pendingKey !== null}
+                        loading={pendingKey === rejectAllProposedBeersKey}
+                        onConfirm={() =>
+                          handleRejectAllProposedBeers(
+                            dayProposedBeers.map((p) => p.id),
+                            rejectAllProposedBeersKey
+                          )
+                        }
                       />
-                    ))
-                  )}
-                </CategoryBlock>
+                    }
+                  />
+                  <div
+                    className="p-3 flex flex-col gap-3 max-h-[32rem] overflow-y-auto"
+                    style={{ backgroundColor: Colors.surfaceMedium }}
+                  >
+                    {dayProposedBeers.length === 0 ? (
+                      <p className="text-sm px-1" style={{ color: Colors.textSecondary }}>
+                        No proposed beer releases
+                      </p>
+                    ) : (
+                      groupByBrewery(dayProposedBeers).map(
+                        ({ breweryId, breweryName, items: proposed }) => {
+                          const liveReleases = dayReleases.filter((r) => r.breweryId === breweryId)
+                          const rejectBreweryKey = `reject-all:proposed-beer:${breweryId}:${ymd}`
+                          return (
+                            <BreweryPairSection
+                              key={`proposed-beers-${breweryId}`}
+                              breweryName={breweryName}
+                              left={
+                                <PairColumn
+                                  label={`Proposed (${proposed.length})`}
+                                  action={
+                                    <AdminDeleteAllButton
+                                      count={proposed.length}
+                                      itemLabel="proposed beer releases"
+                                      scopeLabel={breweryName}
+                                      disabled={pendingKey !== null}
+                                      loading={pendingKey === rejectBreweryKey}
+                                      onConfirm={() =>
+                                        handleRejectAllProposedBeers(
+                                          proposed.map((p) => p.id),
+                                          rejectBreweryKey
+                                        )
+                                      }
+                                    />
+                                  }
+                                >
+                                  {proposed.map((p) => (
+                                    <ProposedBeerReleaseAdminCard
+                                      key={p.id}
+                                      proposed={p}
+                                      onEdit={() => setEditingProposedBeer({ ...p })}
+                                      onAccept={() => handleAcceptProposedBeer(p)}
+                                      onReject={() => handleRejectProposedBeer(p.id)}
+                                      actionsDisabled={pendingKey !== null}
+                                      acceptLoading={pendingKey === acceptProposedBeerKey(p.id)}
+                                      rejectLoading={pendingKey === rejectProposedBeerKey(p.id)}
+                                    />
+                                  ))}
+                                </PairColumn>
+                              }
+                              right={
+                                <PairColumn label={`Also live today (${liveReleases.length})`}>
+                                  {liveReleases.length === 0 ? (
+                                    <p className="p-3 text-sm" style={{ color: Colors.textSecondary }}>
+                                      No other releases today
+                                    </p>
+                                  ) : (
+                                    liveReleases.map((r) => (
+                                      <BeerReleaseAdminCard
+                                        key={`compare-release-${r.id}`}
+                                        release={r}
+                                        onEdit={() => setEditingRelease({ ...r })}
+                                        onDelete={() => handleDeleteRelease(r.id)}
+                                        actionsDisabled={pendingKey !== null}
+                                        deleteLoading={pendingKey === `delete:release:${r.id}`}
+                                      />
+                                    ))
+                                  )}
+                                </PairColumn>
+                              }
+                            />
+                          )
+                        }
+                      )
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

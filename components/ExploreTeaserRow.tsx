@@ -5,9 +5,12 @@ import { Colors } from '@/lib/colors'
 export type ExploreTeaserBreweryStatus = {
   hoursOpen: boolean
   hoursLabel: string
+  /** Today's open–close window shown under the open/closed icon. */
+  hoursRange?: string | null
   releaseName?: string | null
   eventTitle?: string | null
   eventIconSrc?: string | null
+  happyHourTitle?: string | null
 }
 
 export type ExploreTeaserItem = {
@@ -50,7 +53,8 @@ function StatusIcon({ src, active }: { src: string; active: boolean }) {
 function BreweryStatusBlock({ status }: { status: ExploreTeaserBreweryStatus }) {
   const hasRelease = Boolean(status.releaseName)
   const hasEvent = Boolean(status.eventTitle)
-  if (!hasRelease && !hasEvent) return null
+  const hasHappyHour = Boolean(status.happyHourTitle)
+  if (!hasRelease && !hasEvent && !hasHappyHour) return null
 
   return (
     <span className="mt-2 flex flex-col gap-1.5">
@@ -76,6 +80,19 @@ function BreweryStatusBlock({ status }: { status: ExploreTeaserBreweryStatus }) 
             title={status.eventTitle ?? undefined}
           >
             {status.eventTitle}
+          </span>
+        </span>
+      ) : null}
+
+      {hasHappyHour ? (
+        <span className="flex min-w-0 items-center gap-2">
+          <StatusIcon src="/happy-hour.svg" active />
+          <span
+            className="truncate text-xs font-semibold uppercase tracking-[0.14em]"
+            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+            title={status.happyHourTitle ?? undefined}
+          >
+            {status.happyHourTitle}
           </span>
         </span>
       ) : null}
@@ -109,41 +126,54 @@ export function ExploreTeaserRow({ item }: { item: ExploreTeaserItem }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-3">
-          <span
-            className="min-w-0 truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
-            style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
-          >
-            {item.title}
+          <span className="min-w-0 flex-1">
+            <span
+              className="block truncate text-lg font-bold uppercase tracking-wide sm:text-xl"
+              style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+            >
+              {item.title}
+            </span>
+            {item.subtitle ? (
+              <span
+                className="mt-0.5 block truncate text-sm"
+                style={{
+                  color: 'rgba(249, 247, 242, 0.72)',
+                  fontFamily: 'var(--font-be-vietnam-pro)',
+                }}
+              >
+                {item.subtitle}
+              </span>
+            ) : null}
           </span>
           {item.breweryStatus ? (
-            <span
-              className="relative mt-0.5 shrink-0"
-              style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
-              title={item.breweryStatus.hoursLabel}
-              aria-label={item.breweryStatus.hoursLabel}
-            >
-              <Image
-                src={item.breweryStatus.hoursOpen ? '/open.svg' : '/closed-sign.svg'}
-                alt=""
-                fill
-                className="object-contain"
-                style={{ filter: 'brightness(0) invert(1)' }}
-                aria-hidden
-              />
+            <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
+              <span
+                className="relative"
+                style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
+                title={item.breweryStatus.hoursLabel}
+                aria-label={item.breweryStatus.hoursLabel}
+              >
+                <Image
+                  src={item.breweryStatus.hoursOpen ? '/open.svg' : '/closed-sign.svg'}
+                  alt=""
+                  fill
+                  className="object-contain"
+                  style={{ filter: 'brightness(0) invert(1)' }}
+                  aria-hidden
+                />
+              </span>
+              <span
+                className="max-w-[6.5rem] text-right text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] sm:text-[11px]"
+                style={{
+                  color: 'rgba(249, 247, 242, 0.78)',
+                  fontFamily: 'var(--font-be-vietnam-pro)',
+                }}
+              >
+                {item.breweryStatus.hoursRange || item.breweryStatus.hoursLabel}
+              </span>
             </span>
           ) : null}
         </span>
-        {item.subtitle ? (
-          <span
-            className="mt-0.5 block truncate text-sm"
-            style={{
-              color: 'rgba(249, 247, 242, 0.72)',
-              fontFamily: 'var(--font-be-vietnam-pro)',
-            }}
-          >
-            {item.subtitle}
-          </span>
-        ) : null}
         {item.description ? (
           <span
             className="mt-1.5 block text-sm leading-snug line-clamp-2"

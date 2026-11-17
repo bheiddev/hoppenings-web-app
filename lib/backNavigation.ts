@@ -1,4 +1,8 @@
-import { ACTIVITY_CONFIG, ActivitySlug, CITY_CONFIG, CitySlug } from '@/lib/seoCities'
+import {
+  ACTIVITY_CONFIG,
+  ActivitySlug,
+  displayNameForRegionSlug,
+} from '@/lib/seoCities'
 import { getPreviousPath } from '@/lib/navigationHistory'
 
 function slugToTitle(slug: string): string {
@@ -7,6 +11,10 @@ function slugToTitle(slug: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+function regionLabelFromSlug(slug: string): string {
+  return displayNameForRegionSlug(slug, slugToTitle(slug))
 }
 
 export function pathToLabel(path: string): string {
@@ -22,41 +30,33 @@ export function pathToLabel(path: string): string {
   if (normalized === '/events/signup') return 'Event Sign Up'
 
   const cityMatch = normalized.match(/^\/([^/]+)$/)
-  if (cityMatch && cityMatch[1] in CITY_CONFIG) {
-    return CITY_CONFIG[cityMatch[1] as CitySlug].name
+  if (cityMatch) {
+    return regionLabelFromSlug(cityMatch[1])
   }
 
   const cityEventsMatch = normalized.match(/^\/([^/]+)\/events$/)
-  if (cityEventsMatch && cityEventsMatch[1] in CITY_CONFIG) {
-    const cityName = CITY_CONFIG[cityEventsMatch[1] as CitySlug].name
-    return `Events in ${cityName}`
+  if (cityEventsMatch) {
+    return `Events in ${regionLabelFromSlug(cityEventsMatch[1])}`
   }
 
   const cityBreweriesMatch = normalized.match(/^\/([^/]+)\/breweries$/)
-  if (cityBreweriesMatch && cityBreweriesMatch[1] in CITY_CONFIG) {
-    const cityName = CITY_CONFIG[cityBreweriesMatch[1] as CitySlug].name
-    return `Breweries in ${cityName}`
+  if (cityBreweriesMatch) {
+    return `Breweries in ${regionLabelFromSlug(cityBreweriesMatch[1])}`
   }
 
   const cityReleasesMatch = normalized.match(/^\/([^/]+)\/releases$/)
-  if (cityReleasesMatch && cityReleasesMatch[1] in CITY_CONFIG) {
-    const cityName = CITY_CONFIG[cityReleasesMatch[1] as CitySlug].name
-    return `Beer Releases in ${cityName}`
+  if (cityReleasesMatch) {
+    return `Beer Releases in ${regionLabelFromSlug(cityReleasesMatch[1])}`
   }
 
   const cityHappyHoursMatch = normalized.match(/^\/([^/]+)\/happy-hours$/)
-  if (cityHappyHoursMatch && cityHappyHoursMatch[1] in CITY_CONFIG) {
-    const cityName = CITY_CONFIG[cityHappyHoursMatch[1] as CitySlug].name
-    return `Happy Hours in ${cityName}`
+  if (cityHappyHoursMatch) {
+    return `Happy Hours in ${regionLabelFromSlug(cityHappyHoursMatch[1])}`
   }
 
   const cityActivityMatch = normalized.match(/^\/([^/]+)\/([^/]+)$/)
-  if (
-    cityActivityMatch &&
-    cityActivityMatch[1] in CITY_CONFIG &&
-    cityActivityMatch[2] in ACTIVITY_CONFIG
-  ) {
-    const cityName = CITY_CONFIG[cityActivityMatch[1] as CitySlug].name
+  if (cityActivityMatch && cityActivityMatch[2] in ACTIVITY_CONFIG) {
+    const cityName = regionLabelFromSlug(cityActivityMatch[1])
     const activityLabel = ACTIVITY_CONFIG[cityActivityMatch[2] as ActivitySlug].label
     return `${activityLabel} in ${cityName}`
   }

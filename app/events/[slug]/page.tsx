@@ -3,15 +3,20 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs, eventIsRecurring } from '@/lib/events'
 import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
 import { resolveEventSlugRedirect } from '@/lib/slugRedirects'
-import { formatEventDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
+import { formatEventDate, formatReleaseDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
 import { supabase } from '@/lib/supabase'
-import { generateBrewerySlug, generateEventSlug } from '@/lib/slug'
+import { generateBrewerySlug, generateEventSlug, generateReleaseSlug } from '@/lib/slug'
 import {
   filterEventsForCity,
   getRegionDisplayName,
   inferCityFromRegionOrLocation,
 } from '@/lib/seoCities'
+import { getBreweryHappyHourDeals, getBreweryReleases } from '@/lib/breweries'
+import {
+  formatHappyHourWindow,
+  getHappyHourDealsForCalendarDate,
+} from '@/lib/happyHourDeals'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BackLink } from '@/components/BackLink'
@@ -27,17 +32,9 @@ function cityFromLocation(location?: string | null): string {
   return location.split(',')[0].trim() || 'Colorado'
 }
 
-function cityPagePath(city: string): string {
-  const slug = city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (slug === 'boulder' || slug === 'longmont') return '/boulder-longmont/events'
-  const allowed = new Set([
-    'colorado-springs',
-    'fort-collins',
-    'boulder-longmont',
-    'denver',
-    'castle-rock',
-  ])
-  return allowed.has(slug) ? `/${slug}/events` : '/events'
+function cityPagePath(citySlug: string | null): string {
+  if (!citySlug) return '/events'
+  return `/${citySlug}/events`
 }
 
 function buildEventDateTime(date: string, time: string | null | undefined): string | undefined {
@@ -163,6 +160,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     console.error('Error fetching brewery:', error)
   }
 
+  const breweryId = brewery?.id || event.brewery_id
+  const [happyHourDeals, breweryReleases, allUpcoming] = await Promise.all([
+    getBreweryHappyHourDeals(breweryId),
+    getBreweryReleases(breweryId),
+    getAllEventsWithSlugs(),
+  ])
+  const eventDayHappyHours = getHappyHourDealsForCalendarDate(happyHourDeals, event.event_date).slice(
+    0,
+    4
+  )
+  const featuredReleases = breweryReleases.slice(0, 4)
+
   const isPastEvent = isEventInPast(event.event_date)
   const city = cityFromLocation(event.breweries.location)
   const citySlug = inferCityFromRegionOrLocation(
@@ -175,7 +184,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     city
   )
 
-  const allUpcoming = await getAllEventsWithSlugs()
   const relatedEvents = (
     citySlug
       ? filterEventsForCity(allUpcoming, citySlug)
@@ -191,7 +199,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
   const breweryName = brewery?.name || event.breweries.name
   const breweryLocation = brewery?.location || event.breweries.location
-  const breweryId = brewery?.id || event.brewery_id
   const brewerySlug = generateBrewerySlug(breweryName, breweryLocation, breweryId)
 
   const eventJsonLd = {
@@ -327,6 +334,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </h2>
           </Link>
 
+          {brewery?.image_url ? (
+            <Link href={`/breweries/${brewerySlug}`} className="group mb-8 block">
+              <div className="relative h-56 w-full overflow-hidden sm:h-72">
+                <Image
+                  src={brewery.image_url}
+                  alt={breweryName}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  sizes="(max-width: 896px) 100vw, 896px"
+                  unoptimized
+                />
+              </div>
+            </Link>
+          ) : null}
+
           {brewery?.description ? (
             <p
               className="mb-8 max-w-2xl text-base leading-relaxed"
@@ -336,19 +358,100 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </p>
           ) : null}
 
+          {eventDayHappyHours.length > 0 ? (
+            <div className="mb-8">
+              <p
+                className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em]"
+                style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+              >
+                Happy Hours
+              </p>
+              <ul className="flex max-w-2xl flex-col">
+                {eventDayHappyHours.map((deal) => (
+                  <li key={deal.id} className="border-t border-white/10 py-3">
+                    <p
+                      className="text-base font-bold uppercase tracking-wide"
+                      style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                    >
+                      {deal.title?.trim() || 'Happy Hour'}
+                    </p>
+                    <p
+                      className="mt-1 text-sm"
+                      style={{
+                        color: 'rgba(249, 247, 242, 0.72)',
+                        fontFamily: 'var(--font-be-vietnam-pro)',
+                      }}
+                    >
+                      {formatHappyHourWindow(deal.time_start, deal.time_end)}
+                      {deal.description?.trim() ? ` · ${deal.description.trim()}` : ''}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {featuredReleases.length > 0 ? (
+            <div className="mb-8">
+              <p
+                className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em]"
+                style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+              >
+                Beer Releases
+              </p>
+              <ul className="flex max-w-2xl flex-col">
+                {featuredReleases.map((release) => {
+                  const releaseSlug = generateReleaseSlug(
+                    release.beer_name,
+                    release.Type,
+                    breweryName,
+                    breweryLocation || null,
+                    release.id
+                  )
+                  return (
+                    <li key={release.id} className="border-t border-white/10">
+                      <Link
+                        href={`/releases/${releaseSlug}`}
+                        className="block py-3 transition-opacity hover:opacity-85"
+                      >
+                        <span
+                          className="block text-base font-bold uppercase tracking-wide"
+                          style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+                        >
+                          {release.beer_name}
+                        </span>
+                        <span
+                          className="mt-1 block text-sm"
+                          style={{
+                            color: 'rgba(249, 247, 242, 0.72)',
+                            fontFamily: 'var(--font-be-vietnam-pro)',
+                          }}
+                        >
+                          {[release.Type, formatReleaseDate(release.release_date)]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : null}
+
           <PoshCta href={`/breweries/${brewerySlug}`}>View Brewery</PoshCta>
         </div>
 
         <div className="mt-14 border-t border-white/10 pt-10">
-          <PoshSectionTitle>Explore More</PoshSectionTitle>
+          <PoshSectionTitle>Explore More in {regionName}</PoshSectionTitle>
           <ul className="flex flex-col">
             <li>
               <Link
-                href={cityPagePath(city)}
+                href={cityPagePath(citySlug)}
                 className="block border-t border-white/10 py-4 text-lg font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
                 style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
               >
-                More events in {city}
+                More events
               </Link>
             </li>
             {relatedEvents.map((rel) => {

@@ -4,7 +4,12 @@ import { BackLink } from '@/components/BackLink'
 import { ExploreTeaserRow } from '@/components/ExploreTeaserRow'
 import { PoshEyebrow, PoshPageShell } from '@/components/PoshPageShell'
 import { Colors } from '@/lib/colors'
-import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterEventsForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
+} from '@/lib/seoCities'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import {
   formatRelativeEventDateHeading,
@@ -20,7 +25,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).map((city) => ({ city }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
 export async function generateMetadata({
@@ -29,9 +35,10 @@ export async function generateMetadata({
   params: Promise<{ city: string }>
 }): Promise<Metadata> {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) return { title: 'Not Found | Hoppenings' }
+  const region = await resolvePublicRegion(city)
+  if (!region) return { title: 'Not Found | Hoppenings' }
 
-  const cityName = CITY_CONFIG[city as CitySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const title = `Brewery Events in ${cityName} | Hoppenings`
   const description = `Find upcoming brewery events, trivia nights, run clubs, and live music in ${cityName}.`
 
@@ -49,10 +56,11 @@ export default async function CityEventsPage({
   params: Promise<{ city: string }>
 }) {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) notFound()
+  const region = await resolvePublicRegion(city)
+  if (!region) notFound()
 
-  const citySlug = city as CitySlug
-  const cityName = CITY_CONFIG[citySlug].name
+  const citySlug = region.slug
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const all = await getAllEventsWithSlugs()
   const cityEvents = filterEventsForCity(all, citySlug)
     .filter((e) => !isEventInPast(e.event_date))

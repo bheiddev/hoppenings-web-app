@@ -27,12 +27,13 @@ import { flattenReleaseSections, splitReleasesForDisplay } from '@/lib/releaseSe
 import {
   ACTIVITY_CONFIG,
   ActivitySlug,
-  CITY_CONFIG,
-  CitySlug,
+  displayNameForRegionSlug,
   filterBreweriesForCity,
   filterEventsForActivity,
   filterEventsForCity,
   filterReleasesForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
 } from '@/lib/seoCities'
 import {
   formatActivityDayGroupLabels,
@@ -45,12 +46,11 @@ import {
 } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
-/** Breweries stay paged on the region hub; events and releases show in full. */
-const BREWERY_PAGE_SIZE = 5
 const EVENT_DAY_HORIZON = 14
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).map((city) => ({ city }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
 export async function generateMetadata({
@@ -59,10 +59,11 @@ export async function generateMetadata({
   params: Promise<{ city: string }>
 }): Promise<Metadata> {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) return { title: 'City Not Found | Hoppenings' }
-  const c = CITY_CONFIG[city as CitySlug]
-  const title = `Brewery Events in ${c.name}, Colorado | Hoppenings`
-  const description = `Find breweries, beer releases, trivia nights, run clubs, and live music in ${c.name}. Updated local listings from Hoppenings.`
+  const region = await resolvePublicRegion(city)
+  if (!region) return { title: 'City Not Found | Hoppenings' }
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
+  const title = `Brewery Events in ${cityName}, Colorado | Hoppenings`
+  const description = `Find breweries, beer releases, trivia nights, run clubs, and live music in ${cityName}. Updated local listings from Hoppenings.`
   return {
     title,
     description,
@@ -100,9 +101,10 @@ export default async function CityLandingPage({
   params: Promise<{ city: string }>
 }) {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) notFound()
-  const citySlug = city as CitySlug
-  const cityConfig = CITY_CONFIG[citySlug]
+  const region = await resolvePublicRegion(city)
+  if (!region) notFound()
+  const citySlug = region.slug
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
 
   const [breweries, events, releases, breweryCardContext] = await Promise.all([
     getAllBreweriesWithSlugs(),
@@ -138,7 +140,7 @@ export default async function CityLandingPage({
     return {
       dateLabel,
       items: dayEvents.map(eventTeaser),
-      emptyMessage: `No events listed for ${dateLabel} in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
+      emptyMessage: `No events listed for ${dateLabel} in ${cityName}. Browse the full calendar for what's coming up.`,
     }
   })
 
@@ -146,7 +148,7 @@ export default async function CityLandingPage({
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const breweryEmptyMessage = `No breweries currently listed in ${cityConfig.name}.`
+  const breweryEmptyMessage = `No breweries currently listed in ${cityName}.`
   const breweryTeasers: ExploreTeaserItem[] = sortedCityBreweries.map((brewery) => {
     const context = getBreweryCardContext(breweryCardContext, brewery.id)
     const hoursLabel = getBreweryHoursStatusLabel(context.hoursStatus)
@@ -160,43 +162,15 @@ export default async function CityLandingPage({
       breweryStatus: {
         hoursOpen,
         hoursLabel,
+        hoursRange: context.hoursRange,
         releaseName:
           context.hasNewRelease && context.releaseName ? context.releaseName : null,
         eventTitle: context.todayEventTitle,
         eventIconSrc: BREWERY_EVENT_ICON_SRC[context.todayEventIcon],
+        happyHourTitle: context.happyHourTitle,
       },
     }
   })
-
-  const breweryPages: ExploreDayPage[] =
-    breweryTeasers.length === 0
-      ? [
-          {
-            dateLabel: `Taprooms in ${cityConfig.name}`,
-            items: [],
-            emptyMessage: breweryEmptyMessage,
-          },
-        ]
-      : Array.from(
-          { length: Math.ceil(breweryTeasers.length / BREWERY_PAGE_SIZE) },
-          (_, pageIndex) => {
-            const start = pageIndex * BREWERY_PAGE_SIZE
-            const pageItems = breweryTeasers.slice(start, start + BREWERY_PAGE_SIZE)
-            const first = pageItems[0]?.title ?? ''
-            const last = pageItems[pageItems.length - 1]?.title ?? first
-            const dateLabel =
-              breweryTeasers.length <= BREWERY_PAGE_SIZE
-                ? `Taprooms in ${cityConfig.name}`
-                : first === last
-                  ? first
-                  : `${first} – ${last}`
-            return {
-              dateLabel,
-              items: pageItems,
-              emptyMessage: breweryEmptyMessage,
-            }
-          }
-        )
 
   const releaseTeasers: ExploreTeaserItem[] = flattenReleaseSections(
     splitReleasesForDisplay(cityReleases)
@@ -238,7 +212,7 @@ export default async function CityLandingPage({
     return {
       dateLabel,
       items,
-      emptyMessage: `No happy hours listed for ${dateLabel} in ${cityConfig.name}.`,
+      emptyMessage: `No happy hours listed for ${dateLabel} in ${cityName}.`,
     }
   })
 
@@ -250,7 +224,7 @@ export default async function CityLandingPage({
       panelLabel: eventDayPages[0]?.dateLabel ?? 'Events',
       emptyMessage:
         eventDayPages[0]?.emptyMessage ??
-        `No events listed in ${cityConfig.name}. Browse the full calendar for what's coming up.`,
+        `No events listed in ${cityName}. Browse the full calendar for what's coming up.`,
       items: eventDayPages[0]?.items ?? [],
       dayPages: eventDayPages,
     },
@@ -258,17 +232,16 @@ export default async function CityLandingPage({
       id: 'breweries',
       label: 'Breweries',
       href: `/${citySlug}/breweries`,
-      panelLabel: breweryPages[0]?.dateLabel ?? `Taprooms in ${cityConfig.name}`,
+      panelLabel: `Taprooms in ${cityName}`,
       emptyMessage: breweryEmptyMessage,
-      items: breweryPages[0]?.items ?? [],
-      dayPages: breweryPages,
+      items: breweryTeasers,
     },
     {
       id: 'releases',
       label: 'Beer Releases',
       href: `/${citySlug}/releases`,
       panelLabel: 'Fresh on tap',
-      emptyMessage: `No beer releases listed right now in ${cityConfig.name}.`,
+      emptyMessage: `No beer releases listed right now in ${cityName}.`,
       items: releaseTeasers,
     },
     {
@@ -278,7 +251,7 @@ export default async function CityLandingPage({
       panelLabel: happyHourDayPages[0]?.dateLabel ?? 'Happy Hours',
       emptyMessage:
         happyHourDayPages[0]?.emptyMessage ??
-        `No happy hours listed in ${cityConfig.name}.`,
+        `No happy hours listed in ${cityName}.`,
       items: happyHourDayPages[0]?.items ?? [],
       dayPages: happyHourDayPages,
     },
@@ -312,8 +285,8 @@ export default async function CityLandingPage({
         id: activitySlug,
         label: activity.label,
         href: `/${citySlug}/${activitySlug}`,
-        panelLabel: `Upcoming in ${cityConfig.name}`,
-        emptyMessage: `No upcoming ${activity.label.toLowerCase()} listed in ${cityConfig.name}.`,
+        panelLabel: `Upcoming in ${cityName}`,
+        emptyMessage: `No upcoming ${activity.label.toLowerCase()} listed in ${cityName}.`,
         items: [],
         dayGroups,
       }
@@ -326,18 +299,18 @@ export default async function CityLandingPage({
     mainEntity: [
       {
         '@type': 'Question',
-        name: `Where can I find trivia nights in ${cityConfig.name}?`,
+        name: `Where can I find trivia nights in ${cityName}?`,
         acceptedAnswer: {
           '@type': 'Answer',
-          text: `Use Hoppenings to browse weekly trivia nights and recurring brewery events in ${cityConfig.name}.`,
+          text: `Use Hoppenings to browse weekly trivia nights and recurring brewery events in ${cityName}.`,
         },
       },
       {
         '@type': 'Question',
-        name: `What are the best breweries in ${cityConfig.name}?`,
+        name: `What are the best breweries in ${cityName}?`,
         acceptedAnswer: {
           '@type': 'Answer',
-          text: `Hoppenings lists local breweries in ${cityConfig.name} with details, events, and new releases.`,
+          text: `Hoppenings lists local breweries in ${cityName} with details, events, and new releases.`,
         },
       },
     ],
@@ -345,8 +318,8 @@ export default async function CityLandingPage({
 
   return (
     <RegionExploreLanding
-      cityName={cityConfig.name}
-      subtitle={`Select a category to preview what's on in ${cityConfig.name}, then open the full list.`}
+      cityName={cityName}
+      subtitle={`Select a category to preview what's on in ${cityName}, then open the full list.`}
       sections={sections}
     >
       <script

@@ -1,21 +1,12 @@
 import type { Metadata } from 'next'
 import { PoshLanding } from '@/components/PoshLanding'
 import {
-  getRegionBucketsFromBreweries,
-  UNASSIGNED_REGION_KEY,
-} from '@/lib/breweriesEventsRegions'
-import { CITY_CONFIG, type CitySlug } from '@/lib/seoCities'
+  displayNameForRegionSlug,
+  listPublicRegionBuckets,
+  REGION_LINK_ORDER,
+} from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
-
-/** Keep familiar cities first; any newer regions follow alphabetically. */
-const REGION_LINK_ORDER: string[] = [
-  'colorado-springs',
-  'fort-collins',
-  'boulder-longmont',
-  'denver',
-  'castle-rock',
-]
 
 export const dynamic = 'force-dynamic'
 
@@ -31,20 +22,13 @@ export const metadata: Metadata = {
 }
 
 export default async function Home() {
-  const regionBuckets = await getRegionBucketsFromBreweries()
+  const regionBuckets = await listPublicRegionBuckets()
   const regionLinks = regionBuckets
-    .filter((bucket) => bucket.normKey !== UNASSIGNED_REGION_KEY)
-    .map((bucket) => {
-      const knownName =
-        bucket.slug in CITY_CONFIG
-          ? CITY_CONFIG[bucket.slug as CitySlug].name
-          : null
-      return {
-        label: knownName ?? bucket.displayLabel,
-        href: `/${bucket.slug}`,
-        slug: bucket.slug,
-      }
-    })
+    .map((bucket) => ({
+      label: displayNameForRegionSlug(bucket.slug, bucket.displayLabel),
+      href: `/${bucket.slug}`,
+      slug: bucket.slug,
+    }))
     .sort((a, b) => {
       const ai = REGION_LINK_ORDER.indexOf(a.slug)
       const bi = REGION_LINK_ORDER.indexOf(b.slug)

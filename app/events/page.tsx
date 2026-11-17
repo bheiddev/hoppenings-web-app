@@ -5,7 +5,12 @@ import { groupEventsByDate, groupEventsByRegion, formatRelativeEventDateHeading,
 import { EventCard } from '@/components/EventCard'
 import { CardCarousel } from '@/components/CardCarousel'
 import { Colors } from '@/lib/colors'
-import { CITY_CONFIG, CitySlug, filterEventsForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterEventsForCity,
+  listPublicRegionBuckets,
+  sortRegionBucketsForDisplay,
+} from '@/lib/seoCities'
 
 export const metadata: Metadata = {
   title: 'Brewery Events in Colorado Springs, Fort Collins, Boulder | Hoppenings',
@@ -28,11 +33,12 @@ export default async function EventsPage() {
   const events = hasEnvVars ? await getExpandedEventsForListing() : []
   const groupedEvents = groupEventsByDate(events)
 
-  const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])
-    .map(([citySlug, cityConfig]) => ({
-      citySlug,
-      cityName: cityConfig.name,
-      cityEvents: filterEventsForCity(events, citySlug),
+  const regionBuckets = sortRegionBucketsForDisplay(await listPublicRegionBuckets())
+  const cityEntries = regionBuckets
+    .map((bucket) => ({
+      citySlug: bucket.slug,
+      cityName: displayNameForRegionSlug(bucket.slug, bucket.displayLabel),
+      cityEvents: filterEventsForCity(events, bucket.slug),
     }))
     .filter(({ cityEvents }) => cityEvents.length > 0)
 

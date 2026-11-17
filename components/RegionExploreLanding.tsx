@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
+import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
 import {
   ExploreTeaserRow,
   type ExploreTeaserBreweryStatus,
@@ -95,8 +96,8 @@ export function RegionExploreLanding({
   const hasDayPages = Boolean(dayPages && dayPages.length > 0)
   const hasDayGroups = Boolean(dayGroups && dayGroups.length > 0)
   const currentDay = hasDayPages ? dayPages![Math.min(dayIndex, dayPages!.length - 1)] : null
-  const pageNavPrevLabel = active?.id === 'breweries' ? 'Previous breweries' : 'Previous day'
-  const pageNavNextLabel = active?.id === 'breweries' ? 'Next breweries' : 'Next day'
+  const pageNavPrevLabel = 'Previous day'
+  const pageNavNextLabel = 'Next day'
 
   useEffect(() => {
     setDayIndex(0)
@@ -313,6 +314,10 @@ export function RegionExploreLanding({
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="relative z-[1] mx-auto max-w-7xl px-6 pb-16 sm:px-10 lg:px-12">
+        <HoppeningsAppPromo region={cityName} />
       </div>
     </div>
   )

@@ -9,10 +9,11 @@ import { getAllEventsWithSlugs } from '@/lib/events'
 import {
   ACTIVITY_CONFIG,
   ActivitySlug,
-  CITY_CONFIG,
-  CitySlug,
+  displayNameForRegionSlug,
   filterEventsForActivity,
   filterEventsForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
 } from '@/lib/seoCities'
 import {
   bucketEventsByMountainWeekDays,
@@ -24,8 +25,9 @@ import {
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).flatMap((city) =>
-    Object.keys(ACTIVITY_CONFIG).map((activity) => ({ city, activity }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.flatMap((bucket) =>
+    Object.keys(ACTIVITY_CONFIG).map((activity) => ({ city: bucket.slug, activity }))
   )
 }
 
@@ -35,10 +37,11 @@ export async function generateMetadata({
   params: Promise<{ city: string; activity: string }>
 }): Promise<Metadata> {
   const { city, activity } = await params
-  if (!(city in CITY_CONFIG) || !(activity in ACTIVITY_CONFIG)) {
+  const region = await resolvePublicRegion(city)
+  if (!region || !(activity in ACTIVITY_CONFIG)) {
     return { title: 'Not Found | Hoppenings' }
   }
-  const cityName = CITY_CONFIG[city as CitySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const activityLabel = ACTIVITY_CONFIG[activity as ActivitySlug].label
   const title = `${activityLabel} in ${cityName} | Hoppenings`
   const description = `Find ${activityLabel.toLowerCase()} at breweries in ${cityName}. Updated recurring listings and details.`
@@ -60,11 +63,12 @@ export default async function CityActivityPage({
   params: Promise<{ city: string; activity: string }>
 }) {
   const { city, activity } = await params
-  if (!(city in CITY_CONFIG) || !(activity in ACTIVITY_CONFIG)) notFound()
+  const region = await resolvePublicRegion(city)
+  if (!region || !(activity in ACTIVITY_CONFIG)) notFound()
 
-  const citySlug = city as CitySlug
+  const citySlug = region.slug
   const activitySlug = activity as ActivitySlug
-  const cityName = CITY_CONFIG[citySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const activityLabel = ACTIVITY_CONFIG[activitySlug].label
 
   const events = await getAllEventsWithSlugs()

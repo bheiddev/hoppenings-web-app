@@ -3,7 +3,12 @@ import Link from 'next/link'
 import { getAllReleasesWithSlugs, type BeerReleaseWithSlug } from '@/lib/releases'
 import { ReleaseSectionsList } from '@/components/ReleaseSectionsList'
 import { Colors } from '@/lib/colors'
-import { CITY_CONFIG, CitySlug, filterReleasesForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterReleasesForCity,
+  listPublicRegionBuckets,
+  sortRegionBucketsForDisplay,
+} from '@/lib/seoCities'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -23,11 +28,12 @@ export const metadata: Metadata = {
 
 export default async function ReleasesPage() {
   const releases = await getAllReleasesWithSlugs()
-  const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])
-    .map(([citySlug, cityConfig]) => ({
-      citySlug,
-      cityName: cityConfig.name,
-      releases: filterReleasesForCity(releases, citySlug),
+  const regionBuckets = sortRegionBucketsForDisplay(await listPublicRegionBuckets())
+  const cityEntries = regionBuckets
+    .map((bucket) => ({
+      citySlug: bucket.slug,
+      cityName: displayNameForRegionSlug(bucket.slug, bucket.displayLabel),
+      releases: filterReleasesForCity(releases, bucket.slug),
     }))
     .filter(({ releases: cityReleases }) => cityReleases.length > 0)
 

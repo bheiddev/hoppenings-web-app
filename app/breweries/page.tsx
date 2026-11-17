@@ -5,7 +5,12 @@ import { CardCarousel } from '@/components/CardCarousel'
 import { Colors } from '@/lib/colors'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
 import { getBreweryCardContext, getBreweryCardContextMap } from '@/lib/breweryCardContext'
-import { CITY_CONFIG, CitySlug, filterBreweriesForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterBreweriesForCity,
+  listPublicRegionBuckets,
+  sortRegionBucketsForDisplay,
+} from '@/lib/seoCities'
 
 export const metadata: Metadata = {
   title: 'Breweries in Colorado Springs, Fort Collins, Boulder & Longmont | Hoppenings',
@@ -23,11 +28,12 @@ export default async function BreweriesPage() {
     getAllBreweriesWithSlugs(),
     getBreweryCardContextMap(),
   ])
-  const cityEntries = (Object.entries(CITY_CONFIG) as [CitySlug, (typeof CITY_CONFIG)[CitySlug]][])
-    .map(([citySlug, cityConfig]) => ({
-      citySlug,
-      cityName: cityConfig.name,
-      breweries: filterBreweriesForCity(breweries, citySlug),
+  const regionBuckets = sortRegionBucketsForDisplay(await listPublicRegionBuckets())
+  const cityEntries = regionBuckets
+    .map((bucket) => ({
+      citySlug: bucket.slug,
+      cityName: displayNameForRegionSlug(bucket.slug, bucket.displayLabel),
+      breweries: filterBreweriesForCity(breweries, bucket.slug),
     }))
     .filter(({ breweries }) => breweries.length > 0)
 

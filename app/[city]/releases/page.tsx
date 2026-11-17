@@ -4,7 +4,12 @@ import { BackLink } from '@/components/BackLink'
 import { PoshEyebrow, PoshPageShell } from '@/components/PoshPageShell'
 import { ReleaseSectionsList } from '@/components/ReleaseSectionsList'
 import { Colors } from '@/lib/colors'
-import { CITY_CONFIG, CitySlug, filterReleasesForCity } from '@/lib/seoCities'
+import {
+  displayNameForRegionSlug,
+  filterReleasesForCity,
+  listPublicRegionBuckets,
+  resolvePublicRegion,
+} from '@/lib/seoCities'
 import { getAllReleasesWithSlugs, type BeerReleaseWithSlug } from '@/lib/releases'
 import { splitReleasesForDisplay } from '@/lib/releaseSections'
 
@@ -14,7 +19,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function generateStaticParams() {
-  return Object.keys(CITY_CONFIG).map((city) => ({ city }))
+  const buckets = await listPublicRegionBuckets()
+  return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
 export async function generateMetadata({
@@ -23,9 +29,10 @@ export async function generateMetadata({
   params: Promise<{ city: string }>
 }): Promise<Metadata> {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) return { title: 'Not Found | Hoppenings' }
+  const region = await resolvePublicRegion(city)
+  if (!region) return { title: 'Not Found | Hoppenings' }
 
-  const cityName = CITY_CONFIG[city as CitySlug].name
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const title = `Beer Releases in ${cityName} | Hoppenings`
   const description = `Track recent and upcoming beer releases from breweries in ${cityName}.`
 
@@ -43,10 +50,11 @@ export default async function CityReleasesPage({
   params: Promise<{ city: string }>
 }) {
   const { city } = await params
-  if (!(city in CITY_CONFIG)) notFound()
+  const region = await resolvePublicRegion(city)
+  if (!region) notFound()
 
-  const citySlug = city as CitySlug
-  const cityName = CITY_CONFIG[citySlug].name
+  const citySlug = region.slug
+  const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
   const releases = await getAllReleasesWithSlugs()
   const cityReleases = filterReleasesForCity(releases, citySlug)
   const leadSection = splitReleasesForDisplay(cityReleases)[0]
