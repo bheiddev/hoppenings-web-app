@@ -109,11 +109,17 @@ export function AdminColumnShell({
   )
 }
 
-/** ~4–5 admin cards visible before vertical scroll */
-export function AdminColumnScrollBody({ children }: { children: React.ReactNode }) {
+/** Scrollable admin column body. Default is tall enough for full action rows. */
+export function AdminColumnScrollBody({
+  children,
+  className = 'max-h-[40rem]',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
   return (
     <div
-      className="divide-y overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable] max-h-[26rem]"
+      className={`divide-y overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable] ${className}`}
       style={{ borderColor: Colors.dividerLight }}
     >
       {children}
