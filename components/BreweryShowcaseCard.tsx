@@ -12,15 +12,24 @@ import {
 import { BreweryCardDistance } from '@/components/BreweryCardDistance'
 
 const ICON_SIZE = 32
+const HOURS_ICON_SIZE = 48
 const ICON_INACTIVE = '#000000'
 
-function CardDetailIcon({ src, active }: { src: string; active: boolean }) {
+function CardDetailIcon({
+  src,
+  active,
+  size = ICON_SIZE,
+}: {
+  src: string
+  active: boolean
+  size?: number
+}) {
   return (
     <span
       className="shrink-0 inline-block"
       style={{
-        width: ICON_SIZE,
-        height: ICON_SIZE,
+        width: size,
+        height: size,
         backgroundColor: active ? Colors.primary : ICON_INACTIVE,
         WebkitMaskImage: `url(${src})`,
         WebkitMaskSize: 'contain',
@@ -41,15 +50,17 @@ function DetailCell({
   alt,
   label,
   active,
+  iconSize = ICON_SIZE,
 }: {
   src: string
   alt: string
   label: string
   active: boolean
+  iconSize?: number
 }) {
   return (
     <div className="flex items-start gap-3 min-w-0">
-      <CardDetailIcon src={src} active={active} />
+      <CardDetailIcon src={src} active={active} size={iconSize} />
       <span
         className="text-sm font-bold leading-snug line-clamp-2 pt-1 min-w-0"
         style={{ color: Colors.textPrimary, fontFamily: 'var(--font-fjalla-one)' }}
@@ -69,6 +80,9 @@ export function BreweryCardDetails({ context }: { context: BreweryCardContext })
   const hasEvent = Boolean(context.todayEventTitle)
   const hasFoodTruck = context.hasFoodTruckToday
   const hasHappyHour = Boolean(context.happyHourTitle)
+  const happyHourLabel = context.happyHourActive
+    ? 'Happy Hour now'
+    : context.happyHourTitle || ''
 
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 pb-5">
@@ -79,7 +93,13 @@ export function BreweryCardDetails({ context }: { context: BreweryCardContext })
         active={hasBeer}
       />
 
-      <DetailCell src={hoursIcon} alt={hoursLabel} label={hoursLabel} active={isOpen} />
+      <DetailCell
+        src={hoursIcon}
+        alt={hoursLabel}
+        label={hoursLabel}
+        active={isOpen}
+        iconSize={HOURS_ICON_SIZE}
+      />
 
       <DetailCell
         src={BREWERY_EVENT_ICON_SRC[context.todayEventIcon]}
@@ -92,7 +112,7 @@ export function BreweryCardDetails({ context }: { context: BreweryCardContext })
         <DetailCell
           src="/happy-hour.svg"
           alt="Happy hour"
-          label={context.happyHourTitle!}
+          label={happyHourLabel}
           active={context.happyHourActive || hasHappyHour}
         />
       ) : (

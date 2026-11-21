@@ -433,8 +433,9 @@ function dropRedundantAllDayGroups(groups: DealDisplayGroup[]): DealDisplayGroup
  * Collapse alike deals across weekdays into one display row — e.g. Mon–Thu · 2 – 5 PM.
  * Dedupes crawl variants by title family + normalized time window (ignores description drift).
  */
-export function groupHappyHourDealsForDisplay(deals: HappyHourDeal[]): HappyHourDealDisplayItem[] {
-  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return []
+function groupWeekdayHappyHourDealsForDisplay(
+  deals: HappyHourDeal[]
+): HappyHourDealDisplayItem[] {
   const groups = new Map<string, DealDisplayGroup>()
 
   for (const deal of sortHappyHourDeals(deals)) {
@@ -480,6 +481,45 @@ export function groupHappyHourDealsForDisplay(deals: HappyHourDeal[]): HappyHour
       if (aHappy !== bHappy) return aHappy - bHappy
       return a.title.localeCompare(b.title)
     })
+}
+
+/**
+ * Collapse alike deals across weekdays into one display row — e.g. Mon–Thu · 2 – 5 PM.
+ * Dedupes crawl variants by title family + normalized time window (ignores description drift).
+ */
+export function groupHappyHourDealsForDisplay(deals: HappyHourDeal[]): HappyHourDealDisplayItem[] {
+  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return []
+  return groupWeekdayHappyHourDealsForDisplay(deals)
+}
+
+/**
+ * Brewery detail listing: today + future specials.
+ * Dated deals keep their calendar badge; undated weekday schedules collapse into ranges.
+ */
+export function listUpcomingHappyHourDealsForBreweryPage(
+  deals: HappyHourDeal[],
+  todayYmd = getTodayMountainDateString()
+): HappyHourDealDisplayItem[] {
+  const upcoming = deals.filter((deal) => happyHourDealIsTodayOrFuture(deal, todayYmd))
+  const dated: HappyHourDeal[] = []
+  const undated: HappyHourDeal[] = []
+
+  for (const deal of upcoming) {
+    if (normalizeHappyHourDealDate(deal.deal_date)) dated.push(deal)
+    else undated.push(deal)
+  }
+
+  const datedItems = sortHappyHourDeals(dated).map((deal) => ({
+    key: deal.id,
+    badge: `${formatHappyHourDealScheduleLabel(deal)} · ${formatHappyHourWindow(
+      deal.time_start,
+      deal.time_end
+    )}`,
+    title: deal.title.trim() || 'Happy Hour',
+    detail: deal.description?.trim() || null,
+  }))
+
+  return [...datedItems, ...groupWeekdayHappyHourDealsForDisplay(undated)]
 }
 
 /** @deprecated Prefer groupHappyHourDealsForDisplay. */

@@ -21,7 +21,7 @@ import {
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 const STATUS_ICON_SIZE = 18
-const HOURS_ICON_SIZE = 40
+const HOURS_ICON_SIZE = 48
 
 function StatusIcon({
   src,
@@ -209,11 +209,11 @@ export default async function CityBreweriesPage({
                             fontFamily: 'var(--font-be-vietnam-pro)',
                           }}
                         >
-                          {context.hoursDetail || context.hoursRange || hoursLabel}
+                          {context.hoursDetail || hoursLabel}
                         </span>
                         {context.happyHourActive ? (
                           <span
-                            className="max-w-[8rem] text-right text-[11px] font-bold uppercase leading-tight tracking-[0.1em]"
+                            className="max-w-[8.5rem] text-right text-xs font-bold uppercase leading-tight tracking-[0.1em]"
                             style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
                           >
                             Happy Hour now

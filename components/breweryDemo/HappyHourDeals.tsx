@@ -1,13 +1,9 @@
 import { Colors } from '@/lib/colors'
-import {
-  groupHappyHourDealsForDisplay,
-  SHOW_HAPPY_HOUR_DEALS_ON_SITE,
-} from '@/lib/happyHourDeals'
+import { listUpcomingHappyHourDealsForBreweryPage } from '@/lib/happyHourDeals'
 import type { HappyHourDeal } from '@/types/supabase'
 
 export function HappyHourDeals({ deals }: { deals: HappyHourDeal[] }) {
-  if (!SHOW_HAPPY_HOUR_DEALS_ON_SITE) return null
-  const items = groupHappyHourDealsForDisplay(deals)
+  const items = listUpcomingHappyHourDealsForBreweryPage(deals)
   if (items.length === 0) return null
 
   return (

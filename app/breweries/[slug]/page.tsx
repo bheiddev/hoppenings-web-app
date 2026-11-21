@@ -27,7 +27,6 @@ import Link from 'next/link'
 import { HoppeningTonight } from '@/components/HoppeningTonight'
 import { MugClubCta } from '@/components/breweryDemo/MugClubCta'
 import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
-import { CollectBreweryTapPromo } from '@/components/breweryDemo/CollectBreweryTapPromo'
 import { HappyHourDeals } from '@/components/breweryDemo/HappyHourDeals'
 import { FoodTruckSchedule } from '@/components/breweryDemo/FoodTruckSchedule'
 import { OtherBreweryLocation } from '@/components/breweryDemo/OtherBreweryLocation'
@@ -38,7 +37,6 @@ import {
   formatHappyHourWindow,
   getTodaysHappyHourDeals,
   getUpcomingHappyHourStatus,
-  SHOW_HAPPY_HOUR_DEALS_ON_SITE,
 } from '@/lib/happyHourDeals'
 import { flattenReleaseSections, splitReleasesForDisplay } from '@/lib/releaseSections'
 import { ReleaseSectionsList } from '@/components/ReleaseSectionsList'
@@ -115,15 +113,11 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
     getBreweryEvents(brewery.id),
     getBreweryReleases(brewery.id),
     getBreweryTonightFood(brewery.id, Boolean(brewery.has_food_trucks)),
-    SHOW_HAPPY_HOUR_DEALS_ON_SITE
-      ? getBreweryHappyHourDeals(brewery.id)
-      : Promise.resolve([]),
+    getBreweryHappyHourDeals(brewery.id),
     getBreweryFoodTrucks(brewery.id),
     siblingBreweryId ? getBreweryById(siblingBreweryId) : Promise.resolve(null),
     siblingBreweryId ? getBreweryEvents(siblingBreweryId) : Promise.resolve([]),
-    SHOW_HAPPY_HOUR_DEALS_ON_SITE && siblingBreweryId
-      ? getBreweryHappyHourDeals(siblingBreweryId)
-      : Promise.resolve([]),
+    siblingBreweryId ? getBreweryHappyHourDeals(siblingBreweryId) : Promise.resolve([]),
   ])
 
   const tonightEvent = events.find((event) => isEventToday(event.event_date)) ?? null
@@ -282,32 +276,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
           />
         ) : null}
 
-        <a
-          href="/"
-          className="absolute right-5 top-5 z-[2] flex flex-col items-end gap-1.5 transition-opacity hover:opacity-90 sm:right-8 sm:top-8"
-          aria-label="Powered by Hoppenings"
-        >
-          <span
-            className="text-[10px] font-semibold uppercase tracking-[0.2em] sm:text-xs"
-            style={{
-              color: Colors.textOnDark,
-              fontFamily: 'var(--font-be-vietnam-pro)',
-              textShadow: '0 1px 4px rgba(0,0,0,0.75)',
-            }}
-          >
-            Powered by
-          </span>
-          <Image
-            src="/HoppeningsLogoWhite.png"
-            alt="Hoppenings"
-            width={440}
-            height={144}
-            className="h-12 w-auto sm:h-14"
-            unoptimized
-            priority
-          />
-        </a>
-
         <div className="relative z-[2] mx-auto w-full max-w-6xl px-6 py-10 sm:px-10">
           <h1
             className="text-left font-bold uppercase leading-[0.95] tracking-wide text-[clamp(1.75rem,7vw,4rem)]"
@@ -461,10 +429,6 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         ) : null}
 
         <HappyHourDeals deals={happyHourDeals} />
-
-        {brewery.tap_image ? (
-          <CollectBreweryTapPromo tapImageUrl={brewery.tap_image} breweryName={brewery.name} />
-        ) : null}
 
         {releases.length > 0 ? (
           <section className="relative left-1/2 mb-14 w-screen -translate-x-1/2 overflow-hidden py-10 sm:py-12">
