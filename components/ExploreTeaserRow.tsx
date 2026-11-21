@@ -5,12 +5,15 @@ import { Colors } from '@/lib/colors'
 export type ExploreTeaserBreweryStatus = {
   hoursOpen: boolean
   hoursLabel: string
-  /** Today's open–close window shown under the open/closed icon. */
+  /** Live hours copy under the open/closed icon, e.g. "Closes in 2 hours". */
+  hoursDetail?: string | null
+  /** Today's open–close window (fallback). */
   hoursRange?: string | null
   releaseName?: string | null
   eventTitle?: string | null
   eventIconSrc?: string | null
   happyHourTitle?: string | null
+  happyHourActive?: boolean
 }
 
 export type ExploreTeaserItem = {
@@ -26,7 +29,7 @@ export type ExploreTeaserItem = {
 }
 
 const STATUS_ICON_SIZE = 16
-const HOURS_ICON_SIZE = 22
+const HOURS_ICON_SIZE = 36
 
 function StatusIcon({ src, active }: { src: string; active: boolean }) {
   return (
@@ -150,8 +153,8 @@ export function ExploreTeaserRow({ item }: { item: ExploreTeaserItem }) {
               <span
                 className="relative"
                 style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
-                title={item.breweryStatus.hoursLabel}
-                aria-label={item.breweryStatus.hoursLabel}
+                title={item.breweryStatus.hoursDetail || item.breweryStatus.hoursLabel}
+                aria-label={item.breweryStatus.hoursDetail || item.breweryStatus.hoursLabel}
               >
                 <Image
                   src={item.breweryStatus.hoursOpen ? '/open.svg' : '/closed-sign.svg'}
@@ -163,14 +166,24 @@ export function ExploreTeaserRow({ item }: { item: ExploreTeaserItem }) {
                 />
               </span>
               <span
-                className="max-w-[6.5rem] text-right text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] sm:text-[11px]"
+                className="max-w-[7.5rem] text-right text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] sm:text-[11px]"
                 style={{
-                  color: 'rgba(249, 247, 242, 0.78)',
+                  color: item.breweryStatus.hoursOpen ? Colors.accent : 'rgba(249, 247, 242, 0.78)',
                   fontFamily: 'var(--font-be-vietnam-pro)',
                 }}
               >
-                {item.breweryStatus.hoursRange || item.breweryStatus.hoursLabel}
+                {item.breweryStatus.hoursDetail ||
+                  item.breweryStatus.hoursRange ||
+                  item.breweryStatus.hoursLabel}
               </span>
+              {item.breweryStatus.happyHourActive ? (
+                <span
+                  className="max-w-[7.5rem] text-right text-[10px] font-bold uppercase leading-tight tracking-[0.1em]"
+                  style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                >
+                  Happy Hour now
+                </span>
+              ) : null}
             </span>
           ) : null}
         </span>

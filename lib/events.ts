@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
 import { Event } from '@/types/supabase'
-import { expandRecurringEvents, getTodayMountainDateString, normalizeEventDateToMountainTime } from './utils'
+import {
+  expandRecurringEvents,
+  getTodayMountainDateString,
+  normalizeEventDateToMountainTime,
+  shouldShowEventOnListings,
+} from './utils'
 import { generateEventSlug, generateLegacyEventSlug, generateSlug } from './slug'
 import { isEventInIndexableWindow } from './contentExpiry'
 import { ensureFreshStorageUrl } from './storageUrls'
@@ -66,12 +71,14 @@ function mapEventRow(event: Record<string, unknown>): Event {
   }
 }
 
-/** Weekly recurring templates — biweekly/monthly are not shown on public listings. */
+/** Recurring templates (weekly / biweekly / monthly). Stale series are dropped during expand. */
 async function fetchRecurringEventRows(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events_base')
     .select(EVENTS_BASE_SELECT)
-    .eq('is_recurring', true)
+    .or(
+      'is_recurring.eq.true,is_recurring_biweekly.eq.true,is_recurring_monthly.eq.true'
+    )
 
   if (error) {
     console.error('Error fetching recurring events:', error)
@@ -138,7 +145,7 @@ export async function fetchEventsBaseRows(options?: {
 /** Expanded upcoming events for listing pages (/events, city pages). */
 export async function getExpandedEventsForListing(): Promise<Event[]> {
   const rows = await fetchEventsBaseRows()
-  const expanded = expandRecurringEvents(rows)
+  const expanded = expandRecurringEvents(rows).filter((event) => shouldShowEventOnListings(event))
   return withFreshBreweryImages(expanded)
 }
 
@@ -282,7 +289,9 @@ async function withFreshBreweryImages(events: Event[]): Promise<Event[]> {
 export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
   try {
     const events = await fetchEventsBaseRows()
-    const expandedEvents = expandRecurringEvents(events, false)
+    const expandedEvents = expandRecurringEvents(events, false).filter((event) =>
+      shouldShowEventOnListings(event)
+    )
     const withImages = await withFreshBreweryImages(expandedEvents)
     const eventsWithSlugs = attachSlugs(withImages)
     return eventsWithSlugs.filter((event) => isEventInIndexableWindow(event.event_date))

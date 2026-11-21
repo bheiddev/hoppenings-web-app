@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Colors } from '@/lib/colors'
 import { HoppeningsAppPromo } from '@/components/breweryDemo/HoppeningsAppPromo'
+import { HoppeningsAppPromoModal } from '@/components/breweryDemo/HoppeningsAppPromoModal'
 import {
   ExploreTeaserRow,
   type ExploreTeaserBreweryStatus,
@@ -319,6 +320,8 @@ export function RegionExploreLanding({
       <div className="relative z-[1] mx-auto max-w-7xl px-6 pb-16 sm:px-10 lg:px-12">
         <HoppeningsAppPromo region={cityName} />
       </div>
+
+      <HoppeningsAppPromoModal region={cityName} />
     </div>
   )
 }

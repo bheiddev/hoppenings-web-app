@@ -156,18 +156,19 @@ export default async function CityLandingPage({
     return {
       id: brewery.id,
       title: brewery.name,
-      subtitle: brewery.location || undefined,
       href: `/breweries/${brewery.slug}`,
       imageUrl: brewery.image_url || brewery.tap_image,
       breweryStatus: {
         hoursOpen,
         hoursLabel,
+        hoursDetail: context.hoursDetail,
         hoursRange: context.hoursRange,
         releaseName:
           context.hasNewRelease && context.releaseName ? context.releaseName : null,
         eventTitle: context.todayEventTitle,
         eventIconSrc: BREWERY_EVENT_ICON_SRC[context.todayEventIcon],
         happyHourTitle: context.happyHourTitle,
+        happyHourActive: context.happyHourActive,
       },
     }
   })

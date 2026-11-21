@@ -93,7 +93,7 @@ export function BreweriesEventsRegionContent({
                             is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),
                             is_recurring_monthly: Boolean(proposed.is_recurring_monthly),
                           })
-                        : !proposed.is_recurring_biweekly && !proposed.is_recurring_monthly
+                        : true
                     )}
                     title="Proposed events (proposed_events)"
                   />

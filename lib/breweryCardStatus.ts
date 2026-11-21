@@ -109,8 +109,54 @@ export function getBreweryHoursStatusLabel(status: BreweryHoursStatus): string {
   }
 }
 
+function formatDurationUntil(totalMinutes: number, verb: 'Closes' | 'Opens'): string {
+  if (totalMinutes <= 0) return verb === 'Closes' ? 'Closing now' : 'Opening now'
+  if (totalMinutes < 60) return `${verb} in ${totalMinutes} min`
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (minutes === 0) {
+    return `${verb} in ${hours} hour${hours === 1 ? '' : 's'}`
+  }
+  if (hours === 1) return `${verb} in 1 hour ${minutes} min`
+  return `${verb} in ${hours} hours`
+}
+
+/**
+ * Live hours copy for list UI, e.g. "Closes in 2 hours", "Opens in 40 min", "Opens at 4pm".
+ */
+export function getBreweryHoursDynamicLabel(
+  hours: BreweryHours | null | undefined,
+  now = getMountainTimeNow()
+): string {
+  if (!hours) return 'Hours TBD'
+
+  const dayName = DAY_FIELDS[getMountainWeekdayIndex(now.date)]
+  const openTime = hours[`${dayName}_open` as keyof BreweryHours] as string | null
+  const closeTime = hours[`${dayName}_close` as keyof BreweryHours] as string | null
+
+  if (!openTime || !closeTime) return 'Closed'
+
+  const openMin = timeToMinutes(openTime)
+  const closeMin = timeToMinutes(closeTime)
+  if (openMin === null || closeMin === null) return 'Closed'
+
+  const currentMin = now.hours * 60 + now.minutes
+
+  if (currentMin >= openMin && currentMin < closeMin) {
+    return formatDurationUntil(closeMin - currentMin, 'Closes')
+  }
+
+  if (currentMin < openMin) {
+    const untilOpen = openMin - currentMin
+    if (untilOpen <= 90) return formatDurationUntil(untilOpen, 'Opens')
+    return `Opens at ${formatCompactHoursTime(openTime)}`
+  }
+
+  return 'Closed'
+}
+
 export function isBreweryOpenIconStatus(status: BreweryHoursStatus): boolean {
-  return status === 'open' || status === 'opening_soon'
+  return status === 'open' || status === 'opening_soon' || status === 'closing_soon'
 }
 
 const EVENT_ICON_RULES: { icon: Exclude<BreweryEventIcon, 'generic'>; test: (text: string) => boolean }[] = [

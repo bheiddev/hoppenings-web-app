@@ -21,7 +21,7 @@ import {
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 const STATUS_ICON_SIZE = 18
-const HOURS_ICON_SIZE = 28
+const HOURS_ICON_SIZE = 40
 
 function StatusIcon({
   src,
@@ -190,8 +190,8 @@ export default async function CityBreweriesPage({
                         <span
                           className="relative"
                           style={{ width: HOURS_ICON_SIZE, height: HOURS_ICON_SIZE }}
-                          title={hoursLabel}
-                          aria-label={hoursLabel}
+                          title={context.hoursDetail || hoursLabel}
+                          aria-label={context.hoursDetail || hoursLabel}
                         >
                           <Image
                             src={hoursIcon}
@@ -203,14 +203,22 @@ export default async function CityBreweriesPage({
                           />
                         </span>
                         <span
-                          className="max-w-[7rem] text-right text-[11px] font-semibold uppercase leading-tight tracking-[0.08em]"
+                          className="max-w-[8rem] text-right text-[11px] font-semibold uppercase leading-tight tracking-[0.08em]"
                           style={{
-                            color: 'rgba(249, 247, 242, 0.78)',
+                            color: isOpen ? Colors.accent : 'rgba(249, 247, 242, 0.78)',
                             fontFamily: 'var(--font-be-vietnam-pro)',
                           }}
                         >
-                          {context.hoursRange || hoursLabel}
+                          {context.hoursDetail || context.hoursRange || hoursLabel}
                         </span>
+                        {context.happyHourActive ? (
+                          <span
+                            className="max-w-[8rem] text-right text-[11px] font-bold uppercase leading-tight tracking-[0.1em]"
+                            style={{ color: Colors.accent, fontFamily: 'var(--font-be-vietnam-pro)' }}
+                          >
+                            Happy Hour now
+                          </span>
+                        ) : null}
                       </span>
                     </span>
 

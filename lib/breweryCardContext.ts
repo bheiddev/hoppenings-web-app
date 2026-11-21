@@ -5,22 +5,26 @@ import { isReleaseInIndexableWindow } from '@/lib/contentExpiry'
 import { foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import {
   formatHappyHourWindow,
+  happyHourDealIsActiveAtHour,
   happyHourDealShowsOnDate,
 } from '@/lib/happyHourDeals'
 import { getTonightCarouselEvents } from '@/lib/events'
 import {
   BreweryEventIcon,
   BreweryHoursStatus,
+  getBreweryHoursDynamicLabel,
   getBreweryHoursStatus,
   getBreweryTodayHoursRange,
   matchBreweryEventIcon,
 } from '@/lib/breweryCardStatus'
-import { getTodayMountainDateString } from '@/lib/utils'
+import { getMountainTimeNow, getTodayMountainDateString } from '@/lib/utils'
 
 export type BreweryCardContext = {
   hoursStatus: BreweryHoursStatus
   /** Today's open–close window, e.g. "12pm–10pm". */
   hoursRange: string | null
+  /** Live label such as "Closes in 2 hours". */
+  hoursDetail: string
   hasFoodTruckToday: boolean
   todayEventIcon: BreweryEventIcon
   hasNewRelease: boolean
@@ -28,11 +32,14 @@ export type BreweryCardContext = {
   todayEventTitle: string | null
   foodTruckName: string | null
   happyHourTitle: string | null
+  /** True when a happy hour deal is in-window right now. */
+  happyHourActive: boolean
 }
 
 export const DEFAULT_BREWERY_CARD_CONTEXT: BreweryCardContext = {
   hoursStatus: 'closed',
   hoursRange: null,
+  hoursDetail: 'Hours TBD',
   hasFoodTruckToday: false,
   todayEventIcon: 'generic',
   hasNewRelease: false,
@@ -40,6 +47,7 @@ export const DEFAULT_BREWERY_CARD_CONTEXT: BreweryCardContext = {
   todayEventTitle: null,
   foodTruckName: null,
   happyHourTitle: null,
+  happyHourActive: false,
 }
 
 function breweryIdsForRelease(release: {
@@ -133,18 +141,34 @@ async function fetchRecentReleaseNamesByBrewery(): Promise<Map<string, string>> 
   return map
 }
 
-async function fetchHappyHourTitlesByBrewery(
+async function fetchHappyHourStateByBrewery(
   breweryIds: string[],
-  today: string
-): Promise<Map<string, string>> {
+  today: string,
+  currentHour: number
+): Promise<Map<string, { title: string; active: boolean }>> {
   const deals = await getHappyHourDealsForBreweryIds(breweryIds)
-  const map = new Map<string, string>()
+  const map = new Map<string, { title: string; active: boolean }>()
+
   for (const deal of deals) {
     if (!happyHourDealShowsOnDate(deal, today)) continue
-    if (map.has(deal.brewery_id)) continue
+    const active = happyHourDealIsActiveAtHour(deal, currentHour)
     const window = formatHappyHourWindow(deal.time_start, deal.time_end)
-    const title = deal.title?.trim() || 'Happy Hour'
-    map.set(deal.brewery_id, window ? `${title} · ${window}` : title)
+    const baseTitle = deal.title?.trim() || 'Happy Hour'
+    const title = active
+      ? `${baseTitle} · Now`
+      : window
+        ? `${baseTitle} · ${window}`
+        : baseTitle
+
+    const existing = map.get(deal.brewery_id)
+    if (!existing) {
+      map.set(deal.brewery_id, { title, active })
+      continue
+    }
+    // Prefer an in-window deal over a later/earlier one for the same brewery.
+    if (active && !existing.active) {
+      map.set(deal.brewery_id, { title, active })
+    }
   }
   return map
 }
@@ -172,7 +196,8 @@ function pickTodayEventForBrewery(
 }
 
 export async function getBreweryCardContextMap(): Promise<Map<string, BreweryCardContext>> {
-  const today = getTodayMountainDateString()
+  const now = getMountainTimeNow()
+  const today = now.date
   const [hoursByBrewery, foodTrucks, todaysEvents, releaseNamesByBrewery, allBreweryIds] =
     await Promise.all([
       fetchAllBreweryHours(),
@@ -181,7 +206,11 @@ export async function getBreweryCardContextMap(): Promise<Map<string, BreweryCar
       fetchRecentReleaseNamesByBrewery(),
       fetchAllBreweryIds(),
     ])
-  const happyHourByBrewery = await fetchHappyHourTitlesByBrewery(allBreweryIds, today)
+  const happyHourByBrewery = await fetchHappyHourStateByBrewery(
+    allBreweryIds,
+    today,
+    now.hours
+  )
 
   const foodTruckNameByBrewery = new Map<string, string>()
   for (const breweryId of allBreweryIds) {
@@ -210,16 +239,19 @@ export async function getBreweryCardContextMap(): Promise<Map<string, BreweryCar
     const hours = hoursByBrewery.get(breweryId)
     const releaseName = releaseNamesByBrewery.get(breweryId) ?? null
     const todayEvent = todayEventByBrewery.get(breweryId)
+    const happyHour = happyHourByBrewery.get(breweryId)
     map.set(breweryId, {
-      hoursStatus: getBreweryHoursStatus(hours),
-      hoursRange: getBreweryTodayHoursRange(hours),
+      hoursStatus: getBreweryHoursStatus(hours, now),
+      hoursRange: getBreweryTodayHoursRange(hours, now),
+      hoursDetail: getBreweryHoursDynamicLabel(hours, now),
       hasFoodTruckToday: foodTruckNameByBrewery.has(breweryId),
       todayEventIcon: todayEvent?.icon ?? 'generic',
       hasNewRelease: releaseName !== null,
       releaseName,
       todayEventTitle: todayEvent?.title ?? null,
       foodTruckName: foodTruckNameByBrewery.get(breweryId) ?? null,
-      happyHourTitle: happyHourByBrewery.get(breweryId) ?? null,
+      happyHourTitle: happyHour?.title ?? null,
+      happyHourActive: happyHour?.active ?? false,
     })
   }
 

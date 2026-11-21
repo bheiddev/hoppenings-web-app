@@ -62,12 +62,13 @@ function DetailCell({
 }
 
 export function BreweryCardDetails({ context }: { context: BreweryCardContext }) {
-  const hoursLabel = getBreweryHoursStatusLabel(context.hoursStatus)
+  const hoursLabel = context.hoursDetail || getBreweryHoursStatusLabel(context.hoursStatus)
   const hoursIcon = isBreweryOpenIconStatus(context.hoursStatus) ? '/open.svg' : '/closed-sign.svg'
   const isOpen = isBreweryOpenIconStatus(context.hoursStatus)
   const hasBeer = Boolean(context.hasNewRelease && context.releaseName)
   const hasEvent = Boolean(context.todayEventTitle)
   const hasFoodTruck = context.hasFoodTruckToday
+  const hasHappyHour = Boolean(context.happyHourTitle)
 
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 pb-5">
@@ -87,12 +88,21 @@ export function BreweryCardDetails({ context }: { context: BreweryCardContext })
         active={hasEvent}
       />
 
-      <DetailCell
-        src="/food-truck.svg"
-        alt="Food truck"
-        label={hasFoodTruck ? (context.foodTruckName ?? 'Food truck') : ''}
-        active={hasFoodTruck}
-      />
+      {hasHappyHour ? (
+        <DetailCell
+          src="/happy-hour.svg"
+          alt="Happy hour"
+          label={context.happyHourTitle!}
+          active={context.happyHourActive || hasHappyHour}
+        />
+      ) : (
+        <DetailCell
+          src="/food-truck.svg"
+          alt="Food truck"
+          label={hasFoodTruck ? (context.foodTruckName ?? 'Food truck') : ''}
+          active={hasFoodTruck}
+        />
+      )}
     </div>
   )
 }
