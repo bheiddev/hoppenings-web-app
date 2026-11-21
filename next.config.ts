@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  // Avoid picking a parent monorepo lockfile when one exists above this app.
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async redirects() {
     return [
       // Crawlers and browsers often request /favicon.ico; serve our icon (static file in public/).

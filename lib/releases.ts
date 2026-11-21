@@ -18,11 +18,23 @@ function buildReleaseSlugMap(releases: BeerReleaseWithSlug[]): Map<string, BeerR
   return map
 }
 
-/**
- * Fetch all beer releases with brewery data and generate slugs
- * Used for static page generation
- */
-export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> {
+function memoizeListLoader<T>(load: () => Promise<T>, ttlMs: number): () => Promise<T> {
+  let inflight: Promise<T> | null = null
+  let cachedAt = 0
+  return () => {
+    const now = Date.now()
+    const duringBuild = process.env.NEXT_PHASE === 'phase-production-build'
+    if (inflight && (duringBuild || now - cachedAt < ttlMs)) return inflight
+    cachedAt = now
+    inflight = load().catch((error) => {
+      inflight = null
+      throw error
+    })
+    return inflight
+  }
+}
+
+const loadAllReleasesWithSlugs = memoizeListLoader(async (): Promise<BeerReleaseWithSlug[]> => {
   try {
     // Same bounds as mobile useBeerReleasesService (Mountain calendar dates).
     const { fromYmd, toYmd } = getReleaseListDateBounds()
@@ -112,6 +124,14 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
     console.error('Error fetching releases with slugs:', error)
     return []
   }
+}, 60_000)
+
+/**
+ * Fetch all beer releases with brewery data and generate slugs
+ * Used for static page generation
+ */
+export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> {
+  return loadAllReleasesWithSlugs()
 }
 
 /**

@@ -283,10 +283,27 @@ async function withFreshBreweryImages(events: Event[]): Promise<Event[]> {
 }
 
 /**
- * Fetch all events with brewery data and generate slugs
- * Used for static page generation
+ * Process-local memo for list loaders. Critical during `next build` SSG: each
+ * event detail page used to re-fetch + expand the full events table (N× cost),
+ * which OOMs / times out on Vercel.
  */
-export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
+function memoizeListLoader<T>(load: () => Promise<T>, ttlMs: number): () => Promise<T> {
+  let inflight: Promise<T> | null = null
+  let cachedAt = 0
+  return () => {
+    const now = Date.now()
+    const duringBuild = process.env.NEXT_PHASE === 'phase-production-build'
+    if (inflight && (duringBuild || now - cachedAt < ttlMs)) return inflight
+    cachedAt = now
+    inflight = load().catch((error) => {
+      inflight = null
+      throw error
+    })
+    return inflight
+  }
+}
+
+const loadAllEventsWithSlugs = memoizeListLoader(async (): Promise<EventWithSlug[]> => {
   try {
     const events = await fetchEventsBaseRows()
     const expandedEvents = expandRecurringEvents(events, false).filter((event) =>
@@ -299,19 +316,34 @@ export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
     console.error('Error fetching events with slugs:', error)
     return []
   }
+}, 60_000)
+
+/**
+ * Fetch all events with brewery data and generate slugs
+ * Used for static page generation
+ */
+export async function getAllEventsWithSlugs(): Promise<EventWithSlug[]> {
+  return loadAllEventsWithSlugs()
 }
+
+const loadAllEventsWithSlugsUnfiltered = memoizeListLoader(
+  async (): Promise<EventWithSlug[]> => {
+    try {
+      const events = await fetchEventsBaseRows({ minNonRecurringDate: '1970-01-01' })
+      const expanded = expandRecurringEvents(events, false)
+      const withImages = await withFreshBreweryImages(expanded)
+      return attachSlugs(withImages)
+    } catch (error) {
+      console.error('Error fetching unfiltered events with slugs:', error)
+      return []
+    }
+  },
+  60_000
+)
 
 /** All events with slugs, no date filter. Used to detect expired (formerly indexed) event URLs for 301. */
 async function getAllEventsWithSlugsUnfiltered(): Promise<EventWithSlug[]> {
-  try {
-    const events = await fetchEventsBaseRows({ minNonRecurringDate: '1970-01-01' })
-    const expanded = expandRecurringEvents(events, false)
-    const withImages = await withFreshBreweryImages(expanded)
-    return attachSlugs(withImages)
-  } catch (error) {
-    console.error('Error fetching unfiltered events with slugs:', error)
-    return []
-  }
+  return loadAllEventsWithSlugsUnfiltered()
 }
 
 /**
