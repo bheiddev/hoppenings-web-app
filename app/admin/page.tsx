@@ -8,6 +8,7 @@ import { MobileAnalyticsSection } from '@/components/admin/MobileAnalyticsSectio
 import { PushNotificationsSection } from '@/components/admin/PushNotificationsSection'
 import { RegionAdminPanel } from '@/components/admin/RegionAdminPanel'
 import { SeoAnalyticsSection } from '@/components/admin/SeoAnalyticsSection'
+import { SocialSection } from '@/components/admin/SocialSection'
 import {
   buildRegionBuckets,
   getBreweriesWithEvents,
@@ -106,6 +107,11 @@ export default async function AdminPage() {
       id: 'push-notifications',
       label: 'Push Notifications',
       panel: <PushNotificationsSection />,
+    },
+    {
+      id: 'social',
+      label: 'Social',
+      panel: <SocialSection />,
     },
     {
       id: 'brewery-staff',

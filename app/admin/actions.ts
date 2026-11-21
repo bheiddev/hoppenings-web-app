@@ -1437,3 +1437,63 @@ export async function clearCouponAndTapTrackerTestData(): Promise<ClearCouponTap
     },
   }
 }
+
+/** List images in a brewery's `brewery-images/{breweryId}/` folder (signed URLs). */
+export async function listBreweryFolderImages(breweryId: string) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false as const, error: configError, images: [] as { path: string; url: string }[] }
+  if (!breweryId) return { ok: false as const, error: 'Missing brewery id', images: [] as { path: string; url: string }[] }
+
+  const { data, error } = await admin!.storage.from(BREWERY_IMAGES_BUCKET).list(breweryId, {
+    limit: 100,
+    sortBy: { column: 'created_at', order: 'desc' },
+  })
+  if (error) {
+    console.error('listBreweryFolderImages:', error)
+    return { ok: false as const, error: error.message, images: [] as { path: string; url: string }[] }
+  }
+
+  const files = (data ?? []).filter(
+    (f) => f.name && !f.name.startsWith('.') && /\.(jpe?g|png|gif|webp|avif)$/i.test(f.name)
+  )
+  const images: { path: string; url: string }[] = []
+  for (const file of files) {
+    const path = `${breweryId}/${file.name}`
+    const { data: signed } = await admin!.storage
+      .from(BREWERY_IMAGES_BUCKET)
+      .createSignedUrl(path, 60 * 60 * 24 * 365)
+    if (signed?.signedUrl) {
+      images.push({ path, url: signed.signedUrl })
+    }
+  }
+  return { ok: true as const, images }
+}
+
+/**
+ * Upload a JPEG/PNG into `brewery-images/{breweryId}/` for a social featured slide.
+ * Returns a long-lived signed URL suitable for `social_post_items.image_override_url`.
+ */
+export async function uploadBreweryImageForSocial(formData: FormData) {
+  const { admin, error: configError } = getAdmin()
+  if (configError) return { ok: false as const, error: configError }
+
+  const breweryId = String(formData.get('brewery_id') ?? '').trim()
+  const file = formData.get('file')
+  if (!breweryId) return { ok: false as const, error: 'Missing brewery id' }
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false as const, error: 'No file selected' }
+  }
+  if (file.size > 6 * 1024 * 1024) {
+    return { ok: false as const, error: 'Image must be under 6 MB' }
+  }
+  const type = (file.type || '').toLowerCase()
+  if (type !== 'image/jpeg' && type !== 'image/png' && type !== 'image/jpg') {
+    return { ok: false as const, error: 'Only JPEG and PNG are supported (renderer cannot read WebP/AVIF)' }
+  }
+
+  const uploaded = await uploadBreweryImage(admin!, BREWERY_IMAGES_BUCKET, breweryId, file, 'social')
+  if (uploaded.error || !uploaded.publicUrl) {
+    return { ok: false as const, error: uploaded.error || 'Upload failed' }
+  }
+  return { ok: true as const, url: uploaded.publicUrl, path: `${breweryId}/social-…` }
+}

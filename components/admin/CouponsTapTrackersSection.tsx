@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   deletePourContestRun,
@@ -650,9 +650,70 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
     enrollments,
     error,
   } = result
-  const redeemedPeople = people.filter((p) => p.redeemedCount > 0)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [breweryFilter, setBreweryFilter] = useState<string>('all')
+
+  const breweryOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const row of recentAwards) {
+      if (row.breweryId) map.set(row.breweryId, row.breweryName || 'Unknown brewery')
+    }
+    for (const row of tapTrackers) {
+      if (row.breweryId) map.set(row.breweryId, row.breweryName || 'Unknown brewery')
+    }
+    for (const row of enrollments) {
+      if (row.breweryId) map.set(row.breweryId, row.breweryName || 'Unknown brewery')
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  }, [recentAwards, tapTrackers, enrollments])
+
+  const selectedBreweryName =
+    breweryFilter === 'all'
+      ? null
+      : breweryOptions.find((option) => option.id === breweryFilter)?.name ?? null
+
+  const filteredAwards = useMemo(
+    () =>
+      breweryFilter === 'all'
+        ? recentAwards
+        : recentAwards.filter((row) => row.breweryId === breweryFilter),
+    [breweryFilter, recentAwards]
+  )
+  const filteredTapTrackers = useMemo(
+    () =>
+      breweryFilter === 'all'
+        ? tapTrackers
+        : tapTrackers.filter((row) => row.breweryId === breweryFilter),
+    [breweryFilter, tapTrackers]
+  )
+  const filteredEnrollments = useMemo(
+    () =>
+      breweryFilter === 'all'
+        ? enrollments
+        : enrollments.filter((row) => row.breweryId === breweryFilter),
+    [breweryFilter, enrollments]
+  )
+  const filteredPeople = useMemo(() => {
+    if (breweryFilter === 'all' || !selectedBreweryName) return people
+    return people.filter((row) =>
+      row.breweryNames.some(
+        (name) => name.localeCompare(selectedBreweryName, undefined, { sensitivity: 'base' }) === 0
+      )
+    )
+  }, [breweryFilter, people, selectedBreweryName])
+  const filteredCompleters = useMemo(() => {
+    if (breweryFilter === 'all' || !selectedBreweryName) return tapTrackerCompleters
+    return tapTrackerCompleters.filter((row) =>
+      row.breweryNames.some(
+        (name) => name.localeCompare(selectedBreweryName, undefined, { sensitivity: 'base' }) === 0
+      )
+    )
+  }, [breweryFilter, selectedBreweryName, tapTrackerCompleters])
+
+  const redeemedPeople = filteredPeople.filter((p) => p.redeemedCount > 0)
 
   async function handleDeleteCoupon(couponId: string, label: string) {
     if (!window.confirm(`Delete coupon award “${label}”?`)) return
@@ -771,6 +832,43 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
         enrollments={enrollments.length}
       />
 
+      <div
+        className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between rounded-lg border px-4 py-3"
+        style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
+      >
+        <div className="min-w-0">
+          <label
+            htmlFor="coupons-tap-brewery-filter"
+            className="block text-xs font-semibold uppercase tracking-wide mb-1"
+            style={{ color: Colors.textSecondary }}
+          >
+            Filter by brewery
+          </label>
+          <p className="text-[11px] leading-snug" style={{ color: Colors.textMuted }}>
+            Tables below update for the selected brewery. Summary cards stay site-wide.
+          </p>
+        </div>
+        <select
+          id="coupons-tap-brewery-filter"
+          value={breweryFilter}
+          onChange={(event) => setBreweryFilter(event.target.value)}
+          className="w-full sm:w-80 rounded-md border px-3 py-2 text-sm"
+          style={{
+            borderColor: Colors.border,
+            backgroundColor: Colors.surface,
+            color: Colors.textPrimary,
+            fontFamily: 'var(--font-be-vietnam-pro)',
+          }}
+        >
+          <option value="all">All breweries</option>
+          {breweryOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {actionError ? (
         <div
           className="rounded-lg border px-4 py-3 text-sm"
@@ -840,12 +938,13 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             People who completed a tap tracker
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            {tapTrackerCompleters.length.toLocaleString()} people with at least one closed run at
-            full visits (coupon awarded).
+            {filteredCompleters.length.toLocaleString()} people with at least one closed run at
+            full visits (coupon awarded)
+            {selectedBreweryName ? ` at ${selectedBreweryName}` : ''}.
           </p>
         </div>
         <CompletersTable
-          rows={tapTrackerCompleters}
+          rows={filteredCompleters}
           pendingKey={pendingKey}
           onDelete={handleDeleteCompleter}
         />
@@ -860,11 +959,14 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             Tap tracker progress
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            All pour-contest runs by person and brewery. Completed (coupon awarded) listed first.
+            {filteredTapTrackers.length.toLocaleString()} pour-contest run
+            {filteredTapTrackers.length === 1 ? '' : 's'}
+            {selectedBreweryName ? ` at ${selectedBreweryName}` : ' by person and brewery'}.
+            Completed (coupon awarded) listed first.
           </p>
         </div>
         <TapTrackersTable
-          rows={tapTrackers}
+          rows={filteredTapTrackers}
           pendingKey={pendingKey}
           onDelete={handleDeleteRun}
         />
@@ -879,13 +981,15 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             Enrollments
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            {enrollments.length.toLocaleString()} pour-contest enrollment
-            {enrollments.length === 1 ? '' : 's'} ({summary.activeEnrollments.toLocaleString()}{' '}
-            active). Deleting an enrollment also removes its runs.
+            {filteredEnrollments.length.toLocaleString()} pour-contest enrollment
+            {filteredEnrollments.length === 1 ? '' : 's'}
+            {selectedBreweryName ? ` at ${selectedBreweryName}` : ''} (
+            {filteredEnrollments.filter((row) => row.active).length.toLocaleString()} active).
+            Deleting an enrollment also removes its runs.
           </p>
         </div>
         <EnrollmentsTable
-          rows={enrollments}
+          rows={filteredEnrollments}
           pendingKey={pendingKey}
           onDelete={handleDeleteEnrollment}
         />
@@ -902,14 +1006,15 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
             {redeemedPeople.length.toLocaleString()} people with a{' '}
             <code className="text-xs">user_coupons</code> redemption
-            {people.length !== redeemedPeople.length
-              ? ` · ${people.length.toLocaleString()} with any award`
+            {filteredPeople.length !== redeemedPeople.length
+              ? ` · ${filteredPeople.length.toLocaleString()} with any award`
               : ''}
-            . Delete removes all coupons for that person.
+            {selectedBreweryName ? ` · ${selectedBreweryName}` : ''}. Delete removes all coupons for
+            that person.
           </p>
         </div>
         <CouponPeopleTable
-          rows={redeemedPeople.length > 0 ? redeemedPeople : people}
+          rows={redeemedPeople.length > 0 ? redeemedPeople : filteredPeople}
           pendingKey={pendingKey}
           onDelete={handleDeletePersonCoupons}
         />
@@ -924,11 +1029,12 @@ export function CouponsTapTrackersSection({ result }: { result: CouponsTapTracke
             Coupon awards
           </h3>
           <p className="text-sm" style={{ color: Colors.textSecondary }}>
-            {recentAwards.length.toLocaleString()} awards (including guest devices).
+            {filteredAwards.length.toLocaleString()} awards
+            {selectedBreweryName ? ` at ${selectedBreweryName}` : ' (including guest devices)'}.
           </p>
         </div>
         <AwardsTable
-          rows={recentAwards}
+          rows={filteredAwards}
           pendingKey={pendingKey}
           onDelete={handleDeleteCoupon}
         />
