@@ -1,6 +1,6 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
-import { dedupeExpandedEventsForAdminEdit, shouldShowEventOnListings } from '@/lib/utils'
+import { shouldShowEventInAdmin } from '@/lib/utils'
 import { AddBreweryControl } from '@/components/AddBreweryControl'
 import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
@@ -76,9 +76,7 @@ export function BreweriesEventsRegionContent({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start overflow-x-hidden">
                 <div className="min-w-0">
                   <EventsTableWithDelete
-                    events={dedupeExpandedEventsForAdminEdit(
-                      events.filter((event) => shouldShowEventOnListings(event))
-                    )}
+                    events={events.filter((event) => shouldShowEventInAdmin(event))}
                     title="Events (events_base)"
                     breweryId={brewery.id}
                   />
@@ -87,7 +85,7 @@ export function BreweriesEventsRegionContent({
                   <ProposedEventsTable
                     proposed={proposedEvents.filter((proposed) =>
                       proposed.event_date?.trim()
-                        ? shouldShowEventOnListings({
+                        ? shouldShowEventInAdmin({
                             event_date: proposed.event_date,
                             is_recurring: Boolean(proposed.is_recurring),
                             is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),

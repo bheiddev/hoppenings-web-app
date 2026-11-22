@@ -54,7 +54,7 @@ import {
   formatRelativeEventDateHeading,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
-  shouldShowEventOnListings,
+  shouldShowEventInAdmin,
 } from '@/lib/utils'
 import {
   BeerRelease,
@@ -65,8 +65,8 @@ import {
   ProposedEvent,
 } from '@/types/supabase'
 
-/** Today + next 6 Mountain days for the week glance strip. */
-const WEEK_HORIZON_DAYS = 7
+/** Today + next 27 Mountain days so weekly recurring instances can appear for 4 weeks. */
+const WEEK_HORIZON_DAYS = 28
 
 type EventRow = Event & { breweryName: string; breweryId: string }
 type ProposedRow = ProposedEvent & { breweryName: string; breweryId: string }
@@ -281,7 +281,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     happyHourDeals,
   } of regionBreweries) {
     for (const event of events) {
-      if (!shouldShowEventOnListings(event)) continue
+      if (!shouldShowEventInAdmin(event)) continue
       const d = normalizeEventDateToMountainTime(event.event_date)
       if (d >= weekStart && d <= weekEnd) {
         eventsByDay.get(d)!.push({
@@ -295,7 +295,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
       if (seenProposedIds.has(proposed.id)) continue
       if (!proposed.event_date?.trim()) continue
       if (
-        !shouldShowEventOnListings({
+        !shouldShowEventInAdmin({
           event_date: proposed.event_date,
           is_recurring: Boolean(proposed.is_recurring),
           is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),

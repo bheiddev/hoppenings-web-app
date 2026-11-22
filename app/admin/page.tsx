@@ -13,9 +13,11 @@ import {
   buildRegionBuckets,
   getBreweriesWithEvents,
   groupByRegion,
+  UNASSIGNED_REGION_KEY,
   type BreweryWithData,
   type RegionBucket,
 } from '@/lib/breweriesEventsRegions'
+import { REGION_LINK_ORDER } from '@/lib/seoCities'
 import { getBreweryVisitsOverview } from '@/lib/adminBreweryVisits'
 import { getCouponsTapTrackersOverview } from '@/lib/adminCouponsTapTrackers'
 import { getBreweryAdminProfiles } from '@/lib/breweryStaffProfiles'
@@ -73,6 +75,19 @@ export default async function AdminPage() {
   const byRegion = groupByRegion(breweriesWithData)
   const regionBuckets = buildRegionBuckets(breweriesWithData)
   const bucketBySlug = new Map(regionBuckets.map((b) => [b.slug, b]))
+  const socialCities = [...regionBuckets]
+    .filter((b) => b.normKey !== UNASSIGNED_REGION_KEY)
+    .sort((a, b) => {
+      const ai = REGION_LINK_ORDER.indexOf(a.slug)
+      const bi = REGION_LINK_ORDER.indexOf(b.slug)
+      if (ai === -1 && bi === -1) {
+        return a.displayLabel.localeCompare(b.displayLabel, undefined, { sensitivity: 'base' })
+      }
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+    .map((b) => b.displayLabel)
   const seoBreweries: SeoBreweryRef[] = breweriesWithData.map(({ brewery }) => ({
     id: brewery.id,
     name: brewery.name,
@@ -111,7 +126,7 @@ export default async function AdminPage() {
     {
       id: 'social',
       label: 'Social',
-      panel: <SocialSection />,
+      panel: <SocialSection cities={socialCities} />,
     },
     {
       id: 'brewery-staff',

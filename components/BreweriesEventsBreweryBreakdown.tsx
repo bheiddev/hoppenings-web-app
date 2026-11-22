@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
+import { shouldShowEventInAdmin } from '@/lib/utils'
 
 interface BreweriesEventsBreweryBreakdownProps {
   regionBreweries: BreweryWithData[]
@@ -95,8 +96,17 @@ export function BreweriesEventsBreweryBreakdown({
         .map((row) => ({
           breweryId: row.brewery.id,
           breweryName: row.brewery.name,
-          events: row.events.length,
-          proposed: row.proposedEvents.length,
+          events: row.events.filter((event) => shouldShowEventInAdmin(event)).length,
+          proposed: row.proposedEvents.filter((proposed) =>
+            proposed.event_date?.trim()
+              ? shouldShowEventInAdmin({
+                  event_date: proposed.event_date,
+                  is_recurring: Boolean(proposed.is_recurring),
+                  is_recurring_biweekly: Boolean(proposed.is_recurring_biweekly),
+                  is_recurring_monthly: Boolean(proposed.is_recurring_monthly),
+                })
+              : true
+          ).length,
           releases: row.releases.length,
           proposedBeers: row.proposedBeerReleases.length,
           deals: row.happyHourDeals.length,

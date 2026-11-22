@@ -356,8 +356,11 @@ export function isEventToday(eventDate: string): boolean {
   return normalizeEventDateToMountainTime(eventDate) === getTodayMountainDateString();
 }
 
-/** How far ahead recurring occurrences expand / appear on public + admin listings. */
+/** How far ahead biweekly / monthly occurrences expand on public listings. */
 export const RECURRING_EVENT_HORIZON_DAYS = 14
+
+/** How far ahead weekly (`is_recurring`) occurrences expand / appear. */
+export const RECURRING_WEEKLY_HORIZON_DAYS = 28
 
 /** Hide recurring series whose original event_date is older than this many days before today. */
 export const RECURRING_SERIES_MAX_AGE_DAYS = 365
@@ -377,13 +380,23 @@ export function getRecurrenceKind(
   return 'none'
 }
 
+/** Horizon length in days for a recurrence kind. */
+export function recurringHorizonDays(kind: RecurrenceKind): number {
+  if (kind === 'weekly') return RECURRING_WEEKLY_HORIZON_DAYS
+  return RECURRING_EVENT_HORIZON_DAYS
+}
+
 /**
- * Inclusive end date for recurring instances: today + {@link RECURRING_EVENT_HORIZON_DAYS}
- * in Mountain Time. Occurrences further out are not shown.
+ * Inclusive end date for recurring instances in Mountain Time.
+ * Weekly uses {@link RECURRING_WEEKLY_HORIZON_DAYS}; other kinds use
+ * {@link RECURRING_EVENT_HORIZON_DAYS}.
  */
-export function endOfRecurringEventsHorizon(todayYmd?: string): string {
+export function endOfRecurringEventsHorizon(
+  todayYmd?: string,
+  kind: RecurrenceKind = 'weekly'
+): string {
   const today = todayYmd ?? getTodayMountainDateString()
-  return addDaysToDateString(today, RECURRING_EVENT_HORIZON_DAYS)
+  return addDaysToDateString(today, recurringHorizonDays(kind))
 }
 
 /** True when a recurring series' original date is more than 365 Mountain days before today. */
@@ -411,13 +424,12 @@ function advanceRecurrenceDate(ymd: string, kind: Exclude<RecurrenceKind, 'none'
 }
 
 /**
- * Whether a (possibly expanded) event should appear on listing / admin content
- * pickers — same rules as the Hoppenings mobile app.
+ * Whether a (possibly expanded) event should appear on public listings —
+ * same rules as the Hoppenings mobile app (with a longer weekly horizon).
  *
  * One-time: event_date today or later (no far-future cutoff).
- * Recurring: original date within the past year; occurrence today through +14 days.
- * Raw recurring templates (no true_event_date) stay visible in CMS when the series
- * is still active so editors can manage them before expansion.
+ * Weekly: original date within the past year; occurrence today through +28 days.
+ * Biweekly / monthly: original within past year; occurrence today through +14 days.
  */
 export function shouldShowEventOnListings(
   event: Pick<
@@ -447,7 +459,29 @@ export function shouldShowEventOnListings(
   if (!isExpanded) return true
 
   if (compareDateStrings(occurrenceYmd, today) < 0) return false
-  return compareDateStrings(occurrenceYmd, endOfRecurringEventsHorizon(today)) <= 0
+  return compareDateStrings(occurrenceYmd, endOfRecurringEventsHorizon(today, kind)) <= 0
+}
+
+/**
+ * Admin content UI:
+ * - One-time: today or later
+ * - Weekly (`is_recurring`): future instances for the next 4 weeks
+ * - Biweekly / monthly: hidden
+ */
+export function shouldShowEventInAdmin(
+  event: Pick<
+    Event,
+    | 'event_date'
+    | 'true_event_date'
+    | 'is_recurring'
+    | 'is_recurring_biweekly'
+    | 'is_recurring_monthly'
+  >,
+  todayYmd?: string
+): boolean {
+  const kind = getRecurrenceKind(event)
+  if (kind === 'biweekly' || kind === 'monthly') return false
+  return shouldShowEventOnListings(event, todayYmd)
 }
 
 /** Strip synthetic `uuid-YYYY-MM-DD` ids from expandRecurringEvents back to the DB UUID. */
@@ -502,14 +536,14 @@ export function dedupeExpandedEventsForAdminEdit(events: Event[]): Event[] {
  *
  * One-time: keep rows dated today or later (no far-future cutoff).
  * Recurring: skip series whose original date is >365 days before today; otherwise
- * emit occurrences from the original date through today+14 (inclusive), stepping
- * weekly / biweekly / monthly. Past occurrence dates are skipped when filtering.
+ * emit occurrences from the original date through the kind's horizon (weekly +28 days,
+ * biweekly/monthly +14), stepping weekly / biweekly / monthly. Past occurrence dates
+ * are skipped when filtering.
  *
  * @param filterPastEvents - If true, filter out past events. Defaults to true.
  */
 export function expandRecurringEvents(events: Event[], filterPastEvents: boolean = true): Event[] {
   const todayMountain = getTodayMountainDateString()
-  const horizonEnd = endOfRecurringEventsHorizon(todayMountain)
   const expandedEvents: Event[] = []
 
   for (const event of events) {
@@ -532,6 +566,7 @@ export function expandRecurringEvents(events: Event[], filterPastEvents: boolean
       continue
     }
 
+    const horizonEnd = endOfRecurringEventsHorizon(todayMountain, kind)
     let currentDateStr = baseEventDateMountain
     let guard = 0
 

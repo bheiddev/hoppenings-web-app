@@ -125,7 +125,8 @@ export type BrandProfile = {
   is_default: boolean
 }
 
-export const SOCIAL_CITIES = ['Colorado Springs'] as const
+/** Fallback if no brewery regions are loaded yet. */
+export const SOCIAL_CITIES_FALLBACK = ['Colorado Springs'] as const
 
 export const IG_CAPTION_LIMIT = 2200
 export const FEATURED_DESC_SUGGEST = 300

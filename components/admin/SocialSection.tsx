@@ -20,7 +20,7 @@ import {
   MAX_UPLOAD_BYTES,
   PIPELINE_STEPS,
   SHORT_DESC_LIMIT,
-  SOCIAL_CITIES,
+  SOCIAL_CITIES_FALLBACK,
   STATUS_BADGE,
   buildDraftToastMessage,
   denverToday,
@@ -127,16 +127,30 @@ function sectionItems(items: SocialPostItem[], type: SocialItemType) {
   return { ofType, included, excluded, ordered: [...included, ...excluded] }
 }
 
-export function SocialSection() {
+export function SocialSection({ cities = [] }: { cities?: string[] }) {
   const { user } = useAuth()
+  const cityOptions = useMemo(() => {
+    const cleaned = cities.map((c) => c.trim()).filter(Boolean)
+    return cleaned.length > 0 ? cleaned : [...SOCIAL_CITIES_FALLBACK]
+  }, [cities])
+  const defaultCity =
+    cityOptions.find((c) => c.localeCompare('Colorado Springs', undefined, { sensitivity: 'base' }) === 0) ??
+    cityOptions[0]
+
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [localItems, setLocalItems] = useState<SocialPostItem[]>([])
   const [brand, setBrand] = useState<BrandProfile | null>(null)
 
   const [draftDate, setDraftDate] = useState(denverToday)
-  const [draftCity, setDraftCity] = useState<string>(SOCIAL_CITIES[0])
+  const [draftCity, setDraftCity] = useState(defaultCity)
   const [useLlm, setUseLlm] = useState(true)
+
+  useEffect(() => {
+    if (!cityOptions.includes(draftCity)) {
+      setDraftCity(defaultCity)
+    }
+  }, [cityOptions, defaultCity, draftCity])
 
   const [caption, setCaption] = useState('')
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
@@ -632,7 +646,7 @@ export function SocialSection() {
             className="px-3 py-2 border rounded text-sm"
             style={inputStyle}
           >
-            {SOCIAL_CITIES.map((c) => (
+            {cityOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
