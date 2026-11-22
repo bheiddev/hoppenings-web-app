@@ -155,3 +155,19 @@ export function getBreweryAmenities(brewery: any) {
   ]
 }
 
+/** Display label for a brewery Instagram field (handle or URL). */
+export function formatInstagramLabel(raw: string | null | undefined): string {
+  const trimmed = raw?.trim()
+  return trimmed || ''
+}
+
+/** Absolute Instagram profile URL from a handle, @handle, or full URL. */
+export function formatInstagramHref(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim()
+  if (!trimmed) return null
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  const handle = trimmed.replace(/^@/, '').replace(/^instagram\.com\//i, '').replace(/\/$/, '')
+  if (!handle) return null
+  return `https://www.instagram.com/${handle}`
+}
+

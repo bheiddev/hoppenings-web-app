@@ -362,8 +362,14 @@ export const RECURRING_EVENT_HORIZON_DAYS = 14
 /** How far ahead weekly (`is_recurring`) occurrences expand / appear. */
 export const RECURRING_WEEKLY_HORIZON_DAYS = 28
 
-/** Hide recurring series whose original event_date is older than this many days before today. */
+/** Hide recurring series whose original event_date is older than this many days before today (public). */
 export const RECURRING_SERIES_MAX_AGE_DAYS = 365
+
+/**
+ * Admin editor: drop weekly series whose true/original date is older than this many
+ * Mountain days before today.
+ */
+export const RECURRING_SERIES_ADMIN_MAX_AGE_DAYS = 30
 
 export type RecurrenceKind = 'none' | 'weekly' | 'biweekly' | 'monthly'
 
@@ -465,7 +471,8 @@ export function shouldShowEventOnListings(
 /**
  * Admin content UI:
  * - One-time: today or later
- * - Weekly (`is_recurring`): future instances for the next 4 weeks
+ * - Weekly (`is_recurring`): next upcoming instance only when the true/original
+ *   date is within the past {@link RECURRING_SERIES_ADMIN_MAX_AGE_DAYS} days
  * - Biweekly / monthly: hidden
  */
 export function shouldShowEventInAdmin(
@@ -481,7 +488,22 @@ export function shouldShowEventInAdmin(
 ): boolean {
   const kind = getRecurrenceKind(event)
   if (kind === 'biweekly' || kind === 'monthly') return false
+
+  if (kind === 'weekly') {
+    const today = todayYmd ?? getTodayMountainDateString()
+    const originalYmd = normalizeEventDateToMountainTime(
+      event.true_event_date?.trim() || event.event_date
+    )
+    const cutoff = addDaysToDateString(today, -RECURRING_SERIES_ADMIN_MAX_AGE_DAYS)
+    if (compareDateStrings(originalYmd, cutoff) < 0) return false
+  }
+
   return shouldShowEventOnListings(event, todayYmd)
+}
+
+/** Admin event lists: visible rows, deduped to the next instance per series. */
+export function adminVisibleEvents(events: Event[]): Event[] {
+  return dedupeExpandedEventsForAdminEdit(events.filter((event) => shouldShowEventInAdmin(event)))
 }
 
 /** Strip synthetic `uuid-YYYY-MM-DD` ids from expandRecurringEvents back to the DB UUID. */

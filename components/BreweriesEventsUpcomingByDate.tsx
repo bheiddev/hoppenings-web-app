@@ -54,6 +54,7 @@ import {
   formatRelativeEventDateHeading,
   getMountainDateRangeFromToday,
   normalizeEventDateToMountainTime,
+  adminVisibleEvents,
   shouldShowEventInAdmin,
 } from '@/lib/utils'
 import {
@@ -65,8 +66,8 @@ import {
   ProposedEvent,
 } from '@/types/supabase'
 
-/** Today + next 27 Mountain days so weekly recurring instances can appear for 4 weeks. */
-const WEEK_HORIZON_DAYS = 28
+/** Today + next 6 Mountain days for the week glance strip. */
+const WEEK_HORIZON_DAYS = 7
 
 type EventRow = Event & { breweryName: string; breweryId: string }
 type ProposedRow = ProposedEvent & { breweryName: string; breweryId: string }
@@ -280,8 +281,7 @@ function collectUpcomingByDate(regionBreweries: BreweryWithData[]) {
     foodTrucks,
     happyHourDeals,
   } of regionBreweries) {
-    for (const event of events) {
-      if (!shouldShowEventInAdmin(event)) continue
+    for (const event of adminVisibleEvents(events)) {
       const d = normalizeEventDateToMountainTime(event.event_date)
       if (d >= weekStart && d <= weekEnd) {
         eventsByDay.get(d)!.push({

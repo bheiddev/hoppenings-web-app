@@ -886,6 +886,7 @@ export async function createBrewery(formData: FormData) {
   const phone = formText(formData, 'phone')
   const region = formText(formData, 'region')
   const location = formText(formData, 'location') || region || null
+  const instagram = formText(formData, 'instagram') || null
 
   if (!name) return { ok: false as const, error: 'Name is required' }
   if (!address) return { ok: false as const, error: 'Address is required' }
@@ -939,6 +940,7 @@ export async function createBrewery(formData: FormData) {
     longitude: formOptionalNumber(formData, 'longitude'),
     location,
     Region: region,
+    instagram,
   })
 
   if (error) {
@@ -966,6 +968,7 @@ export async function updateBrewery(formData: FormData) {
   const phone = formText(formData, 'phone')
   const region = formText(formData, 'region')
   const location = formText(formData, 'location') || region || null
+  const instagram = formText(formData, 'instagram') || null
 
   if (!breweryId) return { ok: false as const, error: 'Brewery id is required' }
   if (!name) return { ok: false as const, error: 'Name is required' }
@@ -980,6 +983,7 @@ export async function updateBrewery(formData: FormData) {
     latitude: formOptionalNumber(formData, 'latitude'),
     longitude: formOptionalNumber(formData, 'longitude'),
     location,
+    instagram,
   }
   if (region) patch.Region = region
 

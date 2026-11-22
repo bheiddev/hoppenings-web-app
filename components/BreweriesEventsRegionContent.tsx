@@ -1,6 +1,7 @@
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
-import { shouldShowEventInAdmin } from '@/lib/utils'
+import { formatInstagramHref, formatInstagramLabel } from '@/lib/breweryUtils'
+import { adminVisibleEvents, shouldShowEventInAdmin } from '@/lib/utils'
 import { AddBreweryControl } from '@/components/AddBreweryControl'
 import { BreweryAdminDetails } from '@/components/BreweryAdminDetails'
 import { EventsTableWithDelete } from '@/components/EventsTableWithDelete'
@@ -57,26 +58,53 @@ export function BreweriesEventsRegionContent({
               id={breweryAnchorId(brewery.id)}
               className="space-y-4 scroll-mt-24"
             >
-              <h3
-                className="text-xl font-semibold flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
-                style={{ color: Colors.textPrimary }}
-              >
-                <span>{brewery.name}</span>
-                <span
-                  className="text-xs font-mono font-normal shrink-0"
+              <div className="space-y-1">
+                <h3
+                  className="text-xl font-semibold"
+                  style={{ color: Colors.textPrimary }}
+                >
+                  {brewery.name}
+                </h3>
+                <p
+                  className="text-xs font-mono"
                   style={{ color: Colors.textSecondary }}
                   title="Brewery UUID"
                 >
                   {brewery.id}
-                </span>
-              </h3>
+                </p>
+                <p className="text-sm" style={{ color: Colors.textSecondary }}>
+                  {(() => {
+                    const label = formatInstagramLabel(brewery.instagram)
+                    const href = formatInstagramHref(brewery.instagram)
+                    if (!label || !href) {
+                      return (
+                        <span style={{ color: Colors.textMuted }}>Instagram · Not set</span>
+                      )
+                    }
+                    return (
+                      <>
+                        Instagram ·{' '}
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline hover:opacity-80"
+                          style={{ color: Colors.primaryDark }}
+                        >
+                          {label}
+                        </a>
+                      </>
+                    )
+                  })()}
+                </p>
+              </div>
 
               <BreweryAdminDetails brewery={brewery} hours={hours} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start overflow-x-hidden">
                 <div className="min-w-0">
                   <EventsTableWithDelete
-                    events={events.filter((event) => shouldShowEventInAdmin(event))}
+                    events={adminVisibleEvents(events)}
                     title="Events (events_base)"
                     breweryId={brewery.id}
                   />

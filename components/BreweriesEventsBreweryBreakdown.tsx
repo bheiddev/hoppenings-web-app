@@ -3,7 +3,8 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { BreweryWithData, breweryAnchorId } from '@/lib/breweriesEventsRegions'
-import { shouldShowEventInAdmin } from '@/lib/utils'
+import { formatInstagramHref, formatInstagramLabel } from '@/lib/breweryUtils'
+import { adminVisibleEvents, shouldShowEventInAdmin } from '@/lib/utils'
 
 interface BreweriesEventsBreweryBreakdownProps {
   regionBreweries: BreweryWithData[]
@@ -12,6 +13,7 @@ interface BreweriesEventsBreweryBreakdownProps {
 interface BreweryBreakdownRow {
   breweryId: string
   breweryName: string
+  instagram: string | null
   events: number
   proposed: number
   releases: number
@@ -45,6 +47,30 @@ function BreweryBreakdownEntry({
         title="Brewery UUID"
       >
         {row.breweryId}
+      </div>
+      <div className="mt-0.5 text-xs truncate" style={{ color: Colors.textSecondary }}>
+        {(() => {
+          const label = formatInstagramLabel(row.instagram)
+          const href = formatInstagramHref(row.instagram)
+          if (!label || !href) {
+            return <span style={{ color: Colors.textMuted }}>Instagram · Not set</span>
+          }
+          return (
+            <>
+              Instagram ·{' '}
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:opacity-80"
+                style={{ color: Colors.primaryDark }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {label}
+              </a>
+            </>
+          )
+        })()}
       </div>
       <div
         className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums"
@@ -96,7 +122,8 @@ export function BreweriesEventsBreweryBreakdown({
         .map((row) => ({
           breweryId: row.brewery.id,
           breweryName: row.brewery.name,
-          events: row.events.filter((event) => shouldShowEventInAdmin(event)).length,
+          instagram: row.brewery.instagram ?? null,
+          events: adminVisibleEvents(row.events).length,
           proposed: row.proposedEvents.filter((proposed) =>
             proposed.event_date?.trim()
               ? shouldShowEventInAdmin({

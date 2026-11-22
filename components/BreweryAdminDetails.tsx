@@ -13,7 +13,14 @@ import {
 } from '@/components/BreweryHoursFields'
 import { ImageDropField } from '@/components/ImageDropField'
 import { updateBrewery, upsertBreweryHours, type BreweryHoursPayload } from '@/app/admin/actions'
-import { formatDays, formatTime, groupHours, getBreweryAmenities } from '@/lib/breweryUtils'
+import {
+  formatDays,
+  formatInstagramHref,
+  formatInstagramLabel,
+  formatTime,
+  groupHours,
+  getBreweryAmenities,
+} from '@/lib/breweryUtils'
 import type { Brewery, BreweryHours } from '@/types/supabase'
 
 const inputStyle = {
@@ -88,6 +95,7 @@ function BrewerySettingsModal({
   const [name, setName] = useState(brewery.name)
   const [address, setAddress] = useState(brewery.address)
   const [phone, setPhone] = useState(brewery.phone)
+  const [instagram, setInstagram] = useState(brewery.instagram ?? '')
   const [location, setLocation] = useState(brewery.location ?? brewery.Region ?? '')
   const [region, setRegion] = useState(brewery.Region ?? '')
   const [latitude, setLatitude] = useState(
@@ -97,7 +105,6 @@ function BrewerySettingsModal({
     brewery.longitude != null ? String(brewery.longitude) : ''
   )
   const [breweryImage, setBreweryImage] = useState<File | null>(null)
-  const [tapImage, setTapImage] = useState<File | null>(null)
   const [dayHours, setDayHours] = useState<BreweryDayHours>(() => {
     const initial = {} as BreweryDayHours
     for (const day of BREWERY_DAYS) {
@@ -135,12 +142,12 @@ function BrewerySettingsModal({
       formData.set('name', name)
       formData.set('address', address)
       formData.set('phone', phone)
+      formData.set('instagram', instagram)
       formData.set('region', region)
       formData.set('location', location)
       formData.set('latitude', latitude)
       formData.set('longitude', longitude)
       if (breweryImage) formData.set('brewery_image', breweryImage)
-      if (tapImage) formData.set('tap_image', tapImage)
 
       const detailsResult = await updateBrewery(formData)
       if (!detailsResult?.ok) {
@@ -233,6 +240,19 @@ function BrewerySettingsModal({
                 style={inputStyle}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
+                Instagram
+              </label>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="@handle or https://instagram.com/…"
+                className="w-full px-3 py-2 border rounded"
+                style={inputStyle}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
@@ -296,14 +316,6 @@ function BrewerySettingsModal({
                 existingSrc={brewery.image_url}
                 disabled={saving}
               />
-              <ImageDropField
-                label="Tap list image"
-                bucketHint="Tap Images"
-                file={tapImage}
-                onFileChange={setTapImage}
-                existingSrc={brewery.tap_image}
-                disabled={saving}
-              />
             </div>
           </section>
 
@@ -356,6 +368,8 @@ export function BreweryAdminDetails({
   const [editing, setEditing] = useState(false)
   const amenities = getBreweryAmenities(brewery).filter((a) => a.isAvailable)
   const hourGroups = hours ? groupHours(hours) : []
+  const instagramLabel = formatInstagramLabel(brewery.instagram)
+  const instagramHref = formatInstagramHref(brewery.instagram)
 
   return (
     <>
@@ -365,6 +379,14 @@ export function BreweryAdminDetails({
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
+            <p
+              className="text-xs font-mono"
+              style={{ color: Colors.textSecondary }}
+              title="Brewery UUID"
+            >
+              <span style={{ color: Colors.textMuted }}>UUID · </span>
+              {brewery.id}
+            </p>
             <p className="text-sm" style={{ color: Colors.textDark }}>
               <span style={{ color: Colors.textSecondary }}>Address · </span>
               {brewery.address}
@@ -372,6 +394,22 @@ export function BreweryAdminDetails({
             <p className="text-sm" style={{ color: Colors.textDark }}>
               <span style={{ color: Colors.textSecondary }}>Phone · </span>
               {brewery.phone}
+            </p>
+            <p className="text-sm" style={{ color: Colors.textDark }}>
+              <span style={{ color: Colors.textSecondary }}>Instagram · </span>
+              {instagramHref && instagramLabel ? (
+                <a
+                  href={instagramHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:opacity-80"
+                  style={{ color: Colors.primaryDark }}
+                >
+                  {instagramLabel}
+                </a>
+              ) : (
+                <span style={{ color: Colors.textMuted }}>Not set</span>
+              )}
             </p>
             {brewery.Region ? (
               <p className="text-sm" style={{ color: Colors.textDark }}>
@@ -393,7 +431,6 @@ export function BreweryAdminDetails({
 
         <div className="flex flex-wrap gap-4">
           <ImagePreview src={brewery.image_url} label="Brewery image" />
-          <ImagePreview src={brewery.tap_image} label="Tap list image" />
         </div>
 
         {brewery.description ? (

@@ -17,6 +17,7 @@ export interface Brewery {
   location: string | null;
   Region: string | null;
   tap_image: string | null;
+  instagram: string | null;
 }
 
 export interface BreweryHours {

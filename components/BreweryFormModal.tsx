@@ -38,12 +38,12 @@ export function BreweryFormModal({
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
+  const [instagram, setInstagram] = useState('')
   const [region, setRegion] = useState(regionLabel)
   const [location, setLocation] = useState(regionLabel)
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
   const [breweryImage, setBreweryImage] = useState<File | null>(null)
-  const [tapImage, setTapImage] = useState<File | null>(null)
   const [dayHours, setDayHours] = useState(emptyDayHours)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,12 +71,12 @@ export function BreweryFormModal({
       formData.set('name', name)
       formData.set('address', address)
       formData.set('phone', phone)
+      formData.set('instagram', instagram)
       formData.set('region', region)
       formData.set('location', location)
       formData.set('latitude', latitude)
       formData.set('longitude', longitude)
       if (breweryImage) formData.set('brewery_image', breweryImage)
-      if (tapImage) formData.set('tap_image', tapImage)
 
       const result = await createBrewery(formData)
       if (!result?.ok || !('id' in result) || !result.id) {
@@ -191,6 +191,19 @@ export function BreweryFormModal({
                 style={inputStyle}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
+                Instagram
+              </label>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="@handle or https://instagram.com/…"
+                className="w-full px-3 py-2 border rounded"
+                style={inputStyle}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
@@ -252,13 +265,6 @@ export function BreweryFormModal({
                 bucketHint="brewery-images"
                 file={breweryImage}
                 onFileChange={setBreweryImage}
-                disabled={saving}
-              />
-              <ImageDropField
-                label="Tap list image"
-                bucketHint="Tap Images"
-                file={tapImage}
-                onFileChange={setTapImage}
                 disabled={saving}
               />
             </div>
