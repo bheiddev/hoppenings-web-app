@@ -10,27 +10,38 @@ import {
   uploadBreweryImageForSocial,
 } from '@/app/admin/actions'
 import {
+  APP_MOCKUP_MAX_BYTES,
   DEFAULT_BRAND_COLORS,
-  FEATURED_DESC_SLIDE_LIMIT,
+  FEATURED_DESC_SUGGEST,
   IG_CAPTION_LIMIT,
+  ITEMS_SELECT,
+  ITEM_TYPE_LABEL,
   MAX_FEATURED,
   MAX_UPLOAD_BYTES,
   PIPELINE_STEPS,
+  SHORT_DESC_LIMIT,
   SOCIAL_CITIES,
   STATUS_BADGE,
-  breweryFromEvent,
+  buildDraftToastMessage,
   denverToday,
   featuredPhotoUrl,
-  formatCost,
   functionErrorMessage,
-  itemBrewery,
+  itemBreweryPlaceholder,
+  itemCostBadge,
   itemDescription,
-  itemTime,
+  itemOriginalDescription,
+  itemSecondLine,
+  itemTimeLabel,
+  itemTimePlaceholder,
   itemTitle,
+  itemTitlePlaceholder,
+  itemTypeOf,
   pipelineStepIndex,
+  primaryBrewery,
   type BrandColors,
   type BrandFonts,
   type BrandProfile,
+  type SocialItemType,
   type SocialPost,
   type SocialPostItem,
   type SocialPostStatus,
@@ -43,23 +54,16 @@ const inputStyle = {
   backgroundColor: Colors.surface,
 } as const
 
-const ITEMS_SELECT =
-  '*, events_base(id, title, description, start_time, end_time, cost, event_date, is_recurring, breweries(*))'
-
 function normalizePost(row: Record<string, unknown>): SocialPost {
   return {
     id: String(row.id),
     created_at: String(row.created_at ?? ''),
     updated_at: String(row.updated_at ?? ''),
-    format: String(row.format ?? 'daily_events'),
+    format: String(row.format ?? 'daily'),
     city: (row.city as string | null) ?? null,
     post_date: String(row.post_date ?? ''),
     status: (row.status as SocialPostStatus) || 'draft',
     caption: (row.caption as string | null) ?? null,
-    cover_line: (row.cover_line as string | null) ?? null,
-    highlight_event_ids: Array.isArray(row.highlight_event_ids)
-      ? (row.highlight_event_ids as string[])
-      : [],
     image_urls: Array.isArray(row.image_urls) ? (row.image_urls as string[]) : [],
     slide_count: Number(row.slide_count ?? 0),
     used_llm: Boolean(row.used_llm),
@@ -72,46 +76,62 @@ function normalizePost(row: Record<string, unknown>): SocialPost {
 }
 
 function normalizeItem(row: Record<string, unknown>): SocialPostItem {
+  const itemType = (row.item_type as SocialItemType) || 'event'
   return {
     id: String(row.id),
     post_id: String(row.post_id),
-    event_id: String(row.event_id),
+    item_type: itemType,
+    event_id: (row.event_id as string | null) ?? null,
+    release_id: row.release_id == null ? null : Number(row.release_id),
+    deal_id: (row.deal_id as string | null) ?? null,
     position: Number(row.position ?? 0),
     included: row.included !== false,
+    featured: Boolean(row.featured),
+    short_description: (row.short_description as string | null) ?? null,
     image_override_url: (row.image_override_url as string | null) ?? null,
     title_override: (row.title_override as string | null) ?? null,
     time_override: (row.time_override as string | null) ?? null,
     brewery_override: (row.brewery_override as string | null) ?? null,
     description_override: (row.description_override as string | null) ?? null,
     events_base: (row.events_base as SocialPostItem['events_base']) ?? null,
+    beer_releases_base:
+      (row.beer_releases_base as SocialPostItem['beer_releases_base']) ?? null,
+    happy_hour_deals: (row.happy_hour_deals as SocialPostItem['happy_hour_deals']) ?? null,
   }
 }
 
 function normalizeBrand(row: Record<string, unknown>): BrandProfile {
-  const colors = {
-    ...DEFAULT_BRAND_COLORS,
-    ...((row.colors as Partial<BrandColors>) || {}),
-  }
-  const fonts = ((row.fonts as BrandFonts) || {}) as BrandFonts
   return {
     id: String(row.id),
     slug: String(row.slug ?? 'hoppenings'),
     name: String(row.name ?? 'Hoppenings'),
-    colors,
-    fonts,
+    colors: { ...DEFAULT_BRAND_COLORS, ...((row.colors as Partial<BrandColors>) || {}) },
+    fonts: ((row.fonts as BrandFonts) || {}) as BrandFonts,
     logo_url: (row.logo_url as string | null) ?? null,
     logo_light_url: (row.logo_light_url as string | null) ?? null,
+    app_image_url: (row.app_image_url as string | null) ?? null,
     handle: String(row.handle ?? '@hoppenings'),
     cta_text: String(row.cta_text ?? 'Get the app · Link in bio'),
     is_default: Boolean(row.is_default),
   }
 }
 
+function sectionItems(items: SocialPostItem[], type: SocialItemType) {
+  const ofType = items.filter((i) => itemTypeOf(i) === type)
+  const included = ofType
+    .filter((i) => i.included)
+    .sort((a, b) => a.position - b.position)
+  const excluded = ofType
+    .filter((i) => !i.included)
+    .sort((a, b) => a.position - b.position)
+  return { ofType, included, excluded, ordered: [...included, ...excluded] }
+}
+
 export function SocialSection() {
   const { user } = useAuth()
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [items, setItems] = useState<SocialPostItem[]>([])
+  const [localItems, setLocalItems] = useState<SocialPostItem[]>([])
   const [brand, setBrand] = useState<BrandProfile | null>(null)
 
   const [draftDate, setDraftDate] = useState(denverToday)
@@ -119,14 +139,10 @@ export function SocialSection() {
   const [useLlm, setUseLlm] = useState(true)
 
   const [caption, setCaption] = useState('')
-  const [coverLine, setCoverLine] = useState('')
-  const [highlightIds, setHighlightIds] = useState<string[]>([])
-  const [localItems, setLocalItems] = useState<SocialPostItem[]>([])
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
   const [slidesStale, setSlidesStale] = useState(false)
   const [itemsDirty, setItemsDirty] = useState(false)
-  const [coverDirty, setCoverDirty] = useState(false)
   const [captionDirty, setCaptionDirty] = useState(false)
 
   const [building, setBuilding] = useState(false)
@@ -158,7 +174,7 @@ export function SocialSection() {
     setToasts((prev) => [...prev, { id, kind, message }])
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 6000)
+    }, 7000)
   }, [])
 
   const dismissToast = useCallback((id: string) => {
@@ -206,14 +222,11 @@ export function SocialSection() {
         .order('position')
       if (error) {
         toast('error', error.message)
-        setItems([])
         setLocalItems([])
         setLoadingDetail(false)
         return
       }
-      const next = (data ?? []).map((r) => normalizeItem(r as Record<string, unknown>))
-      setItems(next)
-      setLocalItems(next)
+      setLocalItems((data ?? []).map((r) => normalizeItem(r as Record<string, unknown>)))
       setItemsDirty(false)
       setLoadingDetail(false)
     },
@@ -224,10 +237,7 @@ export function SocialSection() {
     async (post: SocialPost) => {
       setSelectedId(post.id)
       setCaption(post.caption ?? '')
-      setCoverLine(post.cover_line ?? '')
-      setHighlightIds(post.highlight_event_ids ?? [])
       setCaptionDirty(false)
-      setCoverDirty(false)
       setSlidesStale(false)
       setEditingItemId(null)
       setPublishConfirm(false)
@@ -241,15 +251,11 @@ export function SocialSection() {
     void loadBrand()
   }, [refreshPosts, loadBrand])
 
-  // Keep selected post fields in sync when posts refetch (status, images, error).
   useEffect(() => {
-    if (!selectedId) return
+    if (!selectedId || captionDirty) return
     const post = posts.find((p) => p.id === selectedId)
-    if (!post) return
-    if (!captionDirty) setCaption(post.caption ?? '')
-    if (!coverDirty) setCoverLine(post.cover_line ?? '')
-    if (!itemsDirty) setHighlightIds(post.highlight_event_ids ?? [])
-  }, [posts, selectedId, captionDirty, coverDirty, itemsDirty])
+    if (post) setCaption(post.caption ?? '')
+  }, [posts, selectedId, captionDirty])
 
   const needsPoll = posts.some((p) => p.status === 'rendering' || p.status === 'publishing')
   useEffect(() => {
@@ -270,18 +276,7 @@ export function SocialSection() {
     if (error || (data && typeof data === 'object' && 'error' in (data as object))) {
       toast('error', errMsg)
       await refreshPosts()
-      if (selectedId) {
-        const { data: postRow } = await supabase
-          .from('social_posts')
-          .select('*')
-          .eq('id', selectedId)
-          .maybeSingle()
-        if (postRow) {
-          const normalized = normalizePost(postRow as Record<string, unknown>)
-          setPosts((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)))
-        }
-        await loadItems(selectedId)
-      }
+      if (selectedId) await loadItems(selectedId)
       return { data, errorMsg: errMsg }
     }
     await refreshPosts()
@@ -300,15 +295,11 @@ export function SocialSection() {
       if (errorMsg) return
       const result = data as {
         post_id?: string
-        events_found?: number
+        found?: { events?: number; releases?: number; deals?: number }
         included?: number
-        used_llm?: boolean
         warning?: string
       }
-      toast(
-        'success',
-        `Draft built · ${result.events_found ?? 0} found, ${result.included ?? 0} included`
-      )
+      toast('success', buildDraftToastMessage(result))
       if (result.warning) toast('warning', result.warning)
       await refreshPosts()
       if (result.post_id) {
@@ -362,6 +353,8 @@ export function SocialSection() {
           .update({
             position: item.position,
             included: item.included,
+            featured: item.featured,
+            short_description: item.short_description,
             title_override: item.title_override,
             time_override: item.time_override,
             brewery_override: item.brewery_override,
@@ -374,21 +367,8 @@ export function SocialSection() {
           return false
         }
       }
-      const highlights = highlightIds.slice(0, MAX_FEATURED)
-      const patch: Record<string, unknown> = { highlight_event_ids: highlights }
-      if (coverDirty) patch.cover_line = coverLine
-      const { error: postErr } = await supabase
-        .from('social_posts')
-        .update(patch)
-        .eq('id', selected.id)
-      if (postErr) {
-        toast('error', postErr.message)
-        return false
-      }
       setItemsDirty(false)
-      setCoverDirty(false)
       setSlidesStale(true)
-      setItems(localItems)
       toast('success', 'Items saved')
       await refreshPosts()
       return true
@@ -411,7 +391,7 @@ export function SocialSection() {
       }
       setCaptionDirty(false)
     }
-    if (itemsDirty || coverDirty) {
+    if (itemsDirty) {
       const ok = await saveItems()
       if (!ok) return false
     }
@@ -467,16 +447,12 @@ export function SocialSection() {
     if (!selected || publishing) return
     setPublishing(true)
     try {
-      const { data, errorMsg } = await invokeAndRefresh('publish-post', {
+      const { errorMsg } = await invokeAndRefresh('publish-post', {
         post_id: selected.id,
       })
       if (errorMsg) return
-      const result = data as { permalink?: string }
       toast('success', 'Published to Instagram')
       setPublishConfirm(false)
-      if (result.permalink) {
-        // permalink lands on the post via refresh
-      }
       await refreshPosts()
     } finally {
       setPublishing(false)
@@ -516,7 +492,6 @@ export function SocialSection() {
       }
       toast('info', 'Post deleted')
       setSelectedId(null)
-      setItems([])
       setLocalItems([])
       await refreshPosts()
     } finally {
@@ -530,19 +505,25 @@ export function SocialSection() {
     setSlidesStale(true)
   }
 
-  function moveItem(id: string, dir: -1 | 1) {
-    const sorted = [...localItems].sort((a, b) => a.position - b.position)
-    const idx = sorted.findIndex((i) => i.id === id)
+  function moveItemWithinType(id: string, dir: -1 | 1) {
+    const item = localItems.find((i) => i.id === id)
+    if (!item) return
+    const type = itemTypeOf(item)
+    const peers = localItems
+      .filter((i) => itemTypeOf(i) === type)
+      .sort((a, b) => a.position - b.position)
+    const idx = peers.findIndex((i) => i.id === id)
     const swap = idx + dir
-    if (idx < 0 || swap < 0 || swap >= sorted.length) return
-    const a = sorted[idx]
-    const b = sorted[swap]
-    const next = localItems.map((item) => {
-      if (item.id === a.id) return { ...item, position: b.position }
-      if (item.id === b.id) return { ...item, position: a.position }
-      return item
-    })
-    markItemsDirty(next)
+    if (idx < 0 || swap < 0 || swap >= peers.length) return
+    const a = peers[idx]
+    const b = peers[swap]
+    markItemsDirty(
+      localItems.map((row) => {
+        if (row.id === a.id) return { ...row, position: b.position }
+        if (row.id === b.id) return { ...row, position: a.position }
+        return row
+      })
+    )
   }
 
   function toggleIncluded(id: string) {
@@ -551,24 +532,22 @@ export function SocialSection() {
     )
   }
 
-  function toggleFeatured(eventId: string) {
-    setHighlightIds((prev) => {
-      if (prev.includes(eventId)) {
-        setItemsDirty(true)
-        setSlidesStale(true)
-        return prev.filter((id) => id !== eventId)
-      }
-      if (prev.length >= MAX_FEATURED) {
-        toast('warning', 'Only 2 featured events; unstar one first')
-        return prev
-      }
-      setItemsDirty(true)
-      setSlidesStale(true)
-      return [...prev, eventId]
-    })
+  function toggleFeatured(id: string) {
+    const item = localItems.find((i) => i.id === id)
+    if (!item) return
+    if (item.featured) {
+      markItemsDirty(localItems.map((i) => (i.id === id ? { ...i, featured: false } : i)))
+      return
+    }
+    const featuredCount = localItems.filter((i) => i.featured).length
+    if (featuredCount >= MAX_FEATURED) {
+      toast('warning', 'Only 5 featured items; unstar one first')
+      return
+    }
+    markItemsDirty(localItems.map((i) => (i.id === id ? { ...i, featured: true } : i)))
   }
 
-  function updateItemOverride(
+  function updateItem(
     id: string,
     patch: Partial<
       Pick<
@@ -577,6 +556,7 @@ export function SocialSection() {
         | 'time_override'
         | 'brewery_override'
         | 'description_override'
+        | 'short_description'
         | 'image_override_url'
       >
     >
@@ -585,7 +565,7 @@ export function SocialSection() {
   }
 
   const isPublished = selected?.status === 'published'
-  const hasUnsaved = captionDirty || itemsDirty || coverDirty
+  const hasUnsaved = captionDirty || itemsDirty
   const canRender =
     !!selected && !['publishing', 'published'].includes(selected.status) && !rendering
   const canApprove = selected?.status === 'pending_review' && !approving
@@ -598,26 +578,14 @@ export function SocialSection() {
   const canSkip = !!selected && selected.status !== 'published' && !skipping
   const canDelete = !!selected && selected.status !== 'published' && !deleting
 
-  const featuredItems = useMemo(() => {
-    return highlightIds
-      .map((eid) => localItems.find((i) => i.event_id === eid))
-      .filter(Boolean) as SocialPostItem[]
-  }, [highlightIds, localItems])
+  const featuredItems = useMemo(
+    () => localItems.filter((i) => i.featured).sort((a, b) => a.position - b.position),
+    [localItems]
+  )
 
-  const includedSorted = useMemo(
-    () =>
-      [...localItems]
-        .filter((i) => i.included)
-        .sort((a, b) => a.position - b.position),
-    [localItems]
-  )
-  const excludedSorted = useMemo(
-    () =>
-      [...localItems]
-        .filter((i) => !i.included)
-        .sort((a, b) => a.position - b.position),
-    [localItems]
-  )
+  const releases = useMemo(() => sectionItems(localItems, 'release'), [localItems])
+  const events = useMemo(() => sectionItems(localItems, 'event'), [localItems])
+  const deals = useMemo(() => sectionItems(localItems, 'deal'), [localItems])
 
   const stepIdx = selected ? pipelineStepIndex(selected.status) : -1
 
@@ -633,12 +601,11 @@ export function SocialSection() {
           Social
         </h2>
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
-          Build an Instagram carousel from the day&apos;s events, review slides, then publish to
-          @hoppenings.
+          Build an Instagram carousel from the day&apos;s events, beer releases, and happy hours,
+          then review and publish to @hoppenings.
         </p>
       </div>
 
-      {/* Build draft */}
       <div
         className="flex flex-wrap items-end gap-3 rounded-lg border p-4"
         style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
@@ -673,11 +640,7 @@ export function SocialSection() {
           </select>
         </div>
         <label className="flex items-center gap-2 text-sm pb-2" style={{ color: Colors.textDark }}>
-          <input
-            type="checkbox"
-            checked={useLlm}
-            onChange={(e) => setUseLlm(e.target.checked)}
-          />
+          <input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
           Use AI curation
         </label>
         <AdminButton variant="save" loading={building} disabled={building} onClick={handleBuildDraft}>
@@ -686,7 +649,6 @@ export function SocialSection() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-        {/* Posts list */}
         <div
           className="rounded-lg border overflow-hidden"
           style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
@@ -711,7 +673,7 @@ export function SocialSection() {
               No posts yet. Build a draft to start.
             </p>
           ) : (
-            <ul className="max-h-[640px] overflow-y-auto divide-y" style={{ borderColor: Colors.dividerLight }}>
+            <ul className="max-h-[720px] overflow-y-auto divide-y" style={{ borderColor: Colors.dividerLight }}>
               {posts.map((p) => {
                 const badge = STATUS_BADGE[p.status] ?? STATUS_BADGE.draft
                 const selectedRow = p.id === selectedId
@@ -736,7 +698,10 @@ export function SocialSection() {
                           {badge.label}
                         </span>
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs" style={{ color: Colors.textSecondary }}>
+                      <div
+                        className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs"
+                        style={{ color: Colors.textSecondary }}
+                      >
                         <span>{p.city || '—'}</span>
                         <span>·</span>
                         <span>{p.slide_count || 0} slides</span>
@@ -768,7 +733,6 @@ export function SocialSection() {
           )}
         </div>
 
-        {/* Detail */}
         <div
           className="rounded-lg border p-4 space-y-5 min-h-[320px]"
           style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
@@ -805,7 +769,6 @@ export function SocialSection() {
                 </div>
               ) : null}
 
-              {/* Pipeline */}
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span
@@ -854,72 +817,7 @@ export function SocialSection() {
                 </div>
               </div>
 
-              {/* Featured photos */}
-              <div>
-                <h3
-                  className="text-sm font-semibold mb-2"
-                  style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
-                >
-                  Featured ({featuredItems.length} slides)
-                </h3>
-                {featuredItems.length === 0 ? (
-                  <p className="text-xs" style={{ color: Colors.textMuted }}>
-                    Star up to 2 events below to feature them after the cover.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {featuredItems.map((item) => {
-                      const photo = featuredPhotoUrl(item)
-                      return (
-                        <div key={item.id} className="w-[140px] space-y-1">
-                          <div
-                            className="aspect-[4/5] rounded border overflow-hidden flex items-center justify-center text-[11px] text-center px-2"
-                            style={{
-                              borderColor: Colors.dividerLight,
-                              backgroundColor: Colors.surfaceLight,
-                              color: Colors.textMuted,
-                            }}
-                          >
-                            {photo ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={photo} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              'No photo: text-only slide'
-                            )}
-                          </div>
-                          <p className="text-xs font-medium truncate" style={{ color: Colors.textDark }}>
-                            {itemTitle(item)}
-                          </p>
-                          {!isPublished ? (
-                            <div className="flex flex-wrap gap-1">
-                              <AdminButton
-                                variant="edit"
-                                onClick={() => setPhotoPickerItemId(item.id)}
-                              >
-                                Change photo
-                              </AdminButton>
-                              {item.image_override_url ? (
-                                <button
-                                  type="button"
-                                  className="text-[11px] underline"
-                                  style={{ color: Colors.textSecondary }}
-                                  onClick={() =>
-                                    updateItemOverride(item.id, { image_override_url: null })
-                                  }
-                                >
-                                  Reset
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Slides preview */}
+              {/* Slides */}
               <div>
                 <h3
                   className="text-sm font-semibold mb-2"
@@ -953,210 +851,240 @@ export function SocialSection() {
                 )}
               </div>
 
-              {/* Caption + cover */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
-                    Caption
-                  </label>
-                  <textarea
-                    value={caption}
-                    disabled={isPublished}
-                    onChange={(e) => {
-                      setCaption(e.target.value)
-                      setCaptionDirty(true)
+              {/* Caption */}
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
+                  Caption
+                </label>
+                <textarea
+                  value={caption}
+                  disabled={isPublished}
+                  onChange={(e) => {
+                    setCaption(e.target.value)
+                    setCaptionDirty(true)
+                  }}
+                  rows={5}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                  style={inputStyle}
+                />
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span style={{ color: Colors.textMuted }}>
+                    The first ~125 characters show before &apos;more&apos;.
+                  </span>
+                  <span
+                    style={{
+                      color: caption.length > IG_CAPTION_LIMIT ? Colors.error : Colors.textSecondary,
                     }}
-                    rows={5}
-                    className="w-full px-3 py-2 border rounded text-sm"
-                    style={inputStyle}
-                  />
-                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span style={{ color: Colors.textMuted }}>
-                      The first ~125 characters show before &apos;more&apos;.
-                    </span>
-                    <span
-                      style={{
-                        color: caption.length > IG_CAPTION_LIMIT ? Colors.error : Colors.textSecondary,
-                      }}
+                  >
+                    {caption.length} / {IG_CAPTION_LIMIT}
+                  </span>
+                </div>
+                {!isPublished ? (
+                  <div className="mt-2">
+                    <AdminButton
+                      variant="save"
+                      loading={savingCaption}
+                      disabled={!captionDirty || savingCaption}
+                      onClick={() => void saveCaption()}
                     >
-                      {caption.length} / {IG_CAPTION_LIMIT}
-                    </span>
+                      Save caption
+                    </AdminButton>
                   </div>
-                  {!isPublished ? (
-                    <div className="mt-2">
-                      <AdminButton
-                        variant="save"
-                        loading={savingCaption}
-                        disabled={!captionDirty || savingCaption}
-                        onClick={() => void saveCaption()}
-                      >
-                        Save caption
-                      </AdminButton>
-                    </div>
-                  ) : null}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: Colors.textDark }}>
-                    Cover line{' '}
-                    <span className="font-normal text-xs" style={{ color: Colors.warning }}>
-                      (affects slides)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={coverLine}
-                    disabled={isPublished}
-                    onChange={(e) => {
-                      setCoverLine(e.target.value)
-                      setCoverDirty(true)
-                      setSlidesStale(true)
-                    }}
-                    className="w-full px-3 py-2 border rounded text-sm"
-                    style={inputStyle}
-                    placeholder="14 events across 10 breweries"
-                  />
-                </div>
+                ) : null}
               </div>
 
-              {/* Events list */}
+              {/* Featured */}
               <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3
+                  className="text-sm font-semibold mb-2"
+                  style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+                >
+                  Featured ({featuredItems.length} of {MAX_FEATURED})
+                </h3>
+                {featuredItems.length === 0 ? (
+                  <p className="text-xs" style={{ color: Colors.textMuted }}>
+                    Star up to {MAX_FEATURED} items below to give them their own slides after the cover.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {featuredItems.map((item) => {
+                      const photo = featuredPhotoUrl(item)
+                      const desc = item.description_override ?? ''
+                      const type = itemTypeOf(item)
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex flex-wrap gap-3 rounded border p-3"
+                          style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
+                        >
+                          <div className="w-[120px] space-y-1">
+                            <div
+                              className="aspect-[4/5] rounded border overflow-hidden flex items-center justify-center text-[11px] text-center px-2"
+                              style={{
+                                borderColor: Colors.dividerLight,
+                                backgroundColor: Colors.surface,
+                                color: Colors.textMuted,
+                              }}
+                            >
+                              {photo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={photo} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                'No photo: text-only slide'
+                              )}
+                            </div>
+                            {!isPublished ? (
+                              <div className="flex flex-wrap gap-1">
+                                <AdminButton
+                                  variant="edit"
+                                  onClick={() => setPhotoPickerItemId(item.id)}
+                                >
+                                  Change photo
+                                </AdminButton>
+                                {item.image_override_url ? (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] underline"
+                                    style={{ color: Colors.textSecondary }}
+                                    onClick={() =>
+                                      updateItem(item.id, { image_override_url: null })
+                                    }
+                                  >
+                                    Reset
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex-1 min-w-[200px] space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                style={{ backgroundColor: Colors.dividerLight, color: Colors.textDark }}
+                              >
+                                {ITEM_TYPE_LABEL[type]}
+                              </span>
+                              <span className="text-sm font-semibold" style={{ color: Colors.textDark }}>
+                                {itemTitle(item)}
+                              </span>
+                            </div>
+                            <p className="text-xs" style={{ color: Colors.textSecondary }}>
+                              {itemSecondLine(item)}
+                            </p>
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <label className="text-xs" style={{ color: Colors.textSecondary }}>
+                                  Description (featured slide)
+                                </label>
+                                {item.description_override != null && !isPublished ? (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] underline"
+                                    style={{ color: Colors.textMuted }}
+                                    onClick={() =>
+                                      updateItem(item.id, { description_override: null })
+                                    }
+                                  >
+                                    reset
+                                  </button>
+                                ) : null}
+                              </div>
+                              <textarea
+                                disabled={isPublished}
+                                value={desc}
+                                placeholder={itemOriginalDescription(item)}
+                                onChange={(e) =>
+                                  updateItem(item.id, {
+                                    description_override: e.target.value.trim()
+                                      ? e.target.value
+                                      : null,
+                                  })
+                                }
+                                rows={3}
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                                style={inputStyle}
+                              />
+                              <p
+                                className="text-[11px] mt-0.5 text-right"
+                                style={{
+                                  color:
+                                    (desc || itemDescription(item)).length > FEATURED_DESC_SUGGEST
+                                      ? Colors.warning
+                                      : Colors.textMuted,
+                                }}
+                              >
+                                {(desc || itemDescription(item)).length} chars · suggest under ~
+                                {FEATURED_DESC_SUGGEST}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Items sections */}
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3
                     className="text-sm font-semibold"
                     style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
                   >
-                    Events
+                    Items
                   </h3>
                   {!isPublished ? (
                     <AdminButton
                       variant="save"
                       loading={savingItems}
-                      disabled={(!itemsDirty && !coverDirty) || savingItems}
+                      disabled={!itemsDirty || savingItems}
                       onClick={() => void saveItems()}
                     >
                       Save items
                     </AdminButton>
                   ) : null}
                 </div>
-                <div className="overflow-x-auto rounded border" style={{ borderColor: Colors.dividerLight }}>
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead>
-                      <tr style={{ backgroundColor: Colors.surfaceLight }}>
-                        {['', 'Incl.', '★', 'Time', 'Title', 'Brewery', 'Price', ''].map((h) => (
-                          <th
-                            key={h || 'actions'}
-                            className="px-2 py-2 font-semibold text-xs"
-                            style={{ color: Colors.textDark }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...includedSorted, ...excludedSorted].map((item) => {
-                        const featured = highlightIds.includes(item.event_id)
-                        const editing = editingItemId === item.id
-                        const grey = !item.included
-                        const event = item.events_base
-                        return (
-                          <tr
-                            key={item.id}
-                            className="border-t align-top"
-                            style={{
-                              borderColor: Colors.dividerLight,
-                              opacity: grey ? 0.55 : 1,
-                            }}
-                          >
-                            <td className="px-2 py-2 whitespace-nowrap">
-                              {!isPublished ? (
-                                <div className="flex flex-col gap-0.5">
-                                  <button
-                                    type="button"
-                                    className="text-xs"
-                                    onClick={() => moveItem(item.id, -1)}
-                                    aria-label="Move up"
-                                  >
-                                    ↑
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="text-xs"
-                                    onClick={() => moveItem(item.id, 1)}
-                                    aria-label="Move down"
-                                  >
-                                    ↓
-                                  </button>
-                                </div>
-                              ) : null}
-                            </td>
-                            <td className="px-2 py-2">
-                              <input
-                                type="checkbox"
-                                checked={item.included}
-                                disabled={isPublished}
-                                onChange={() => toggleIncluded(item.id)}
-                              />
-                            </td>
-                            <td className="px-2 py-2">
-                              <button
-                                type="button"
-                                disabled={isPublished}
-                                onClick={() => toggleFeatured(item.event_id)}
-                                className="text-base leading-none"
-                                style={{ color: featured ? Colors.accent : Colors.textMuted }}
-                                aria-label={featured ? 'Unfeature' : 'Feature'}
-                              >
-                                ★
-                              </button>
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: Colors.textDark }}>
-                              {itemTime(item)}
-                            </td>
-                            <td className="px-2 py-2" style={{ color: Colors.textDark }}>
-                              {itemTitle(item)}
-                            </td>
-                            <td className="px-2 py-2" style={{ color: Colors.textSecondary }}>
-                              {itemBrewery(item)}
-                            </td>
-                            <td className="px-2 py-2" style={{ color: Colors.textSecondary }}>
-                              {formatCost(event?.cost)}
-                            </td>
-                            <td className="px-2 py-2">
-                              {!isPublished ? (
-                                <AdminButton
-                                  variant="edit"
-                                  onClick={() =>
-                                    setEditingItemId(editing ? null : item.id)
-                                  }
-                                >
-                                  {editing ? 'Close' : 'Edit'}
-                                </AdminButton>
-                              ) : null}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
 
-                {(() => {
-                  const editingItem = localItems.find((i) => i.id === editingItemId)
-                  if (!editingItem) return null
-                  return (
-                    <ItemOverrideEditor
-                      item={editingItem}
-                      featured={highlightIds.includes(editingItem.event_id)}
-                      disabled={isPublished}
-                      onChange={(patch) => updateItemOverride(editingItem.id, patch)}
-                    />
-                  )
-                })()}
+                <ItemTypeSection
+                  title="New releases"
+                  section={releases}
+                  isPublished={isPublished}
+                  editingItemId={editingItemId}
+                  setEditingItemId={setEditingItemId}
+                  onMove={moveItemWithinType}
+                  onToggleIncluded={toggleIncluded}
+                  onToggleFeatured={toggleFeatured}
+                  onUpdate={updateItem}
+                />
+                <ItemTypeSection
+                  title="Events"
+                  section={events}
+                  isPublished={isPublished}
+                  editingItemId={editingItemId}
+                  setEditingItemId={setEditingItemId}
+                  onMove={moveItemWithinType}
+                  onToggleIncluded={toggleIncluded}
+                  onToggleFeatured={toggleFeatured}
+                  onUpdate={updateItem}
+                />
+                <ItemTypeSection
+                  title="Happy hours"
+                  section={deals}
+                  isPublished={isPublished}
+                  editingItemId={editingItemId}
+                  setEditingItemId={setEditingItemId}
+                  onMove={moveItemWithinType}
+                  onToggleIncluded={toggleIncluded}
+                  onToggleFeatured={toggleFeatured}
+                  onUpdate={updateItem}
+                />
               </div>
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: Colors.dividerLight }}>
+              <div
+                className="flex flex-wrap gap-2 pt-2 border-t"
+                style={{ borderColor: Colors.dividerLight }}
+              >
                 {!isPublished ? (
                   <>
                     <AdminButton
@@ -1224,7 +1152,6 @@ export function SocialSection() {
         </div>
       </div>
 
-      {/* Brand settings */}
       <BrandSettingsPanel
         open={brandOpen}
         onToggle={() => setBrandOpen((o) => !o)}
@@ -1242,6 +1169,7 @@ export function SocialSection() {
                 fonts: next.fonts,
                 logo_url: next.logo_url,
                 logo_light_url: next.logo_light_url,
+                app_image_url: next.app_image_url,
                 handle: next.handle,
                 cta_text: next.cta_text,
               })
@@ -1259,7 +1187,6 @@ export function SocialSection() {
         toast={toast}
       />
 
-      {/* Lightbox */}
       {lightboxUrl ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1278,7 +1205,6 @@ export function SocialSection() {
         </div>
       ) : null}
 
-      {/* Publish confirm */}
       {publishConfirm && selected ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1305,7 +1231,10 @@ export function SocialSection() {
                 style={{ borderColor: Colors.dividerLight }}
               />
             ) : null}
-            <p className="text-sm whitespace-pre-wrap max-h-40 overflow-y-auto" style={{ color: Colors.textDark }}>
+            <p
+              className="text-sm whitespace-pre-wrap max-h-40 overflow-y-auto"
+              style={{ color: Colors.textDark }}
+            >
               {caption || selected.caption || '(no caption)'}
             </p>
             <p className="text-sm font-medium" style={{ color: Colors.error }}>
@@ -1332,7 +1261,6 @@ export function SocialSection() {
         </div>
       ) : null}
 
-      {/* Photo picker */}
       {(() => {
         const pickerItem = localItems.find((i) => i.id === photoPickerItemId)
         if (!pickerItem || !photoPickerItemId) return null
@@ -1341,7 +1269,7 @@ export function SocialSection() {
             item={pickerItem}
             onClose={() => setPhotoPickerItemId(null)}
             onPick={(url) => {
-              updateItemOverride(photoPickerItemId, { image_override_url: url })
+              updateItem(photoPickerItemId, { image_override_url: url })
               setPhotoPickerItemId(null)
             }}
             toast={toast}
@@ -1352,41 +1280,207 @@ export function SocialSection() {
   )
 }
 
+function ItemTypeSection({
+  title,
+  section,
+  isPublished,
+  editingItemId,
+  setEditingItemId,
+  onMove,
+  onToggleIncluded,
+  onToggleFeatured,
+  onUpdate,
+}: {
+  title: string
+  section: ReturnType<typeof sectionItems>
+  isPublished: boolean
+  editingItemId: string | null
+  setEditingItemId: (id: string | null) => void
+  onMove: (id: string, dir: -1 | 1) => void
+  onToggleIncluded: (id: string) => void
+  onToggleFeatured: (id: string) => void
+  onUpdate: (
+    id: string,
+    patch: Partial<
+      Pick<
+        SocialPostItem,
+        | 'title_override'
+        | 'time_override'
+        | 'brewery_override'
+        | 'short_description'
+        | 'description_override'
+      >
+    >
+  ) => void
+}) {
+  if (section.ofType.length === 0) return null
+  const includedCount = section.included.length
+
+  return (
+    <div>
+      <h4
+        className="text-sm font-semibold mb-2"
+        style={{ color: Colors.textDark, fontFamily: 'var(--font-fjalla-one)' }}
+      >
+        {title} · {section.ofType.length} ({includedCount} included)
+      </h4>
+      <div className="overflow-x-auto rounded border" style={{ borderColor: Colors.dividerLight }}>
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr style={{ backgroundColor: Colors.surfaceLight }}>
+              {['', 'Incl.', '★', 'Time', 'Title', 'Details', ''].map((h, i) => (
+                <th
+                  key={`${h}-${i}`}
+                  className="px-2 py-2 font-semibold text-xs"
+                  style={{ color: Colors.textDark }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {section.ordered.map((item) => {
+              const editing = editingItemId === item.id
+              const grey = !item.included
+              const cost = itemCostBadge(item)
+              const type = itemTypeOf(item)
+              return (
+                <tr
+                  key={item.id}
+                  className="border-t align-top"
+                  style={{ borderColor: Colors.dividerLight, opacity: grey ? 0.55 : 1 }}
+                >
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    {!isPublished ? (
+                      <div className="flex flex-col gap-0.5">
+                        <button type="button" className="text-xs" onClick={() => onMove(item.id, -1)}>
+                          ↑
+                        </button>
+                        <button type="button" className="text-xs" onClick={() => onMove(item.id, 1)}>
+                          ↓
+                        </button>
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={item.included}
+                      disabled={isPublished}
+                      onChange={() => onToggleIncluded(item.id)}
+                    />
+                  </td>
+                  <td className="px-2 py-2">
+                    <button
+                      type="button"
+                      disabled={isPublished}
+                      onClick={() => onToggleFeatured(item.id)}
+                      className="text-base leading-none"
+                      style={{ color: item.featured ? Colors.accent : Colors.textMuted }}
+                      aria-label={item.featured ? 'Unfeature' : 'Feature'}
+                    >
+                      ★
+                    </button>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap" style={{ color: Colors.textDark }}>
+                    {type === 'release' && !item.time_override ? (
+                      <span
+                        className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: Colors.accent, color: Colors.textDark }}
+                      >
+                        New
+                      </span>
+                    ) : (
+                      itemTimeLabel(item)
+                    )}
+                  </td>
+                  <td className="px-2 py-2" style={{ color: Colors.textDark }}>
+                    <div className="font-medium">{itemTitle(item)}</div>
+                  </td>
+                  <td className="px-2 py-2" style={{ color: Colors.textSecondary }}>
+                    <div>
+                      {itemSecondLine(item)}
+                      {cost ? (
+                        <span
+                          className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: Colors.surfaceLight, color: Colors.textDark }}
+                        >
+                          {cost}
+                        </span>
+                      ) : null}
+                    </div>
+                    {(type === 'event' || type === 'deal') && item.short_description ? (
+                      <div className="text-xs mt-0.5" style={{ color: Colors.textMuted }}>
+                        {item.short_description}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-2">
+                    {!isPublished ? (
+                      <AdminButton
+                        variant="edit"
+                        onClick={() => setEditingItemId(editing ? null : item.id)}
+                      >
+                        {editing ? 'Close' : 'Edit'}
+                      </AdminButton>
+                    ) : null}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {(() => {
+        const editingItem = section.ordered.find((i) => i.id === editingItemId)
+        if (!editingItem) return null
+        return (
+          <ItemOverrideEditor
+            item={editingItem}
+            disabled={isPublished}
+            onChange={(patch) => onUpdate(editingItem.id, patch)}
+          />
+        )
+      })()}
+    </div>
+  )
+}
+
 function ItemOverrideEditor({
   item,
-  featured,
   disabled,
   onChange,
 }: {
   item: SocialPostItem
-  featured: boolean
   disabled: boolean
   onChange: (
     patch: Partial<
       Pick<
         SocialPostItem,
-        'title_override' | 'time_override' | 'brewery_override' | 'description_override'
+        'title_override' | 'time_override' | 'brewery_override' | 'short_description'
       >
     >
   ) => void
 }) {
-  if (!item) return null
-  const event = item.events_base
-  const brewery = breweryFromEvent(event)
-  const desc = item.description_override ?? ''
+  const type = itemTypeOf(item)
+  const showShort = type === 'event' || type === 'deal'
+  const shortVal = item.short_description ?? ''
+
   return (
     <div
       className="mt-3 rounded border p-3 space-y-2"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surfaceLight }}
     >
       <p className="text-xs font-semibold" style={{ color: Colors.textDark }}>
-        Overrides for {event?.title || 'event'}
+        Overrides · {ITEM_TYPE_LABEL[type]} · {itemTitle(item)}
       </p>
       {(
         [
-          ['title_override', 'Title', event?.title ?? ''],
-          ['time_override', 'Time', itemTime({ ...item, time_override: null })],
-          ['brewery_override', 'Brewery', brewery?.name ?? ''],
+          ['title_override', 'Title', itemTitlePlaceholder(item)],
+          ['time_override', 'Time', itemTimePlaceholder(item)],
+          ['brewery_override', 'Brewery', itemBreweryPlaceholder(item)],
         ] as const
       ).map(([key, label, placeholder]) => (
         <div key={key}>
@@ -1419,47 +1513,33 @@ function ItemOverrideEditor({
           />
         </div>
       ))}
-      {featured ? (
+      {showShort ? (
         <div>
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs" style={{ color: Colors.textSecondary }}>
-              Description (featured slide)
+              Short description
             </label>
-            {item.description_override != null ? (
-              <button
-                type="button"
-                disabled={disabled}
-                className="text-[11px] underline"
-                style={{ color: Colors.textMuted }}
-                onClick={() => onChange({ description_override: null })}
-              >
-                reset
-              </button>
-            ) : null}
           </div>
-          <textarea
+          <input
+            type="text"
             disabled={disabled}
-            value={desc}
-            placeholder={event?.description ?? ''}
+            value={shortVal}
             onChange={(e) =>
               onChange({
-                description_override: e.target.value.trim() ? e.target.value : null,
+                short_description: e.target.value.trim() ? e.target.value : null,
               })
             }
-            rows={3}
             className="w-full px-2 py-1.5 border rounded text-sm"
             style={inputStyle}
+            placeholder="One-line blurb for lineup slides"
           />
           <p
             className="text-[11px] mt-0.5 text-right"
             style={{
-              color:
-                (desc || itemDescription(item)).length > FEATURED_DESC_SLIDE_LIMIT
-                  ? Colors.warning
-                  : Colors.textMuted,
+              color: shortVal.length > SHORT_DESC_LIMIT ? Colors.warning : Colors.textMuted,
             }}
           >
-            {(desc || itemDescription(item)).length} / ~{FEATURED_DESC_SLIDE_LIMIT} on slide
+            {shortVal.length} / ~{SHORT_DESC_LIMIT}
           </p>
         </div>
       ) : null}
@@ -1478,7 +1558,7 @@ function PhotoPickerModal({
   onPick: (url: string) => void
   toast: (kind: SocialToast['kind'], message: string) => void
 }) {
-  const brewery = breweryFromEvent(item.events_base)
+  const brewery = primaryBrewery(item)
   const [images, setImages] = useState<{ path: string; url: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -1510,8 +1590,19 @@ function PhotoPickerModal({
       return
     }
     const type = (file.type || '').toLowerCase()
-    if (type !== 'image/jpeg' && type !== 'image/png' && type !== 'image/jpg') {
-      toast('error', 'Only JPEG and PNG are supported (renderer cannot read WebP/AVIF)')
+    const name = file.name.toLowerCase()
+    if (type === 'image/avif' || type === 'image/gif' || /\.(avif|gif)$/.test(name)) {
+      toast('error', 'AVIF and GIF are not supported')
+      return
+    }
+    const ok =
+      type === 'image/jpeg' ||
+      type === 'image/jpg' ||
+      type === 'image/png' ||
+      type === 'image/webp' ||
+      /\.(jpe?g|png|webp)$/.test(name)
+    if (!ok) {
+      toast('error', 'Only JPEG, PNG, or WebP are supported')
       return
     }
     setUploading(true)
@@ -1553,7 +1644,7 @@ function PhotoPickerModal({
           </AdminButton>
         </div>
         <p className="text-xs" style={{ color: Colors.textSecondary }}>
-          {brewery?.name || 'Brewery'} · JPEG/PNG under 6 MB
+          {brewery?.name || 'Brewery'} · JPEG / PNG / WebP under 6 MB
         </p>
         {brewery?.image_url ? (
           <button
@@ -1593,7 +1684,7 @@ function PhotoPickerModal({
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]
@@ -1659,7 +1750,7 @@ function BrandSettingsPanel({
     return (
       <div className="rounded-lg border p-4" style={{ borderColor: Colors.dividerLight }}>
         <p className="text-sm" style={{ color: Colors.textSecondary }}>
-          Brand profile not loaded yet (run the social setup SQL if tables are missing).
+          Brand profile not loaded yet.
         </p>
       </div>
     )
@@ -1667,22 +1758,14 @@ function BrandSettingsPanel({
 
   async function uploadAsset(
     file: File,
-    folder: 'fonts' | 'logos',
-    slot: string,
-    acceptCheck: () => string | null
+    path: string,
+    slot: string
   ): Promise<string | null> {
-    const err = acceptCheck()
-    if (err) {
-      toast('error', err)
-      return null
-    }
     setUploadingSlot(slot)
     try {
       const supabase = getSupabaseBrowser()
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
-      const path = `${folder}/${slot}-${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('brand-assets').upload(path, file, {
-        upsert: true,
+        upsert: false,
         contentType: file.type || undefined,
       })
       if (error) {
@@ -1719,7 +1802,7 @@ function BrandSettingsPanel({
       {open ? (
         <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: Colors.dividerLight }}>
           <p className="text-xs pt-3" style={{ color: Colors.textMuted }}>
-            Brand changes apply on the next render.
+            Changes apply on the next render.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {COLOR_KEYS.map((key) => (
@@ -1782,14 +1865,19 @@ function BrandSettingsPanel({
                     if (!file) return
                     const name = file.name.toLowerCase()
                     if (name.endsWith('.woff2')) {
-                      toast('error', 'WOFF2 is not supported — use .ttf, .otf, or .woff')
+                      toast('error', "the renderer can't read .woff2")
                       return
                     }
                     if (!/\.(ttf|otf|woff)$/.test(name)) {
                       toast('error', 'Fonts must be .ttf, .otf, or .woff')
                       return
                     }
-                    const url = await uploadAsset(file, 'fonts', key, () => null)
+                    const ext = name.split('.').pop() || 'ttf'
+                    const url = await uploadAsset(
+                      file,
+                      `fonts/${key}-${Date.now()}.${ext}`,
+                      key
+                    )
                     if (url) {
                       setDraft({
                         ...draft,
@@ -1830,25 +1918,94 @@ function BrandSettingsPanel({
                     const file = e.target.files?.[0]
                     e.target.value = ''
                     if (!file) return
-                    const url = await uploadAsset(file, 'logos', field, () => {
-                      const t = (file.type || '').toLowerCase()
-                      const n = file.name.toLowerCase()
-                      if (
-                        t !== 'image/png' &&
-                        t !== 'image/svg+xml' &&
-                        !n.endsWith('.png') &&
-                        !n.endsWith('.svg')
-                      ) {
-                        return 'Logos must be PNG or SVG'
-                      }
-                      return null
-                    })
+                    const t = (file.type || '').toLowerCase()
+                    const n = file.name.toLowerCase()
+                    if (
+                      t !== 'image/png' &&
+                      t !== 'image/svg+xml' &&
+                      !n.endsWith('.png') &&
+                      !n.endsWith('.svg')
+                    ) {
+                      toast('error', 'Logos must be PNG or SVG')
+                      return
+                    }
+                    const ext = n.endsWith('.svg') ? 'svg' : 'png'
+                    const url = await uploadAsset(
+                      file,
+                      `logos/${field}-${Date.now()}.${ext}`,
+                      field
+                    )
                     if (url) setDraft({ ...draft, [field]: url })
                   }}
                   className="text-xs"
                 />
               </div>
             ))}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium" style={{ color: Colors.textSecondary }}>
+              App mockup (last slide)
+            </p>
+            <p className="text-[11px]" style={{ color: Colors.textMuted }}>
+              PNG (keeps transparency) or JPEG · ideally ~600×1100 · under 1 MB. Always uploads under
+              a new file name.
+            </p>
+            {draft.app_image_url ? (
+              <div className="flex items-start gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={draft.app_image_url}
+                  alt="App mockup"
+                  className="h-40 w-auto object-contain rounded border"
+                  style={{ borderColor: Colors.dividerLight }}
+                />
+                <AdminButton
+                  variant="delete"
+                  disabled={saving}
+                  onClick={() => setDraft({ ...draft, app_image_url: null })}
+                >
+                  Remove
+                </AdminButton>
+              </div>
+            ) : (
+              <p className="text-[11px]" style={{ color: Colors.textMuted }}>
+                Empty = text-only last slide
+              </p>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+              disabled={uploadingSlot === 'app_image'}
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                if (file.size > APP_MOCKUP_MAX_BYTES) {
+                  toast('error', 'App mockup should be under 1 MB')
+                  return
+                }
+                const t = (file.type || '').toLowerCase()
+                const n = file.name.toLowerCase()
+                if (
+                  t !== 'image/png' &&
+                  t !== 'image/jpeg' &&
+                  t !== 'image/jpg' &&
+                  !/\.(png|jpe?g)$/.test(n)
+                ) {
+                  toast('error', 'App mockup must be PNG or JPEG')
+                  return
+                }
+                const ext = n.endsWith('.png') || t === 'image/png' ? 'png' : 'jpg'
+                const url = await uploadAsset(
+                  file,
+                  `app-mockup-${Date.now()}.${ext}`,
+                  'app_image'
+                )
+                if (url) setDraft({ ...draft, app_image_url: url })
+              }}
+              className="text-xs"
+            />
           </div>
 
           <AdminButton

@@ -1470,7 +1470,7 @@ export async function listBreweryFolderImages(breweryId: string) {
 }
 
 /**
- * Upload a JPEG/PNG into `brewery-images/{breweryId}/` for a social featured slide.
+ * Upload a JPEG/PNG/WebP into `brewery-images/{breweryId}/` for a social featured slide.
  * Returns a long-lived signed URL suitable for `social_post_items.image_override_url`.
  */
 export async function uploadBreweryImageForSocial(formData: FormData) {
@@ -1487,8 +1487,18 @@ export async function uploadBreweryImageForSocial(formData: FormData) {
     return { ok: false as const, error: 'Image must be under 6 MB' }
   }
   const type = (file.type || '').toLowerCase()
-  if (type !== 'image/jpeg' && type !== 'image/png' && type !== 'image/jpg') {
-    return { ok: false as const, error: 'Only JPEG and PNG are supported (renderer cannot read WebP/AVIF)' }
+  const name = file.name.toLowerCase()
+  const okType =
+    type === 'image/jpeg' ||
+    type === 'image/jpg' ||
+    type === 'image/png' ||
+    type === 'image/webp' ||
+    /\.(jpe?g|png|webp)$/.test(name)
+  if (!okType || type === 'image/avif' || type === 'image/gif' || /\.(avif|gif)$/.test(name)) {
+    return {
+      ok: false as const,
+      error: 'Only JPEG, PNG, or WebP are supported (not AVIF or GIF)',
+    }
   }
 
   const uploaded = await uploadBreweryImage(admin!, BREWERY_IMAGES_BUCKET, breweryId, file, 'social')

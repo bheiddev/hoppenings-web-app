@@ -10,6 +10,8 @@ export type SocialPostStatus =
   | 'failed'
   | 'skipped'
 
+export type SocialItemType = 'event' | 'release' | 'deal'
+
 export type SocialPost = {
   id: string
   created_at: string
@@ -19,8 +21,6 @@ export type SocialPost = {
   post_date: string
   status: SocialPostStatus
   caption: string | null
-  cover_line: string | null
-  highlight_event_ids: string[]
   image_urls: string[]
   slide_count: number
   used_llm: boolean
@@ -34,7 +34,6 @@ export type SocialPost = {
 export type SocialBrewery = {
   id: string
   name: string
-  display_name?: string | null
   image_url?: string | null
   location?: string | null
   Region?: string | null
@@ -45,25 +44,53 @@ export type SocialEventBase = {
   title: string
   description: string | null
   start_time: string | null
-  end_time: string | null
   cost: number | null
-  event_date: string | null
   is_recurring: boolean | null
+  breweries: SocialBrewery | SocialBrewery[] | null
+}
+
+export type SocialReleaseBase = {
+  id: number
+  beer_name: string
+  description: string | null
+  ABV: string | null
+  Type: string | null
+  release_date: string | null
+  b1: SocialBrewery | SocialBrewery[] | null
+  b2: SocialBrewery | SocialBrewery[] | null
+  b3: SocialBrewery | SocialBrewery[] | null
+}
+
+export type SocialDealBase = {
+  id: string
+  title: string
+  description: string | null
+  day_of_week: string | null
+  deal_date: string | null
+  time_start: number | null
+  time_end: number | null
   breweries: SocialBrewery | SocialBrewery[] | null
 }
 
 export type SocialPostItem = {
   id: string
   post_id: string
-  event_id: string
+  item_type: SocialItemType
+  event_id: string | null
+  release_id: number | null
+  deal_id: string | null
   position: number
   included: boolean
+  featured: boolean
+  short_description: string | null
   image_override_url: string | null
   title_override: string | null
   time_override: string | null
   brewery_override: string | null
   description_override: string | null
   events_base: SocialEventBase | null
+  beer_releases_base: SocialReleaseBase | null
+  happy_hour_deals: SocialDealBase | null
 }
 
 export type BrandColors = {
@@ -92,6 +119,7 @@ export type BrandProfile = {
   fonts: BrandFonts
   logo_url: string | null
   logo_light_url: string | null
+  app_image_url: string | null
   handle: string
   cta_text: string
   is_default: boolean
@@ -100,9 +128,19 @@ export type BrandProfile = {
 export const SOCIAL_CITIES = ['Colorado Springs'] as const
 
 export const IG_CAPTION_LIMIT = 2200
-export const FEATURED_DESC_SLIDE_LIMIT = 170
-export const MAX_FEATURED = 2
+export const FEATURED_DESC_SUGGEST = 300
+export const SHORT_DESC_LIMIT = 64
+export const MAX_FEATURED = 5
 export const MAX_UPLOAD_BYTES = 6 * 1024 * 1024
+export const APP_MOCKUP_MAX_BYTES = 1024 * 1024
+
+export const ITEMS_SELECT = `*,
+    events_base(id, title, description, start_time, cost, is_recurring, breweries(*)),
+    beer_releases_base(id, beer_name, description, "ABV", "Type", release_date,
+      b1:breweries!beer_releases_brewery_id_fkey(*),
+      b2:breweries!beer_releases_brewery_id2_fkey(*),
+      b3:breweries!beer_releases_brewery_id3_fkey(*)),
+    happy_hour_deals(id, title, description, day_of_week, deal_date, time_start, time_end, breweries(*))`
 
 export const STATUS_BADGE: Record<
   SocialPostStatus,
@@ -129,6 +167,23 @@ export const PIPELINE_STEPS = [
   { key: 'published', label: 'Published', statuses: ['published'] },
 ] as const
 
+export const ITEM_TYPE_LABEL: Record<SocialItemType, string> = {
+  event: 'Event',
+  release: 'Release',
+  deal: 'Happy hour',
+}
+
+export const DEFAULT_BRAND_COLORS: BrandColors = {
+  primary: '#5D2525',
+  primary_dark: '#3A1515',
+  accent: '#F8C701',
+  cream: '#F9F7F2',
+  charcoal: '#1A1A1A',
+  text_primary: '#2D2926',
+  text_secondary: '#665E5A',
+  border: '#E5DFD6',
+}
+
 /** YYYY-MM-DD in America/Denver. */
 export function denverToday(): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -152,48 +207,184 @@ export function formatSocialTime(time24: string | null | undefined): string {
   return `${h12}:${String(minute).padStart(2, '0')} ${period}`
 }
 
+function formatHourLabel(hour: number): string {
+  const h = ((hour % 24) + 24) % 24
+  if (h === 0) return '12 AM'
+  if (h === 12) return '12 PM'
+  if (h < 12) return `${h} AM`
+  return `${h - 12} PM`
+}
+
+/**
+ * Happy-hour window from whole hours 0–23.
+ * e.g. "4–6 PM", "10 AM–2 PM", "After 8 PM", "Until 6 PM", "All day"
+ */
+export function formatSocialDealWindow(
+  timeStart: number | null | undefined,
+  timeEnd: number | null | undefined
+): string {
+  if (timeStart == null && timeEnd == null) return 'All day'
+  if (timeStart != null && timeEnd == null) return `After ${formatHourLabel(timeStart)}`
+  if (timeStart == null && timeEnd != null) return `Until ${formatHourLabel(timeEnd)}`
+
+  const start = timeStart!
+  const end = timeEnd!
+  const startPeriod = start >= 12 ? 'PM' : 'AM'
+  const endPeriod = end >= 12 ? 'PM' : 'AM'
+  const startH = start % 12 || 12
+  const endH = end % 12 || 12
+  if (startPeriod === endPeriod) return `${startH}–${endH} ${endPeriod}`
+  return `${startH} ${startPeriod}–${endH} ${endPeriod}`
+}
+
 export function formatCost(cost: number | null | undefined): string {
   if (cost == null || cost <= 0) return ''
   return Number.isInteger(cost) ? `$${cost}` : `$${cost.toFixed(2)}`
 }
 
-export function breweryFromEvent(event: SocialEventBase | null): SocialBrewery | null {
-  if (!event?.breweries) return null
-  return Array.isArray(event.breweries) ? event.breweries[0] ?? null : event.breweries
+/** Normalize ABV for display; add "%" when the value is a bare number. */
+export function formatAbv(abv: string | null | undefined): string {
+  if (!abv?.trim()) return ''
+  const t = abv.trim()
+  if (/%/.test(t)) return t
+  if (/^\d+(\.\d+)?$/.test(t)) return `${t}%`
+  return t
+}
+
+function asBrewery(
+  value: SocialBrewery | SocialBrewery[] | null | undefined
+): SocialBrewery | null {
+  if (!value) return null
+  return Array.isArray(value) ? value[0] ?? null : value
 }
 
 export function breweryDisplayName(brewery: SocialBrewery | null | undefined): string {
-  if (!brewery) return ''
-  return (brewery.display_name?.trim() || brewery.name || '').trim()
+  return (brewery?.name || '').trim()
+}
+
+export function itemTypeOf(item: SocialPostItem): SocialItemType {
+  if (item.item_type === 'release' || item.item_type === 'deal' || item.item_type === 'event') {
+    return item.item_type
+  }
+  if (item.release_id != null) return 'release'
+  if (item.deal_id != null) return 'deal'
+  return 'event'
+}
+
+export function primaryBrewery(item: SocialPostItem): SocialBrewery | null {
+  const type = itemTypeOf(item)
+  if (type === 'event') return asBrewery(item.events_base?.breweries)
+  if (type === 'deal') return asBrewery(item.happy_hour_deals?.breweries)
+  const release = item.beer_releases_base
+  return (
+    asBrewery(release?.b1) || asBrewery(release?.b2) || asBrewery(release?.b3) || null
+  )
+}
+
+export function releaseBreweriesLine(release: SocialReleaseBase | null): string {
+  if (!release) return ''
+  return [asBrewery(release.b1), asBrewery(release.b2), asBrewery(release.b3)]
+    .map((b) => breweryDisplayName(b))
+    .filter(Boolean)
+    .join(' × ')
+}
+
+/** "Hazy IPA · 6.8% ABV" */
+export function formatReleaseMeta(release: SocialReleaseBase | null): string {
+  if (!release) return ''
+  const type = release.Type?.trim() || ''
+  const abvRaw = formatAbv(release.ABV)
+  const abv = abvRaw ? ( /ABV/i.test(abvRaw) ? abvRaw : `${abvRaw} ABV`) : ''
+  if (type && abv) return `${type} · ${abv}`
+  return type || abv
 }
 
 export function itemTitle(item: SocialPostItem): string {
-  return item.title_override?.trim() || item.events_base?.title || ''
+  if (item.title_override?.trim()) return item.title_override.trim()
+  const type = itemTypeOf(item)
+  if (type === 'release') return item.beer_releases_base?.beer_name || ''
+  if (type === 'deal') return item.happy_hour_deals?.title || ''
+  return item.events_base?.title || ''
 }
 
-export function itemTime(item: SocialPostItem): string {
-  return item.time_override?.trim() || formatSocialTime(item.events_base?.start_time)
+export function itemTimeLabel(item: SocialPostItem): string {
+  if (item.time_override?.trim()) return item.time_override.trim()
+  const type = itemTypeOf(item)
+  if (type === 'release') return 'New'
+  if (type === 'deal') {
+    return formatSocialDealWindow(
+      item.happy_hour_deals?.time_start,
+      item.happy_hour_deals?.time_end
+    )
+  }
+  return formatSocialTime(item.events_base?.start_time) || 'All day'
 }
 
-export function itemBrewery(item: SocialPostItem): string {
-  return (
-    item.brewery_override?.trim() ||
-    breweryDisplayName(breweryFromEvent(item.events_base))
-  )
+export function itemSecondLine(item: SocialPostItem): string {
+  if (item.brewery_override?.trim()) {
+    if (itemTypeOf(item) === 'release') {
+      const meta = formatReleaseMeta(item.beer_releases_base)
+      return meta ? `${item.brewery_override.trim()} · ${meta}` : item.brewery_override.trim()
+    }
+    return item.brewery_override.trim()
+  }
+  const type = itemTypeOf(item)
+  if (type === 'release') {
+    const names = releaseBreweriesLine(item.beer_releases_base)
+    const meta = formatReleaseMeta(item.beer_releases_base)
+    if (names && meta) return `${names} · ${meta}`
+    return names || meta
+  }
+  if (type === 'deal') return breweryDisplayName(asBrewery(item.happy_hour_deals?.breweries))
+  return breweryDisplayName(asBrewery(item.events_base?.breweries))
+}
+
+export function itemCostBadge(item: SocialPostItem): string {
+  if (itemTypeOf(item) !== 'event') return ''
+  return formatCost(item.events_base?.cost)
+}
+
+export function itemOriginalDescription(item: SocialPostItem): string {
+  const type = itemTypeOf(item)
+  if (type === 'release') return item.beer_releases_base?.description?.trim() || ''
+  if (type === 'deal') return item.happy_hour_deals?.description?.trim() || ''
+  return item.events_base?.description?.trim() || ''
 }
 
 export function itemDescription(item: SocialPostItem): string {
-  return (
-    item.description_override?.trim() ||
-    item.events_base?.description?.trim() ||
-    ''
-  )
+  return item.description_override?.trim() || itemOriginalDescription(item)
+}
+
+/** Placeholder for title / time / brewery override inputs. */
+export function itemTitlePlaceholder(item: SocialPostItem): string {
+  const type = itemTypeOf(item)
+  if (type === 'release') return item.beer_releases_base?.beer_name || ''
+  if (type === 'deal') return item.happy_hour_deals?.title || ''
+  return item.events_base?.title || ''
+}
+
+export function itemTimePlaceholder(item: SocialPostItem): string {
+  const type = itemTypeOf(item)
+  if (type === 'release') return 'New'
+  if (type === 'deal') {
+    return formatSocialDealWindow(
+      item.happy_hour_deals?.time_start,
+      item.happy_hour_deals?.time_end
+    )
+  }
+  return formatSocialTime(item.events_base?.start_time) || 'All day'
+}
+
+export function itemBreweryPlaceholder(item: SocialPostItem): string {
+  const type = itemTypeOf(item)
+  if (type === 'release') return releaseBreweriesLine(item.beer_releases_base)
+  if (type === 'deal') return breweryDisplayName(asBrewery(item.happy_hour_deals?.breweries))
+  return breweryDisplayName(asBrewery(item.events_base?.breweries))
 }
 
 export function featuredPhotoUrl(item: SocialPostItem): string | null {
   if (item.image_override_url?.trim()) return item.image_override_url.trim()
-  const brewery = breweryFromEvent(item.events_base)
-  return brewery?.image_url?.trim() || null
+  return primaryBrewery(item)?.image_url?.trim() || null
 }
 
 export function pipelineStepIndex(status: SocialPostStatus): number {
@@ -212,13 +403,13 @@ export function functionErrorMessage(data: unknown, error: { message?: string } 
   return error?.message || 'Request failed'
 }
 
-export const DEFAULT_BRAND_COLORS: BrandColors = {
-  primary: '#5D2525',
-  primary_dark: '#3A1515',
-  accent: '#F8C701',
-  cream: '#F9F7F2',
-  charcoal: '#1A1A1A',
-  text_primary: '#2D2926',
-  text_secondary: '#665E5A',
-  border: '#E5DFD6',
+export function buildDraftToastMessage(result: {
+  found?: { events?: number; releases?: number; deals?: number }
+  included?: number
+}): string {
+  const events = result.found?.events ?? 0
+  const releases = result.found?.releases ?? 0
+  const deals = result.found?.deals ?? 0
+  const included = result.included ?? 0
+  return `${events} events · ${releases} releases · ${deals} happy hours (${included} included)`
 }
