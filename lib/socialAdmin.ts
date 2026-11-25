@@ -29,6 +29,13 @@ export type SocialPost = {
   approved_by: string | null
   approved_at: string | null
   published_at: string | null
+  slide_specs: unknown[] | null
+  reel_url: string | null
+  reel_status: 'rendering' | 'ready' | 'failed' | 'published' | null
+  reel_error: string | null
+  reel_rendered_at: string | null
+  reel_media_id: string | null
+  reel_permalink: string | null
 }
 
 export type SocialBrewery = {
@@ -120,6 +127,7 @@ export type BrandProfile = {
   logo_url: string | null
   logo_light_url: string | null
   app_image_url: string | null
+  reel_audio_url: string | null
   handle: string
   cta_text: string
   is_default: boolean

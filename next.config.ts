@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // Remotion Player + web-renderer (admin Social reels).
+  transpilePackages: [
+    'remotion',
+    '@remotion/player',
+    '@remotion/web-renderer',
+    '@remotion/transitions',
+    '@remotion/media',
+  ],
   async redirects() {
     return [
       // Crawlers and browsers often request /favicon.ico; serve our icon (static file in public/).

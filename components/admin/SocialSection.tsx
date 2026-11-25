@@ -47,6 +47,7 @@ import {
   type SocialPostStatus,
 } from '@/lib/socialAdmin'
 import { SocialToasts, type SocialToast } from '@/components/admin/social/SocialToasts'
+import { PostReelPanel } from '@/components/admin/social/PostReelPanel'
 
 const inputStyle = {
   borderColor: Colors.dividerLight,
@@ -72,6 +73,14 @@ function normalizePost(row: Record<string, unknown>): SocialPost {
     approved_by: (row.approved_by as string | null) ?? null,
     approved_at: (row.approved_at as string | null) ?? null,
     published_at: (row.published_at as string | null) ?? null,
+    slide_specs: Array.isArray(row.slide_specs) ? (row.slide_specs as unknown[]) : null,
+    reel_url: (row.reel_url as string | null) ?? null,
+    reel_status:
+      (row.reel_status as SocialPost['reel_status']) ?? null,
+    reel_error: (row.reel_error as string | null) ?? null,
+    reel_rendered_at: (row.reel_rendered_at as string | null) ?? null,
+    reel_media_id: (row.reel_media_id as string | null) ?? null,
+    reel_permalink: (row.reel_permalink as string | null) ?? null,
   }
 }
 
@@ -110,6 +119,7 @@ function normalizeBrand(row: Record<string, unknown>): BrandProfile {
     logo_url: (row.logo_url as string | null) ?? null,
     logo_light_url: (row.logo_light_url as string | null) ?? null,
     app_image_url: (row.app_image_url as string | null) ?? null,
+    reel_audio_url: (row.reel_audio_url as string | null) ?? null,
     handle: String(row.handle ?? '@hoppenings'),
     cta_text: String(row.cta_text ?? 'Get the app · Link in bio'),
     is_default: Boolean(row.is_default),
@@ -864,6 +874,15 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                   </div>
                 )}
               </div>
+
+              <PostReelPanel
+                post={selected}
+                brand={brand}
+                onPostUpdated={async () => {
+                  await refreshPosts()
+                }}
+                toast={toast}
+              />
 
               {/* Caption */}
               <div>
