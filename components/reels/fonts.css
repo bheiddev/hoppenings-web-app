@@ -1,31 +1,32 @@
+/* Family names must match templates.ts (DISPLAY / BODY) exactly. */
 @font-face {
-  font-family: 'HopDisplay';
+  font-family: 'Display';
   src: url('/fonts/FjallaOne-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
-  font-family: 'HopBody';
+  font-family: 'Body';
   src: url('/fonts/BeVietnamPro-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
-  font-family: 'HopBody';
+  font-family: 'Body';
   src: url('/fonts/BeVietnamPro-SemiBold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
-  font-family: 'HopBody';
+  font-family: 'Body';
   src: url('/fonts/BeVietnamPro-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }

@@ -1,15 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Colors } from '@/lib/colors'
 import { AdminButton, AdminSpinner } from '@/components/breweriesEventsAdminButtons'
-import { brandFromProfile } from '@/components/reels/brand'
-import { DailyReel } from '@/components/reels/DailyReel'
-import { buildTimeline, totalDurationInFrames } from '@/components/reels/timeline'
-import { REEL_FPS, REEL_HEIGHT, REEL_WIDTH } from '@/components/reels/brand'
+import {
+  DailyReel,
+  FPS,
+  REEL_HEIGHT,
+  REEL_WIDTH,
+  reelDuration,
+  type DailyReelProps,
+} from '@/components/reels/DailyReel'
+import { brandFromRow, prepareSpecs, specsFromPost } from '@/components/reels/prepare'
 import { useBuildReel } from '@/components/reels/useBuildReel'
-import type { DailyReelProps, SlideSpec } from '@/components/reels/types'
 import type { BrandProfile, SocialPost } from '@/lib/socialAdmin'
 import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 
@@ -38,27 +42,38 @@ export function PostReelPanel({
   const { buildReel, building, progress, error, isSafari } = useBuildReel()
   const [publishing, setPublishing] = useState(false)
   const [showSafeZones, setShowSafeZones] = useState(false)
+  const [reelProps, setReelProps] = useState<DailyReelProps | null>(null)
+  const [preparing, setPreparing] = useState(true)
   const safari = isSafari || isSafariBrowser()
 
-  const reelProps: DailyReelProps = useMemo(() => {
-    const specs = (post.slide_specs as SlideSpec[] | null) ?? []
-    const reelBrand = brandFromProfile(brand)
-    return {
-      specs,
-      imageUrls: post.image_urls ?? [],
-      brand: reelBrand,
-      postDate: post.post_date,
-      city: post.city || 'Colorado Springs',
-      audioUrl: reelBrand.reel_audio_url,
+  useEffect(() => {
+    let cancelled = false
+    setPreparing(true)
+    ;(async () => {
+      try {
+        const base = specsFromPost(post)
+        const [specs, brandObj] = await Promise.all([
+          prepareSpecs(base),
+          brandFromRow(brand),
+        ])
+        if (!cancelled) setReelProps({ specs, brand: brandObj })
+      } catch (err) {
+        if (!cancelled) {
+          setReelProps(null)
+          console.error('Failed to prepare reel', err)
+        }
+      } finally {
+        if (!cancelled) setPreparing(false)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [post, brand])
+    // Re-prepare when slide data or brand assets change.
+  }, [post.id, post.slide_specs, post.image_urls, brand])
 
-  const durationInFrames = useMemo(
-    () => totalDurationInFrames(buildTimeline(reelProps)),
-    [reelProps]
-  )
-
-  const hasSlides = (post.image_urls?.length ?? 0) > 0
+  const durationInFrames = reelProps ? reelDuration(reelProps) : FPS
+  const hasSlides = (post.image_urls?.length ?? 0) > 0 || (post.slide_specs?.length ?? 0) > 0
   const slidesChangedAfterReel =
     Boolean(post.reel_url) &&
     Boolean(post.reel_rendered_at) &&
@@ -67,6 +82,7 @@ export function PostReelPanel({
 
   const statusLabel = (() => {
     if (building) return `Rendering ${progress}%`
+    if (preparing) return 'Preparing…'
     if (post.reel_status === 'ready') return 'Ready'
     if (post.reel_status === 'failed') return 'Failed'
     if (post.reel_status === 'published') return 'Published'
@@ -75,6 +91,7 @@ export function PostReelPanel({
   })()
 
   async function handleBuild() {
+    if (!reelProps) return
     try {
       await buildReel(post.id, reelProps)
       toast('success', 'Reel ready')
@@ -164,26 +181,35 @@ export function PostReelPanel({
       <div className="flex flex-wrap gap-4 items-start">
         <div className="relative" style={{ width: 360 }}>
           <div
-            className="overflow-hidden rounded border"
+            className="rounded border"
             style={{
               borderColor: Colors.dividerLight,
-              aspectRatio: '9 / 16',
               backgroundColor: Colors.surfaceDark,
+              lineHeight: 0,
             }}
           >
-            <Player
-              component={DailyReel as unknown as React.FC<Record<string, unknown>>}
-              inputProps={reelProps as unknown as Record<string, unknown>}
-              durationInFrames={durationInFrames}
-              compositionWidth={REEL_WIDTH}
-              compositionHeight={REEL_HEIGHT}
-              fps={REEL_FPS}
-              style={{ width: '100%', height: '100%' }}
-              controls
-              loop
-              autoPlay
-              initiallyMuted
-            />
+            {reelProps ? (
+              <Player
+                component={DailyReel as unknown as React.FC<Record<string, unknown>>}
+                inputProps={reelProps as unknown as Record<string, unknown>}
+                durationInFrames={durationInFrames}
+                compositionWidth={REEL_WIDTH}
+                compositionHeight={REEL_HEIGHT}
+                fps={FPS}
+                style={{ width: '100%' }}
+                controls
+                loop
+                autoPlay
+                initiallyMuted
+              />
+            ) : (
+              <div
+                className="flex items-center justify-center text-sm"
+                style={{ aspectRatio: '9 / 16', color: Colors.textMuted }}
+              >
+                {preparing ? 'Preparing preview…' : 'No reel data'}
+              </div>
+            )}
           </div>
           {showSafeZones ? (
             <div
@@ -202,7 +228,7 @@ export function PostReelPanel({
 
         <div className="flex-1 min-w-[200px] space-y-3">
           <p className="text-xs" style={{ color: Colors.textMuted }}>
-            1080×1920 · 30 fps · keep this tab open while rendering (~30s of video).
+            Live from slide templates · 1080×1920 · 30 fps · keep this tab open while rendering.
           </p>
 
           {safari ? (
@@ -237,8 +263,8 @@ export function PostReelPanel({
           <div className="flex flex-wrap gap-2">
             <AdminButton
               variant="add"
-              loading={building}
-              disabled={building || safari || !hasSlides}
+              loading={building || preparing}
+              disabled={building || preparing || safari || !reelProps}
               onClick={() => void handleBuild()}
             >
               Build reel
