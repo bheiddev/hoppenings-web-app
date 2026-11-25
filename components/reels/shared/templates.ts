@@ -172,24 +172,28 @@ function cover(b: Brand, s: Extract<SlideSpec, { kind: "cover" }>): El {
     anim(h("div", {
       flexShrink: 0, fontFamily: BODY, fontWeight: 700, fontSize: 46, letterSpacing: "0.2em",
       textTransform: "uppercase", color: b.colors.accent,
-    }, s.dateEyebrow), { kind: "fade", order: 0 }),
+    }, s.dateEyebrow), { kind: "rise", order: 0 }),
     h("div", { flexDirection: "column", justifyContent: "center", flexGrow: big ? 1 : 0, flexShrink: 0, marginTop: big ? 0 : 34 },
       anim(goldRule(b, 120), { kind: "wipe", order: 1 }),
       h("div", {
         flexDirection: "column", marginTop: big ? 40 : 24, fontFamily: DISPLAY, fontSize: big ? 172 : 104,
         lineHeight: 0.95, letterSpacing: "0.02em", textTransform: "uppercase", color: "#FFFFFF",
       },
-        anim(h("div", null, "What's"), { kind: "words", order: 2 }),
-        anim(h("div", null, "Hoppening?"), { kind: "words", order: 3 }),
+        // Fly in from off-left (distance tuned in anim/timing.ts `slide`).
+        anim(h("div", null, "What's"), { kind: "slide", order: 2, dir: "left" }),
+        anim(h("div", null, "Hoppening?"), { kind: "slide", order: 3, dir: "left" }),
       ),
       anim(h("div", {
         marginTop: big ? 28 : 14, fontFamily: DISPLAY, fontSize: big ? 76 : 52, lineHeight: 1, letterSpacing: "0.04em",
         textTransform: "uppercase", color: b.colors.accent,
-      }, `In ${s.city}`), { kind: "words", order: 4 }),
+      }, `In ${s.city}`), { kind: "slide", order: 4, dir: "left" }),
     ),
     hero
-      // columns: clipped so they can never push the swipe bar off the slide
-      ? h("div", { flexGrow: 1, flexShrink: 1, minHeight: 0, overflow: "hidden", marginTop: 44, marginBottom: 36 },
+      // Grow to fill leftover 4:5 height, pin cards toward the swipe CTA (less empty maroon).
+      ? h("div", {
+        flexGrow: 1, flexShrink: 1, minHeight: 0, overflow: "hidden",
+        marginTop: 44, marginBottom: 28, flexDirection: "column", justifyContent: "flex-end",
+      },
         h("div", { justifyContent: "space-between", alignItems: "flex-start", width: WIDTH - PAD * 2 },
           anim(heroCard(b, hero), { kind: "rise", order: 5 }),
           list.length ? alsoToday(b, list) : null,
@@ -245,13 +249,10 @@ function heroCard(b: Brand, pv: CoverPreview): El {
     width: HERO_W, flexDirection: "column", flexShrink: 0, backgroundColor: c.cream, borderRadius: 18, overflow: "hidden",
   },
     pv.imageData
-      ? anim({
-        type: "img",
-        props: {
+      ? { type: "img", props: {
           src: pv.imageData, width: HERO_W, height: HERO_PHOTO_H,
           style: { width: HERO_W, height: HERO_PHOTO_H, objectFit: "cover", borderTopLeftRadius: 18, borderTopRightRadius: 18 },
-        },
-      }, { kind: "zoom", order: 5 })
+        } }
       : h("div", {
         width: HERO_W, height: HERO_PHOTO_H, alignItems: "center", justifyContent: "center", padding: 24,
         backgroundColor: c.primary, fontFamily: DISPLAY, fontSize: 72, lineHeight: 1, textTransform: "uppercase",
@@ -283,7 +284,7 @@ function alsoToday(b: Brand, list: CoverPreview[]): El {
   return h("div", { width: LIST_W, flexDirection: "column", flexShrink: 0 },
     anim(h("div", {
       fontWeight: 700, fontSize: 22, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent,
-    }, "Also today"), { kind: "fade", order: 6 }),
+    }, "Also today"), { kind: "rise", order: 6 }),
     anim(h("div", { marginTop: 12, width: 72, height: 5, backgroundColor: c.accent }), { kind: "wipe", order: 6 }),
     h("div", { flexDirection: "column", marginTop: 8 },
       ...list.map((pv, i) => {
@@ -304,7 +305,7 @@ function alsoToday(b: Brand, list: CoverPreview[]): El {
           h("div", {
             marginTop: 6, fontWeight: 600, fontSize: 21, color: alpha(c.cream, 0.65), whiteSpace: "nowrap", overflow: "hidden",
           }, truncate(pv.brewery, Math.floor(LIST_W / 11.5))),
-        ), { kind: "rise", order: 6, offset: 4 + i * 5 });
+        ), { kind: "slide", order: 6, dir: "right", offset: 4 + i * 5 });
       }),
     ),
   );
@@ -320,7 +321,7 @@ function featuredHeader(b: Brand, s: Extract<SlideSpec, { kind: "featured" }>): 
     h("div", {
       fontWeight: 600, fontSize: 26, letterSpacing: "0.14em", color: alpha(b.colors.cream, 0.78),
     }, s.dateEyebrow),
-  ), { kind: "fade", order: 0 });
+  ), { kind: "rise", order: 0 });
 }
 
 function featuredBrewery(b: Brand, name: string): El {
@@ -339,7 +340,7 @@ function featuredMeta(b: Brand, meta: string | null | undefined, size = 32): El 
   return anim(h("div", {
     marginTop: 14, fontWeight: 600, fontSize: size, letterSpacing: "0.06em", textTransform: "uppercase",
     color: b.colors.accent,
-  }, meta), { kind: "fade", order: 3, offset: 4 });
+  }, meta), { kind: "rise", order: 3, offset: 4 });
 }
 
 function featuredPlain(b: Brand, s: Extract<SlideSpec, { kind: "featured" }>): El {
@@ -358,13 +359,13 @@ function featuredPlain(b: Brand, s: Extract<SlideSpec, { kind: "featured" }>): E
       anim(h("div", {
         marginTop: 24, fontFamily: DISPLAY, fontSize: 132, lineHeight: 0.98, letterSpacing: "0.02em",
         textTransform: "uppercase", color: "#FFFFFF", maxHeight: 132 * 0.98 * 3 + 8, overflow: "hidden",
-      }, truncate(it.title, 42)), { kind: "words", order: 2 }),
-      anim(h("div", { marginTop: 36 }, featuredBrewery(b, it.brewery)), { kind: "rise", order: 3 }),
+      }, truncate(it.title, 42)), { kind: "slide", order: 2, dir: "left" }),
+      anim(h("div", { marginTop: 36 }, featuredBrewery(b, it.brewery)), { kind: "slide", order: 3, dir: "left" }),
       featuredMeta(b, it.meta, 34),
       it.description
         ? anim(h("div", {
           marginTop: 36, fontSize: plainDescSize(it.description), lineHeight: 1.45, color: cream65,
-        }, cleanText(it.description)), { kind: "fade", order: 4 })
+        }, cleanText(it.description)), { kind: "rise", order: 4 })
         : null,
     ),
   );
@@ -396,9 +397,10 @@ function featuredWithPhoto(b: Brand, s: Extract<SlideSpec, { kind: "featured" }>
   const titleSize = title.length <= 16 ? 112 : title.length <= 28 ? 100 : 88;
   const titleLines = Math.min(3, estLines(title, titleSize, 0.42, CONTENT_W));
 
-  // vertical budget below the photo
-  const top = 48, bottom = 72;
-  const used = 76 /* time row */ + 14 + titleLines * titleSize * 0.98 + 26 + 40 /* brewery */ +
+  // vertical budget below the photo (extra top gap so type never kisses the banner)
+  const FADE_H = 140;
+  const top = 64, bottom = 72;
+  const used = 76 /* time row */ + 18 + titleLines * titleSize * 0.98 + 28 + 40 /* brewery */ +
     (it.meta ? 14 + 36 : 0) + 22;
   const descSize = 30, lineH = descSize * 1.4;
   const descLines = Math.max(0, Math.floor((HEIGHT - PHOTO_H - top - bottom - used) / lineH));
@@ -410,32 +412,40 @@ function featuredWithPhoto(b: Brand, s: Extract<SlideSpec, { kind: "featured" }>
     width: WIDTH, height: HEIGHT, flexDirection: "column",
     backgroundColor: c.primary_dark, color: "#FFFFFF", fontFamily: BODY,
   },
-    h("div", { width: WIDTH, height: PHOTO_H, flexShrink: 0 },
+    // Photo, then a solid maroon curtain pulled up over the banner bottom (Satori-safe,
+    // no absolute positioning) so type never sits on the image.
+    h("div", { width: WIDTH, height: PHOTO_H, flexShrink: 0, overflow: "hidden" },
       anim({ type: "img", props: { src, width: WIDTH, height: PHOTO_H, style: { width: WIDTH, height: PHOTO_H, objectFit: "cover" } } },
-        { kind: "zoom", order: 0 }),
+        { kind: "fade", order: 0 }),
     ),
+    h("div", {
+      width: WIDTH, height: FADE_H, marginTop: -FADE_H, flexShrink: 0,
+      backgroundColor: c.primary_dark,
+    }),
     h("div", {
       flexDirection: "column", flexGrow: 1, minHeight: 0, overflow: "hidden",
       padding: `${top}px ${PAD}px ${bottom}px ${PAD}px`,
     },
-      h("div", { alignItems: "center", flexShrink: 0 },
+      h("div", { alignItems: "center", flexShrink: 0, overflow: "hidden", width: "100%" },
         anim(h("div", {
           fontFamily: DISPLAY, fontSize: 76, letterSpacing: "0.04em", textTransform: "uppercase", color: c.accent,
         }, it.time), { kind: "slide", order: 1, dir: "left" }),
         it.price ? anim(h("div", { marginLeft: 26 }, priceBlock(b, it.price, 38)), { kind: "pop", order: 2 }) : null,
       ),
       anim(h("div", {
-        flexShrink: 0, marginTop: 14, fontFamily: DISPLAY, fontSize: titleSize, lineHeight: 0.98,
+        flexShrink: 0, marginTop: 18, fontFamily: DISPLAY, fontSize: titleSize, lineHeight: 0.98,
         letterSpacing: "0.02em", textTransform: "uppercase", color: "#FFFFFF",
-        maxHeight: titleSize * 0.98 * 3 + 8, overflow: "hidden",
-      }, title), { kind: "words", order: 2 }),
-      anim(h("div", { flexShrink: 0, marginTop: 26 }, featuredBrewery(b, it.brewery)), { kind: "rise", order: 3 }),
+        maxHeight: titleSize * 0.98 * 3 + 8, overflow: "hidden", width: "100%",
+      }, title), { kind: "slide", order: 2, dir: "left" }),
+      anim(h("div", { flexShrink: 0, marginTop: 28, overflow: "hidden", width: "100%" }, featuredBrewery(b, it.brewery)), {
+        kind: "slide", order: 3, dir: "left",
+      }),
       featuredMeta(b, it.meta, 30),
       desc
         ? anim(h("div", {
-          marginTop: 22, fontSize: descSize, lineHeight: 1.4, color: alpha(c.cream, 0.7),
-          maxHeight: descLines * lineH + 2, overflow: "hidden",
-        }, desc), { kind: "fade", order: 4 })
+          marginTop: 24, fontSize: descSize, lineHeight: 1.4, color: alpha(c.cream, 0.7),
+          maxHeight: descLines * lineH + 2, overflow: "hidden", width: "100%",
+        }, desc), { kind: "rise", order: 4 })
         : null,
     ),
   );
@@ -479,20 +489,26 @@ function list(b: Brand, s: Extract<SlideSpec, { kind: "list" }>): El {
   const timeW = timeColWidth(s.items);
   return darkFrame(b, "deep",
     // header is locked (flexShrink 0) so long rows can never push it up
-    h("div", { flexShrink: 0 }, eyebrow(b, s.dateEyebrow)),
-    h("div", {
+    anim(h("div", { flexShrink: 0 }, eyebrow(b, s.dateEyebrow)), { kind: "rise", order: 0 }),
+    anim(h("div", {
       flexShrink: 0, marginTop: 20, fontFamily: DISPLAY, fontSize: 112, lineHeight: 1, letterSpacing: "0.03em",
       textTransform: "uppercase", color: "#FFFFFF",
-    }, s.heading),
-    h("div", { flexShrink: 0, marginTop: 18 }, goldRule(b)),
+    }, s.heading), { kind: "slide", order: 1, dir: "left" }),
+    anim(h("div", { flexShrink: 0, marginTop: 18 }, goldRule(b)), { kind: "wipe", order: 2 }),
     h("div", { flexDirection: "column", flexShrink: 1, minHeight: 0, overflow: "hidden", marginTop: 12 },
-      ...s.items.map((it, i) => lineupRow(b, it, timeW, i === s.items.length - 1)),
+      ...s.items.map((it, i) =>
+        anim(lineupRow(b, it, timeW, i === s.items.length - 1), {
+          kind: "slide",
+          order: 3,
+          dir: "left",
+          offset: i * 5,
+        })),
     ),
     s.moreCount > 0
-      ? h("div", {
+      ? anim(h("div", {
         flexShrink: 0, marginTop: 22, fontWeight: 600, fontSize: 28, letterSpacing: "0.14em", textTransform: "uppercase",
         color: b.colors.accent,
-      }, `+${s.moreCount} more on Hoppenings`)
+      }, `+${s.moreCount} more on Hoppenings`), { kind: "pop", order: 5 })
       : null,
   );
 }
@@ -507,19 +523,19 @@ function endPlain(b: Brand, s: Extract<SlideSpec, { kind: "end" }>): El {
     width: WIDTH, height: HEIGHT, flexDirection: "column", padding: PAD,
     backgroundColor: c.cream, color: c.text_primary, fontFamily: BODY,
   },
-    anim(eyebrow(b, `${s.city} breweries`, c.primary), { kind: "fade", order: 0 }),
+    anim(eyebrow(b, `${s.city} breweries`, c.primary), { kind: "rise", order: 0 }),
     h("div", { flexDirection: "column", justifyContent: "center", flexGrow: 1 },
       anim(goldRule(b, 120), { kind: "wipe", order: 1 }),
       h("div", {
         flexDirection: "column", marginTop: 40, fontFamily: DISPLAY, fontSize: 128, lineHeight: 0.95,
         letterSpacing: "0.02em", textTransform: "uppercase", color: c.primary,
       },
-        anim(h("div", null, "Every event."), { kind: "words", order: 2 }),
-        anim(h("div", null, "Every brewery."), { kind: "words", order: 3 }),
-        anim(h("div", null, "Every day."), { kind: "words", order: 4 }),
+        anim(h("div", null, "Every event."), { kind: "slide", order: 2, dir: "left" }),
+        anim(h("div", null, "Every brewery."), { kind: "slide", order: 3, dir: "left" }),
+        anim(h("div", null, "Every day."), { kind: "slide", order: 4, dir: "left" }),
       ),
       anim(h("div", { marginTop: 44, fontSize: 38, lineHeight: 1.45, color: c.text_primary, maxWidth: 860 },
-        `Events, beer releases, deals and food trucks across ${s.city}, all in one app.`), { kind: "fade", order: 5 }),
+        `Events, beer releases, deals and food trucks across ${s.city}, all in one app.`), { kind: "rise", order: 5 }),
       h("div", { marginTop: 56 },
         anim(h("div", {
           fontFamily: DISPLAY, fontSize: 40, letterSpacing: "0.16em", textTransform: "uppercase",
@@ -552,22 +568,22 @@ function endWithPhone(b: Brand, s: Extract<SlideSpec, { kind: "end" }>, src: str
     anim(h("div", {
       fontFamily: DISPLAY, fontSize: 150, lineHeight: 1, letterSpacing: "0.05em",
       textTransform: "uppercase", color: gold,
-    }, b.name), { kind: "words", order: 0 }),
+    }, b.name), { kind: "slide", order: 0, dir: "left" }),
     anim(h("div", { marginTop: 22, fontWeight: 700, fontSize: 36, letterSpacing: "0.04em", flexWrap: "wrap", justifyContent: "center" },
       word("The", "#FFFFFF"), word("Brewery Scene", gold), word("in Your", "#FFFFFF"),
       h("div", { color: gold }, "Pocket"),
-    ), { kind: "fade", order: 1 }),
+    ), { kind: "rise", order: 1 }),
     // why list + phone
     h("div", { width: "100%", flexGrow: 1, alignItems: "center", justifyContent: "space-between", marginTop: 24 },
       h("div", { flexDirection: "column", width: 480 },
         anim(h("div", { fontFamily: DISPLAY, fontSize: 64, lineHeight: 1, letterSpacing: "0.02em", color: gold }, "Why Hoppenings?"),
-          { kind: "words", order: 2 }),
+          { kind: "slide", order: 2, dir: "left" }),
         anim(h("div", { marginTop: 22, marginBottom: 10 }, goldRule(b, 96)), { kind: "wipe", order: 2 }),
         ...WHY.map(([lead, rest], i) => anim(h("div", { alignItems: "center", marginTop: 26, fontSize: 32, fontWeight: 600 },
           h("div", { width: 14, height: 14, backgroundColor: gold, marginRight: 22, flexShrink: 0 }),
           h("div", { color: gold, marginRight: 10 }, lead),
           h("div", { color: "#FFFFFF" }, rest),
-        ), { kind: "rise", order: 3, offset: i * 5 })),
+        ), { kind: "slide", order: 3, dir: "left", offset: i * 5 })),
       ),
       anim({ type: "img", props: { src, width: PHONE_W, height: phoneH, style: { width: PHONE_W, height: phoneH, marginRight: -10 } } },
         { kind: "slide", order: 3, dir: "right" }),
@@ -579,7 +595,7 @@ function endWithPhone(b: Brand, s: Extract<SlideSpec, { kind: "end" }>, src: str
         color: c.primary_dark, backgroundColor: gold, padding: "22px 40px",
       }, s.cta), { kind: "pop", order: 6 }),
       anim(h("div", { marginTop: 18, fontSize: 26, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: alpha(c.cream, 0.78) },
-        "Free on iPhone and Android"), { kind: "fade", order: 7 }),
+        "Free on iPhone and Android"), { kind: "rise", order: 7 }),
     ),
   );
 }

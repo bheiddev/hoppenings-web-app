@@ -18,12 +18,20 @@ export interface AnimCtx {
 }
 
 function merge(style: React.CSSProperties | undefined, a: AnimStyle): React.CSSProperties {
-  const s = { ...(style ?? {}) };
-  if (a.opacity !== undefined) s.opacity = (typeof s.opacity === "number" ? s.opacity : 1) * a.opacity;
-  if (a.transform) s.transform = s.transform ? `${s.transform} ${a.transform}` : a.transform;
-  if (a.filter) s.filter = s.filter ? `${s.filter} ${a.filter}` : a.filter;
-  if (a.transformOrigin) s.transformOrigin = a.transformOrigin;
-  return s;
+  // Empty anim style = settled at rest → return the template style unchanged (no leftover
+  // blur/transform that could visually overlap neighbours).
+  const active =
+    a.opacity !== undefined ||
+    Boolean(a.transform) ||
+    Boolean(a.filter) ||
+    Boolean(a.transformOrigin)
+  if (!active) return style ?? {}
+  const s = { ...(style ?? {}) }
+  if (a.opacity !== undefined) s.opacity = (typeof s.opacity === 'number' ? s.opacity : 1) * a.opacity
+  if (a.transform) s.transform = s.transform ? `${s.transform} ${a.transform}` : a.transform
+  if (a.filter) s.filter = s.filter ? `${s.filter} ${a.filter}` : a.filter
+  if (a.transformOrigin) s.transformOrigin = a.transformOrigin
+  return s
 }
 
 export function toReact(node: Node, ctx: AnimCtx, key?: React.Key): React.ReactNode {

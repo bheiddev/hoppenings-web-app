@@ -2,21 +2,35 @@
 -- Run in the Supabase SQL editor. Safe to re-run.
 
 -- =============================================================================
--- 1) Columns
+-- 1) Columns (separate statements so a partial earlier run still completes)
 -- =============================================================================
 
-alter table public.social_posts
-  add column if not exists slide_specs jsonb,
-  add column if not exists reel_url text,
-  add column if not exists reel_status text
-    check (reel_status is null or reel_status in ('rendering','ready','failed','published')),
-  add column if not exists reel_error text,
-  add column if not exists reel_rendered_at timestamptz,
-  add column if not exists reel_media_id text,
-  add column if not exists reel_permalink text;
+alter table public.social_posts add column if not exists slide_specs jsonb;
+alter table public.social_posts add column if not exists reel_url text;
+alter table public.social_posts add column if not exists reel_status text;
+alter table public.social_posts add column if not exists reel_error text;
+alter table public.social_posts add column if not exists reel_rendered_at timestamptz;
+alter table public.social_posts add column if not exists reel_media_id text;
+alter table public.social_posts add column if not exists reel_permalink text;
 
-alter table public.brand_profiles
-  add column if not exists reel_audio_url text;
+-- Status constraint (add only if missing)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'social_posts_reel_status_check'
+      and conrelid = 'public.social_posts'::regclass
+  ) then
+    alter table public.social_posts
+      add constraint social_posts_reel_status_check
+      check (reel_status is null or reel_status in ('rendering','ready','failed','published'));
+  end if;
+end $$;
+
+alter table public.brand_profiles add column if not exists reel_audio_url text;
+
+-- Refresh PostgREST schema cache (fixes "column … not in the schema cache")
+notify pgrst, 'reload schema';
 
 -- =============================================================================
 -- 2) Storage bucket `social`
