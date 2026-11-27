@@ -2,6 +2,7 @@
 // Plans the slides from the post's included items (overrides applied) and renders each
 // slide via render-slide. Sets status -> pending_review with image_urls, or -> failed.
 import { adminClient, env, HttpError, json, serve } from "../_shared/common.ts";
+import { parseDraftFormat, resolveDraftPeriod } from "../_shared/draftRange.ts";
 import {
   breweryName,
   formatCost,
@@ -141,6 +142,7 @@ serve(async (req) => {
     return out;
   };
 
+  const period = resolveDraftPeriod(parseDraftFormat(post.format), post.post_date);
   const planned = planSlides({
     postDate: post.post_date,
     city: post.city,
@@ -150,6 +152,9 @@ serve(async (req) => {
     cta: brand.cta_text,
     handle: brand.handle,
     staticTail: promos.length,
+    coverEyebrow: period.coverEyebrow,
+    dateEyebrow: period.dateEyebrow,
+    whenWord: period.when,
   });
   const slides = placePromos(planned);
 

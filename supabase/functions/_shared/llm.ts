@@ -18,6 +18,12 @@ export interface Curation {
   blurbs: Record<string, string>; // item key -> one-line blurb (events + happy hours)
 }
 
+/** Optional range context for weekend/week drafts (defaults = single day / "today"). */
+export interface PeriodContext {
+  long: string;
+  when: string; // "today" | "this weekend" | "this week"
+}
+
 const BLURB_MAX = 64;
 const wantsBlurb = (i: DayItem) => (i.type === "event" || i.type === "deal") && !!i.description?.trim();
 
@@ -87,11 +93,18 @@ export function rankItems(items: DayItem[], featuredKeys: string[] = []): DayIte
 }
 const TYPE_LABEL = { event: "event", release: "beer release", deal: "happy hour / deal" } as const;
 
-export async function curateWithLlm(items: DayItem[], date: string, city: string): Promise<Curation> {
+export async function curateWithLlm(
+  items: DayItem[],
+  date: string,
+  city: string,
+  period?: PeriodContext,
+): Promise<Curation> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-5-5";
   const d = formatDate(date);
+  const periodLong = period?.long ?? d.long;
+  const when = period?.when ?? "today";
   const ordered = orderItems(items);
 
   // Number items 1..N; Haiku answers with numbers only.
@@ -116,13 +129,13 @@ export async function curateWithLlm(items: DayItem[], date: string, city: string
     deals: ordered.filter((i) => i.type === "deal").length,
   };
 
-  const prompt = `You curate a daily Instagram carousel for Hoppenings, a brewery events app in ${city}.
-Date: ${d.long}. Today: ${counts.events} events, ${counts.releases} beer releases, ${counts.deals} happy hours/deals.
+  const prompt = `You curate an Instagram carousel for Hoppenings, a brewery events app in ${city}.
+Period: ${periodLong}. Scope: ${when}. Inventory: ${counts.events} events, ${counts.releases} beer releases, ${counts.deals} happy hours/deals.
 Items (n = item number):
 ${JSON.stringify(compact)}
 
 Call submit_curation with:
-- featured: item numbers of EVENTS or HAPPY HOURS to feature on their own full slides, best first. Beer releases are always featured automatically (${counts.releases} today), so don't list them; pick up to ${Math.max(0, MAX_FEATURED - counts.releases)} more so the total is at most ${MAX_FEATURED} when there are enough genuinely distinctive items. Never pad the list with ordinary ones just to reach a number. Rank candidates in this order (1 = feature first):
+- featured: item numbers of EVENTS or HAPPY HOURS to feature on their own full slides, best first. Beer releases are always featured automatically (${counts.releases} in this period), so don't list them; pick up to ${Math.max(0, MAX_FEATURED - counts.releases)} more so the total is at most ${MAX_FEATURED} when there are enough genuinely distinctive items. Never pad the list with ordinary ones just to reach a number. Rank candidates in this order (1 = feature first):
     1. Anniversary parties
     2. Seasonal events (winter markets, Christkindl markets, spring car shows, holiday and harvest events)
     3. Craft events that cost money (paint-and-sip, workshops, centerpiece/wreath making)
@@ -221,11 +234,19 @@ Call submit_curation with:
  * Caption for the first slides (the lead items, in slide order). Every lead item is mentioned in
  * a sentence, and each brewery is written as its @handle inside that sentence.
  */
-export async function captionWithLlm(lead: DayItem[], all: DayItem[], date: string, city: string): Promise<string> {
+export async function captionWithLlm(
+  lead: DayItem[],
+  all: DayItem[],
+  date: string,
+  city: string,
+  period?: PeriodContext,
+): Promise<string> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-5-5";
   const d = formatDate(date);
+  const periodLong = period?.long ?? d.long;
+  const when = period?.when ?? "today";
   const compact = lead.map((it) => ({
     type: TYPE_LABEL[it.type],
     when: it.time_label,
@@ -240,18 +261,18 @@ export async function captionWithLlm(lead: DayItem[], all: DayItem[], date: stri
   const n = (t: string) => all.filter((i) => i.type === t).length;
 
   const prompt = `You write the Instagram caption for Hoppenings, a brewery events app in ${city}.
-Date: ${d.long}. Today overall: ${n("event")} events, ${n("release")} beer releases, ${n("deal")} happy hours/deals.
-These are the first ${lead.length} slides of today's carousel, in order:
+Period: ${periodLong}. Scope: ${when}. Overall: ${n("event")} events, ${n("release")} beer releases, ${n("deal")} happy hours/deals.
+These are the first ${lead.length} slides of the carousel for ${when}, in order:
 ${JSON.stringify(compact)}
 
 Call submit_caption with the caption as a list of short paragraphs (one array entry per paragraph, no line breaks inside an entry):
-1. One hook line that plays on "What's Hoppening?" (the brand name) without overdoing the pun.
+1. One hook line that plays on "What's Hoppening?" (the brand name) without overdoing the pun. Reference ${when} naturally when it fits.
 2. Then mention EVERY item listed above, in natural sentences, grouped by type (skip a group with no items):
    - Events: "Check out <event> at <brewery>, it's <a specific detail from its description>." then "Also check out <event> at <brewery>, and <event> at <brewery>." If an event has no description, skip the detail rather than inventing one.
    - Beer releases: "<beer> is on tap at <brewery>" (work the style in naturally, e.g. "a new Hazy IPA"; for a collab, name every brewery).
    - Happy hours: "And there's <happy hour> at <brewery>, <why it's worth it, from its description>."
    Write each brewery as its "handle" exactly as given (e.g. "@goatpatchbrewing") the first time you mention it; breweries without a handle use the plain name. Never invent or guess a handle. Every tag must sit inside a sentence: no tag lists, no "featuring" line.
-3. "Everything happening today is on Hoppenings, link in bio."
+3. "Everything happening ${when} is on Hoppenings, link in bio."
 4. 3-5 local hashtags, space-separated, as the last entry.
 Friendly local voice, not cheesy, at most 2 emoji. Only mention the items listed above. Never invent items, times, prices or details; every detail must come from the items above.`;
 
@@ -287,8 +308,16 @@ Friendly local voice, not cheesy, at most 2 emoji. Only mention the items listed
 }
 
 /** No-AI caption in the same shape: every lead item in a sentence, breweries as @handles. */
-export function captionDeterministic(lead: DayItem[], date: string, city: string, blurbs: Record<string, string>): string {
+export function captionDeterministic(
+  lead: DayItem[],
+  date: string,
+  city: string,
+  blurbs: Record<string, string>,
+  period?: PeriodContext,
+): string {
   const d = formatDate(date);
+  const when = period?.when ?? "today";
+  const hookWhen = when === "today" ? `this ${d.weekday}` : when;
   const detail = (i: DayItem) => {
     const b = blurbs[i.key];
     return b ? `: ${b.charAt(0).toLowerCase()}${b.slice(1)}` : "";
@@ -296,7 +325,7 @@ export function captionDeterministic(lead: DayItem[], date: string, city: string
   const events = lead.filter((i) => i.type === "event");
   const releases = lead.filter((i) => i.type === "release");
   const deals = lead.filter((i) => i.type === "deal");
-  const paras: string[] = [`What's Hoppening in ${city} this ${d.weekday}?`];
+  const paras: string[] = [`What's Hoppening in ${city} ${hookWhen}?`];
   if (events.length) {
     const [first, ...rest] = events;
     let p = `Check out ${first.title} at ${breweryRef(first)}${detail(first)}.`;
@@ -312,7 +341,7 @@ export function captionDeterministic(lead: DayItem[], date: string, city: string
     if (rest.length) p += ` Plus ${listJoin(rest.map((i) => `${i.title} at ${breweryRef(i)}`))}.`;
     paras.push(p);
   }
-  paras.push("Everything happening today is on Hoppenings, link in bio.");
+  paras.push(`Everything happening ${when} is on Hoppenings, link in bio.`);
   const cityTag = city.replace(/[^A-Za-z]/g, "");
   paras.push(`#${cityTag} #${cityTag}Beer #ColoradoBeer #CraftBeer`);
   return paras.join("\n\n");
@@ -468,7 +497,12 @@ function listJoin(parts: string[]): string {
 }
 
 /** No-LLM fallback: everything in display order; releases / one-time / ticketed events featured. */
-export function curateDeterministic(items: DayItem[], date: string, city: string): Curation {
+export function curateDeterministic(
+  items: DayItem[],
+  date: string,
+  city: string,
+  period?: PeriodContext,
+): Curation {
   const ordered = orderItems(items).slice(0, MAX_ITEMS);
   const score = rankScore;
   // "Distinctive" = clearly worth a full slide: tiers 1-5 (anniversaries through food events).
@@ -489,6 +523,8 @@ export function curateDeterministic(items: DayItem[], date: string, city: string
   }
 
   const d = formatDate(date);
+  const when = period?.when ?? "today";
+  const hookWhen = when === "today" ? `this ${d.weekday}` : when;
   const blurbs = fallbackBlurbs(ordered);
   const detail = (i: DayItem) => {
     const b = blurbs[i.key];
@@ -516,7 +552,7 @@ export function curateDeterministic(items: DayItem[], date: string, city: string
     }
     return i.brewery;
   };
-  const paras: string[] = [`What's Hoppening in ${city} this ${d.weekday}?`];
+  const paras: string[] = [`What's Hoppening in ${city} ${hookWhen}?`];
   if (leadEvents.length) {
     const [first, ...rest] = leadEvents;
     let p = `Check out ${first.title} at ${at(first)}${detail(first)}.`;
@@ -527,7 +563,7 @@ export function curateDeterministic(items: DayItem[], date: string, city: string
     paras.push(releases.map((r) => `${r.title}${r.meta ? ` (${r.meta.split(" · ")[0]})` : ""} is on tap at ${at(r)}`).join(", and ") + ".");
   }
   if (deal) paras.push(`And there's ${deal.title} at ${at(deal)}${detail(deal)}.`);
-  paras.push("Everything happening today is on Hoppenings, link in bio.");
+  paras.push(`Everything happening ${when} is on Hoppenings, link in bio.`);
   const cityTag = city.replace(/[^A-Za-z]/g, "");
   paras.push(`#${cityTag} #${cityTag}Beer #ColoradoBeer #CraftBeer`);
 

@@ -1,7 +1,13 @@
-// POST { date?: "YYYY-MM-DD", city?: string, use_llm?: boolean }
-// Finds the day's events, beer releases and happy hours for the region, curates them
+// POST { date?: "YYYY-MM-DD", city?: string, use_llm?: boolean, format?: "daily"|"weekend"|"week" }
+// Finds events, beer releases and happy hours for the period, curates them
 // (Haiku or deterministic), and creates a draft post. Does NOT render.
 import { adminClient, HttpError, json, serve, todayInTz } from "../_shared/common.ts";
+import {
+  type DraftFormat,
+  dayPrefix,
+  parseDraftFormat,
+  resolveDraftPeriod,
+} from "../_shared/draftRange.ts";
 import { type EventRow, formatDate } from "../_shared/events.ts";
 import {
   type DayItem,
@@ -28,15 +34,35 @@ const RELEASE_SELECT = "*, " +
   "b2:breweries!beer_releases_brewery_id2_fkey(*), " +
   "b3:breweries!beer_releases_brewery_id3_fkey(*)";
 
+function mergeItems(periodDates: string[], gather: (date: string) => DayItem[]): DayItem[] {
+  const byKey = new Map<string, DayItem>();
+  for (const date of periodDates) {
+    const prefix = periodDates.length > 1 ? dayPrefix(date) : null;
+    for (const item of gather(date)) {
+      if (byKey.has(item.key)) continue;
+      byKey.set(
+        item.key,
+        prefix ? { ...item, time_label: `${prefix} · ${item.time_label}` } : item,
+      );
+    }
+  }
+  return [...byKey.values()];
+}
+
 serve(async (req) => {
   const body = await req.json().catch(() => ({}));
-  const date: string = body.date ?? todayInTz();
+  const format: DraftFormat = parseDraftFormat(body.format ?? body.range);
+  const rawDate: string = body.date ?? todayInTz();
   const city: string = body.city ?? "Colorado Springs";
   const useLlm: boolean = body.use_llm ?? true;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, "date must be YYYY-MM-DD");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) throw new HttpError(400, "date must be YYYY-MM-DD");
+
+  const period = resolveDraftPeriod(format, rawDate);
+  const { anchor: date, dates: periodDates } = period;
+  const lastDate = periodDates[periodDates.length - 1];
+  const weekdays = [...new Set(periodDates.map((d) => formatDate(d).weekday))];
 
   const db = adminClient();
-  const weekday = formatDate(date).weekday;
 
   // deno-lint-ignore no-explicit-any
   async function fetchAll(build: (from: number, to: number) => any, label: string) {
@@ -52,43 +78,55 @@ serve(async (req) => {
     return rows;
   }
 
+  const dateInList = periodDates.join(",");
+  const weekdayInList = weekdays.join(",");
+
   const [eventRows, releaseRows, dealRows] = await Promise.all([
-    // one-time events on the date + recurring events that started on/before it
+    // one-time events on any day in range + recurring that started on/before the last day
     fetchAll((a, b) =>
       db.from("events_base").select("*, breweries(*)")
-        .or(`event_date.eq.${date},and(event_date.lte.${date},or(is_recurring.is.true,is_recurring_biweekly.is.true,is_recurring_monthly.is.true))`)
+        .or(
+          `event_date.in.(${dateInList}),and(event_date.lte.${lastDate},or(is_recurring.is.true,is_recurring_biweekly.is.true,is_recurring_monthly.is.true))`,
+        )
         .range(a, b), "Event"),
     fetchAll((a, b) =>
-      db.from("beer_releases_base").select(RELEASE_SELECT).eq("release_date", date).range(a, b), "Beer release"),
-    // dated deals for the day + weekly deals for this weekday
+      db.from("beer_releases_base").select(RELEASE_SELECT)
+        .in("release_date", periodDates)
+        .range(a, b), "Beer release"),
+    // dated deals for any day in range + weekly deals for those weekdays
     fetchAll((a, b) =>
       db.from("happy_hour_deals").select("*, breweries(*)")
-        .or(`deal_date.eq.${date},and(deal_date.is.null,day_of_week.eq.${weekday})`)
+        .or(
+          `deal_date.in.(${dateInList}),and(deal_date.is.null,day_of_week.in.(${weekdayInList}))`,
+        )
         .range(a, b), "Happy hour"),
   ]);
 
-  const items: DayItem[] = [
-    ...eventItemsForDay(eventRows as EventRow[], date, city),
-    ...releaseItemsForDay(releaseRows, date, city),
-    ...dealItemsForDay(dealRows, date, city),
-  ];
+  const items: DayItem[] = mergeItems(periodDates, (d) => [
+    ...eventItemsForDay(eventRows as EventRow[], d, city),
+    ...releaseItemsForDay(releaseRows, d, city),
+    ...dealItemsForDay(dealRows, d, city),
+  ]);
   if (items.length === 0) {
-    return json({ error: `Nothing found for ${city} on ${date}` }, 404);
+    const scope = format === "daily" ? date : `${periodDates[0]}–${lastDate} (${format})`;
+    return json({ error: `Nothing found for ${city} on ${scope}` }, 404);
   }
+
+  const periodCtx = { long: period.long, when: period.when };
 
   let curation: Curation;
   let usedLlm = false;
   let warning: string | null = null;
   if (useLlm) {
     try {
-      curation = await curateWithLlm(items, date, city);
+      curation = await curateWithLlm(items, date, city, periodCtx);
       usedLlm = true;
     } catch (e) {
       warning = `LLM curation failed, used deterministic fallback: ${(e as Error).message}`;
-      curation = curateDeterministic(items, date, city);
+      curation = curateDeterministic(items, date, city, periodCtx);
     }
   } else {
-    curation = curateDeterministic(items, date, city);
+    curation = curateDeterministic(items, date, city, periodCtx);
   }
 
   const byKey = new Map(items.map((i) => [i.key, i]));
@@ -112,20 +150,20 @@ serve(async (req) => {
   let caption: string;
   if (usedLlm) {
     try {
-      caption = await captionWithLlm(lead, includedItems, date, city);
+      caption = await captionWithLlm(lead, includedItems, date, city, periodCtx);
     } catch (e) {
       warning = `LLM caption failed, used template caption: ${(e as Error).message}`;
-      caption = captionDeterministic(lead, date, city, curation.blurbs);
+      caption = captionDeterministic(lead, date, city, curation.blurbs, periodCtx);
     }
   } else {
-    caption = captionDeterministic(lead, date, city, curation.blurbs);
+    caption = captionDeterministic(lead, date, city, curation.blurbs, periodCtx);
   }
   curation.caption = finalizeTags(caption, items, lead);
 
   const { data: post, error: postErr } = await db
     .from("social_posts")
     .insert({
-      format: "daily",
+      format,
       city,
       post_date: date,
       status: "draft",
@@ -161,6 +199,8 @@ serve(async (req) => {
   return json({
     post_id: post.id,
     date,
+    dates: periodDates,
+    format,
     city,
     found: { events: count("event"), releases: count("release"), deals: count("deal") },
     events_found: items.length, // kept for the existing admin toast

@@ -42,6 +42,13 @@ import {
   type SocialPostItem,
   type SocialPostStatus,
 } from '@/lib/socialAdmin'
+import {
+  DRAFT_FORMAT_OPTIONS,
+  type DraftFormat,
+  draftFormatLabel,
+  draftRangeLabel,
+  snapDraftDate,
+} from '@/lib/draftFormats'
 import { SocialToasts, type SocialToast } from '@/components/admin/social/SocialToasts'
 import { PostReelPanel } from '@/components/admin/social/PostReelPanel'
 
@@ -147,9 +154,11 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
   const [localItems, setLocalItems] = useState<SocialPostItem[]>([])
   const [brand, setBrand] = useState<BrandProfile | null>(null)
 
-  const [draftDate, setDraftDate] = useState(denverToday)
+  const [draftFormat, setDraftFormat] = useState<DraftFormat>('daily')
+  const [draftDate, setDraftDate] = useState(() => snapDraftDate('daily', denverToday()))
   const [draftCity, setDraftCity] = useState(defaultCity)
   const [useLlm, setUseLlm] = useState(true)
+  const draftRangeHint = draftRangeLabel(draftFormat, draftDate)
 
   useEffect(() => {
     if (!cityOptions.includes(draftCity)) {
@@ -304,9 +313,10 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
     setBuilding(true)
     try {
       const { data, errorMsg } = await invokeAndRefresh('build-draft', {
-        date: draftDate,
+        date: snapDraftDate(draftFormat, draftDate),
         city: draftCity,
         use_llm: useLlm,
+        format: draftFormat,
       })
       if (errorMsg) return
       const result = data as {
@@ -548,8 +558,8 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
           Social
         </h2>
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
-          Build an Instagram carousel from the day&apos;s events, beer releases, and happy hours,
-          then publish to @hoppenings.
+          Build an Instagram carousel from events, beer releases, and happy hours for a day,
+          weekend, or midweek stretch, then publish to @hoppenings.
         </p>
       </div>
 
@@ -559,15 +569,39 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
       >
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: Colors.textSecondary }}>
-            Date
+            Draft
+          </label>
+          <select
+            value={draftFormat}
+            onChange={(e) => {
+              const next = e.target.value as DraftFormat
+              setDraftFormat(next)
+              setDraftDate((prev) => snapDraftDate(next, prev))
+            }}
+            className="px-3 py-2 border rounded text-sm"
+            style={inputStyle}
+          >
+            {DRAFT_FORMAT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} ({opt.hint})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1" style={{ color: Colors.textSecondary }}>
+            {draftFormat === 'daily' ? 'Date' : draftFormat === 'weekend' ? 'Weekend' : 'Week of'}
           </label>
           <input
             type="date"
             value={draftDate}
-            onChange={(e) => setDraftDate(e.target.value)}
+            onChange={(e) => setDraftDate(snapDraftDate(draftFormat, e.target.value))}
             className="px-3 py-2 border rounded text-sm"
             style={inputStyle}
           />
+          <p className="mt-1 text-[11px] leading-tight" style={{ color: Colors.textSecondary }}>
+            {draftRangeHint}
+          </p>
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: Colors.textSecondary }}>
@@ -636,6 +670,14 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold" style={{ color: Colors.textDark }}>
                           {p.post_date}
+                          {p.format && p.format !== 'daily' ? (
+                            <span
+                              className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide"
+                              style={{ color: Colors.textSecondary }}
+                            >
+                              {draftFormatLabel(p.format)}
+                            </span>
+                          ) : null}
                         </span>
                         {p.status === 'published' && p.permalink ? (
                           <span

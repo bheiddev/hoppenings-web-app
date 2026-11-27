@@ -122,6 +122,12 @@ export interface PlanInput {
   handle: string;
   /** Number of static promo slides render-post will append (replaces the rendered end slide). */
   staticTail?: number;
+  /** Override cover long eyebrow (e.g. weekend/week ranges). */
+  coverEyebrow?: string | null;
+  /** Override featured-slide short eyebrow. */
+  dateEyebrow?: string | null;
+  /** Fallback cover stat when coverLine is empty ("today" | "this weekend" | …). */
+  whenWord?: string | null;
 }
 
 /** How many item slides fit after the cover and the end/promo slides. */
@@ -171,8 +177,10 @@ export function pickSlideItems<T extends { id: string; type: SlideItemType }>(
 export function planSlides(p: PlanInput): SlideSpec[] {
   const d = formatDate(p.postDate);
   const city = p.city ?? "Colorado Springs";
-  const dateEyebrow = d.short.replace(",", " ·").toUpperCase(); // "SAT · NOV 21"
-  const longEyebrow = `${d.weekday.toUpperCase()} · ${d.short.split(", ")[1].toUpperCase()}`; // "SATURDAY · NOV 21"
+  const dateEyebrow = (p.dateEyebrow?.trim() || d.short.replace(",", " ·")).toUpperCase(); // "SAT · NOV 21"
+  const longEyebrow = (p.coverEyebrow?.trim() ||
+    `${d.weekday.toUpperCase()} · ${d.short.split(", ")[1].toUpperCase()}`); // "SATURDAY · NOV 21"
+  const when = p.whenWord?.trim() || "today";
 
   const starred = new Set(p.featuredIds);
   const shown = pickSlideItems(p.items, p.featuredIds, p.staticTail);
@@ -201,7 +209,7 @@ export function planSlides(p: PlanInput): SlideSpec[] {
     kind: "cover",
     dateEyebrow: longEyebrow,
     city,
-    statLine: p.coverLine || `${p.items.length} things happening today`,
+    statLine: p.coverLine || `${p.items.length} things happening ${when}`,
     itemCount: p.items.length,
     previews,
     moreCount: Math.max(0, shown.length - previews.length),
