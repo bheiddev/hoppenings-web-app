@@ -105,6 +105,7 @@ export type BrandColors = {
   primary_dark: string
   accent: string
   cream: string
+  tan: string
   charcoal: string
   text_primary: string
   text_secondary: string
@@ -139,7 +140,8 @@ export const SOCIAL_CITIES_FALLBACK = ['Colorado Springs'] as const
 export const IG_CAPTION_LIMIT = 2200
 export const FEATURED_DESC_SUGGEST = 300
 export const SHORT_DESC_LIMIT = 64
-export const MAX_FEATURED = 5
+/** Cover + 2 promo ads leave 7 item slots in a 10-slide Instagram carousel. */
+export const MAX_FEATURED = 7
 export const MAX_UPLOAD_BYTES = 6 * 1024 * 1024
 export const APP_MOCKUP_MAX_BYTES = 1024 * 1024
 
@@ -187,6 +189,7 @@ export const DEFAULT_BRAND_COLORS: BrandColors = {
   primary_dark: '#3A1515',
   accent: '#F8C701',
   cream: '#F9F7F2',
+  tan: '#E5DFD6',
   charcoal: '#1A1A1A',
   text_primary: '#2D2926',
   text_secondary: '#665E5A',

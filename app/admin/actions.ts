@@ -60,7 +60,7 @@ async function fetchEventForSlugRedirects(
       is_recurring_biweekly,
       is_recurring_monthly,
       brewery_id,
-      breweries ( name, location )
+      breweries ( name, location, "Region" )
     `
     )
     .eq('id', eventId)
@@ -68,7 +68,11 @@ async function fetchEventForSlugRedirects(
 
   if (error || !data) return null
 
-  const brewery = data.breweries as { name?: string; location?: string | null } | null
+  const brewery = data.breweries as {
+    name?: string
+    location?: string | null
+    Region?: string | null
+  } | null
   return {
     id: String(data.id),
     title: String(data.title ?? ''),
@@ -78,6 +82,7 @@ async function fetchEventForSlugRedirects(
     is_recurring_monthly: Boolean(data.is_recurring_monthly),
     breweryName: brewery?.name || 'Unknown Brewery',
     location: brewery?.location ?? null,
+    Region: brewery?.Region ?? null,
   }
 }
 
@@ -93,7 +98,7 @@ async function fetchReleaseForSlugRedirects(
       beer_name,
       "Type",
       brewery_id,
-      breweries!beer_releases_brewery_id_fkey ( name, location )
+      breweries!beer_releases_brewery_id_fkey ( name, location, "Region" )
     `
     )
     .eq('id', releaseId)
@@ -101,13 +106,18 @@ async function fetchReleaseForSlugRedirects(
 
   if (error || !data) return null
 
-  const brewery = data.breweries as { name?: string; location?: string | null } | null
+  const brewery = data.breweries as {
+    name?: string
+    location?: string | null
+    Region?: string | null
+  } | null
   return {
     id: String(data.id),
     beer_name: String(data.beer_name ?? ''),
     Type: (data.Type as string | null) ?? null,
     breweryName: brewery?.name || 'Unknown Brewery',
     location: brewery?.location ?? null,
+    Region: brewery?.Region ?? null,
   }
 }
 

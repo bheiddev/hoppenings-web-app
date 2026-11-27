@@ -8,6 +8,11 @@ import {
 } from './utils'
 import { generateEventSlug, generateLegacyEventSlug, generateSlug } from './slug'
 import { isEventInIndexableWindow } from './contentExpiry'
+import {
+  expandLocationSlugAliasesForward,
+  mapGetWithSlugAliases,
+  slugIndexKeys,
+} from './slugAliases'
 import { ensureFreshStorageUrl } from './storageUrls'
 
 export interface EventWithSlug extends Event {
@@ -210,8 +215,8 @@ function pickNextUpcomingEvent(events: EventWithSlug[]): EventWithSlug | null {
 function buildEventSlugMap(events: EventWithSlug[]): Map<string, EventWithSlug> {
   const map = new Map<string, EventWithSlug>()
   for (const event of events) {
-    map.set(event.slug, event)
-    map.set(event.legacySlug, event)
+    for (const key of slugIndexKeys(event.slug)) map.set(key, event)
+    for (const key of slugIndexKeys(event.legacySlug)) map.set(key, event)
   }
   return map
 }
@@ -227,22 +232,27 @@ function isRecurringEvent(event: Pick<Event, 'is_recurring' | 'is_recurring_biwe
  */
 function resolveEventBySlug(slug: string, allEvents: EventWithSlug[]): EventWithSlug | null {
   const map = buildEventSlugMap(allEvents)
-  const direct = map.get(slug)
+  const direct = mapGetWithSlugAliases(map, slug)
   if (direct) return direct
 
-  const series = findSeriesInstances(slug, allEvents)
-  if (series.length === 0) return null
+  // Try series match on each forward location-alias variant of the requested slug.
+  for (const variant of expandLocationSlugAliasesForward(slug)) {
+    const series = findSeriesInstances(variant, allEvents)
+    if (series.length === 0) continue
 
-  const requestedDate = extractIsoDateFromSlug(slug)
-  if (requestedDate) {
-    const exactDate = series.find(
-      (e) => normalizeEventDateToMountainTime(e.event_date) === requestedDate
-    )
-    if (exactDate) return exactDate
+    const requestedDate = extractIsoDateFromSlug(variant)
+    if (requestedDate) {
+      const exactDate = series.find(
+        (e) => normalizeEventDateToMountainTime(e.event_date) === requestedDate
+      )
+      if (exactDate) return exactDate
+    }
+
+    // Undated legacy URL, or past date no longer in the expansion window → next occurrence.
+    return pickNextUpcomingEvent(series)
   }
 
-  // Undated legacy URL, or past date no longer in the expansion window → next occurrence.
-  return pickNextUpcomingEvent(series)
+  return null
 }
 
 

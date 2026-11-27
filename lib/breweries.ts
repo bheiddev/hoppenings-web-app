@@ -4,6 +4,12 @@ import { Brewery, BreweryHours, Event, BeerRelease, FoodTruck, HappyHourDeal, Pr
 import { filterBreweryFoodTrucksForDisplay, foodTruckShowsOnDate } from '@/lib/foodTrucks'
 import { sortHappyHourDeals } from '@/lib/happyHourDeals'
 import { generateBrewerySlug, generateLegacyBrewerySlug } from './slug'
+import {
+  extractLegacyIdSuffix,
+  idMatchesLegacySuffix,
+  mapGetWithSlugAliases,
+  slugIndexKeys,
+} from './slugAliases'
 import { expandRecurringEvents, getTodayMountainDateString, isEventInPast } from './utils'
 import { getReleaseListDateBounds, isReleaseInIndexableWindow } from './contentExpiry'
 import { ensureFreshBreweryImages } from './storageUrls'
@@ -67,16 +73,20 @@ export async function getAllBreweriesWithSlugs(): Promise<BreweryWithSlug[]> {
 }
 
 /**
- * Get a single brewery by slug
+ * Get a single brewery by slug (current, legacy, or old location-token aliases).
  */
 export async function getBreweryBySlug(slug: string): Promise<BreweryWithSlug | null> {
   const allBreweries = await getAllBreweriesWithSlugs()
   const index = new Map<string, BreweryWithSlug>()
   for (const brewery of allBreweries) {
-    index.set(brewery.slug, brewery)
-    index.set(brewery.legacySlug, brewery)
+    for (const key of slugIndexKeys(brewery.slug)) index.set(key, brewery)
+    for (const key of slugIndexKeys(brewery.legacySlug)) index.set(key, brewery)
   }
-  return index.get(slug) || null
+  const hit = mapGetWithSlugAliases(index, slug)
+  if (hit) return hit
+  const suffix = extractLegacyIdSuffix(slug)
+  if (!suffix) return null
+  return allBreweries.find((b) => idMatchesLegacySuffix(b.id, suffix)) ?? null
 }
 
 /** Get a single brewery by id (includes generated slug). */

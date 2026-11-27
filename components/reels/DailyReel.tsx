@@ -13,7 +13,7 @@ import { WaitForFonts } from './WaitForFonts'
 export const FPS = 30
 export const REEL_WIDTH = 1080
 export const REEL_HEIGHT = 1920
-export const TRANSITION_FRAMES = 10
+export const TRANSITION_FRAMES = 16
 
 export interface DailyReelProps {
   specs: ReelSpec[] // from prepareSpecs(post.slide_specs)
@@ -48,7 +48,12 @@ export function DailyReel({ specs, brand }: DailyReelProps) {
 
   return (
     <WaitForFonts>
-      <AbsoluteFill style={{ backgroundColor: brand.colors.primary_dark }}>
+      <AbsoluteFill
+        style={{
+          backgroundColor: brand.colors.primary_dark,
+          overflow: 'hidden',
+        }}
+      >
         {specs.length === 0 ? null : <TransitionSeries>{children}</TransitionSeries>}
       </AbsoluteFill>
     </WaitForFonts>

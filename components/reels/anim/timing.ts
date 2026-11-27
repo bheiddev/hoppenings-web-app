@@ -4,12 +4,12 @@
 import { Easing, interpolate, spring } from 'remotion'
 import type { Anim } from '../shared/templates'
 
-export const ORDER_FRAMES = 5 // snappy gap between choreography steps
-export const LEAD_FRAMES = 5 // wait for the scene transition before the first step
-export const DURATION = 16 // frames for one element's animation
-export const WORD_STAGGER = 3 // frames between words in a "words" animation
-export const WORD_DURATION = 14
-export const HOLD_FRAMES = 40 // rest on the finished slide before the next transition
+export const ORDER_FRAMES = 7 // gap between choreography steps
+export const LEAD_FRAMES = 8 // wait for the scene transition before the first step
+export const DURATION = 22 // frames for one element's animation
+export const WORD_STAGGER = 4 // frames between words in a "words" animation
+export const WORD_DURATION = 18
+export const HOLD_FRAMES = 48 // rest on the finished slide before the next transition
 /** @deprecated zoom removed from scenes — kept for scene-length math if a tag slips through */
 export const ZOOM_FRAMES = 1
 export const ZOOM_FROM = 1

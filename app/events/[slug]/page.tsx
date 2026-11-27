@@ -1,7 +1,11 @@
 import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getEventBySlug, getEventBySlugIncludingExpired, getAllEventsWithSlugs, eventIsRecurring } from '@/lib/events'
-import { EXPIRED_EVENT_REDIRECT } from '@/lib/contentExpiry'
+import {
+  expiredEventRedirectPath,
+  isEventSeoIndexable,
+  selectEventsForSitemap,
+} from '@/lib/contentExpiry'
 import { resolveEventSlugRedirect } from '@/lib/slugRedirects'
 import { formatEventDate, formatReleaseDate, formatTime12Hour, isEventInPast } from '@/lib/utils'
 import { Colors } from '@/lib/colors'
@@ -32,7 +36,12 @@ function cityFromLocation(location?: string | null): string {
   return location.split(',')[0].trim() || 'Colorado'
 }
 
-function cityPagePath(citySlug: string | null): string {
+function cityHubPath(citySlug: string | null): string {
+  if (!citySlug) return '/events'
+  return `/${citySlug}`
+}
+
+function cityEventsPath(citySlug: string | null): string {
   if (!citySlug) return '/events'
   return `/${citySlug}/events`
 }
@@ -106,18 +115,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       ? `${event.description.substring(0, 155)}...`
       : `${event.title} at ${breweryName} in ${city}. ${recurrenceText}${timeLabel ? ` at ${timeLabel}` : ''}.`
 
+  // Only sitemap-worthy occurrences are indexed; other dates stay crawlable with noindex.
+  const allForSeo = await getAllEventsWithSlugs()
+  const sitemapSet = selectEventsForSitemap(allForSeo)
+  const indexable = isEventSeoIndexable(event, sitemapSet)
+  const canonicalPath = eventCanonicalPath(event)
+
   return {
     title: `${event.title} at ${breweryName} | ${recurrenceText}${timeLabel ? ` ${timeLabel}` : ''} in ${city} | Hoppenings`,
     description: description,
     keywords: `${event.title}, ${breweryName}, ${location}, brewery event, craft beer, ${eventDate}`,
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: true },
     alternates: {
-      canonical: `${BASE_URL}${eventCanonicalPath(event)}`,
+      canonical: `${BASE_URL}${canonicalPath}`,
     },
     openGraph: {
       title: `${event.title} at ${breweryName} in ${city}`,
       description: description,
       type: 'website',
-      url: `${BASE_URL}${eventCanonicalPath(event)}`,
+      url: `${BASE_URL}${canonicalPath}`,
     },
   }
 }
@@ -134,7 +150,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       if (eventIsRecurring(expiredOrSeries)) {
         permanentRedirect(eventCanonicalPath(expiredOrSeries))
       }
-      permanentRedirect(EXPIRED_EVENT_REDIRECT)
+      permanentRedirect(expiredEventRedirectPath(expiredOrSeries))
     }
     const tombstone = await resolveEventSlugRedirect(slug)
     if (tombstone) {
@@ -266,7 +282,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         }`}
       >
         <BackLink
-          fallbackHref="/events"
+          fallbackHref={cityHubPath(citySlug)}
           style={{ color: 'rgba(249, 247, 242, 0.75)', fontFamily: 'var(--font-be-vietnam-pro)' }}
         />
 
@@ -447,11 +463,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           <ul className="flex flex-col">
             <li>
               <Link
-                href={cityPagePath(citySlug)}
+                href={cityHubPath(citySlug)}
                 className="block border-t border-white/10 py-4 text-lg font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
                 style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
               >
-                More events
+                {regionName} brewery guide
+              </Link>
+            </li>
+            <li>
+              <Link
+                href={cityEventsPath(citySlug)}
+                className="block border-t border-white/10 py-4 text-lg font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
+                style={{ color: Colors.textOnDark, fontFamily: 'var(--font-fjalla-one)' }}
+              >
+                More events in {regionName}
               </Link>
             </li>
             {relatedEvents.map((rel) => {

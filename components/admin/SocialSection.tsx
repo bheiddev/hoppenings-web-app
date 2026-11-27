@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Colors } from '@/lib/colors'
 import { AdminButton, AdminSpinner } from '@/components/breweriesEventsAdminButtons'
-import { useAuth } from '@/components/auth/AuthProvider'
 import { getSupabaseBrowser } from '@/lib/supabaseBrowser'
 import {
   listBreweryFolderImages,
@@ -18,10 +17,8 @@ import {
   ITEM_TYPE_LABEL,
   MAX_FEATURED,
   MAX_UPLOAD_BYTES,
-  PIPELINE_STEPS,
   SHORT_DESC_LIMIT,
   SOCIAL_CITIES_FALLBACK,
-  STATUS_BADGE,
   buildDraftToastMessage,
   denverToday,
   featuredPhotoUrl,
@@ -36,7 +33,6 @@ import {
   itemTitle,
   itemTitlePlaceholder,
   itemTypeOf,
-  pipelineStepIndex,
   primaryBrewery,
   type BrandColors,
   type BrandFonts,
@@ -138,7 +134,6 @@ function sectionItems(items: SocialPostItem[], type: SocialItemType) {
 }
 
 export function SocialSection({ cities = [] }: { cities?: string[] }) {
-  const { user } = useAuth()
   const cityOptions = useMemo(() => {
     const cleaned = cities.map((c) => c.trim()).filter(Boolean)
     return cleaned.length > 0 ? cleaned : [...SOCIAL_CITIES_FALLBACK]
@@ -174,9 +169,6 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
   const [publishing, setPublishing] = useState(false)
   const [savingCaption, setSavingCaption] = useState(false)
   const [savingItems, setSavingItems] = useState(false)
-  const [approving, setApproving] = useState(false)
-  const [skipping, setSkipping] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [savingBrand, setSavingBrand] = useState(false)
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -443,30 +435,6 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
     }
   }
 
-  async function handleApprove() {
-    if (!selected || approving || selected.status !== 'pending_review') return
-    setApproving(true)
-    try {
-      const supabase = getSupabaseBrowser()
-      const { error } = await supabase
-        .from('social_posts')
-        .update({
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user?.id ?? null,
-        })
-        .eq('id', selected.id)
-      if (error) {
-        toast('error', error.message)
-        return
-      }
-      toast('success', 'Approved')
-      await refreshPosts()
-    } finally {
-      setApproving(false)
-    }
-  }
-
   async function handlePublish() {
     if (!selected || publishing) return
     setPublishing(true)
@@ -480,46 +448,6 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
       await refreshPosts()
     } finally {
       setPublishing(false)
-    }
-  }
-
-  async function handleSkip() {
-    if (!selected || skipping || selected.status === 'published') return
-    setSkipping(true)
-    try {
-      const supabase = getSupabaseBrowser()
-      const { error } = await supabase
-        .from('social_posts')
-        .update({ status: 'skipped' })
-        .eq('id', selected.id)
-      if (error) {
-        toast('error', error.message)
-        return
-      }
-      toast('info', 'Post skipped')
-      await refreshPosts()
-    } finally {
-      setSkipping(false)
-    }
-  }
-
-  async function handleDelete() {
-    if (!selected || deleting || selected.status === 'published') return
-    if (!window.confirm('Delete this post? This cannot be undone.')) return
-    setDeleting(true)
-    try {
-      const supabase = getSupabaseBrowser()
-      const { error } = await supabase.from('social_posts').delete().eq('id', selected.id)
-      if (error) {
-        toast('error', error.message)
-        return
-      }
-      toast('info', 'Post deleted')
-      setSelectedId(null)
-      setLocalItems([])
-      await refreshPosts()
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -565,7 +493,7 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
     }
     const featuredCount = localItems.filter((i) => i.featured).length
     if (featuredCount >= MAX_FEATURED) {
-      toast('warning', 'Only 5 featured items; unstar one first')
+      toast('warning', `Only ${MAX_FEATURED} featured items; unstar one first`)
       return
     }
     markItemsDirty(localItems.map((i) => (i.id === id ? { ...i, featured: true } : i)))
@@ -592,15 +520,12 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
   const hasUnsaved = captionDirty || itemsDirty
   const canRender =
     !!selected && !['publishing', 'published'].includes(selected.status) && !rendering
-  const canApprove = selected?.status === 'pending_review' && !approving
   const canPublish =
     !!selected &&
-    ['pending_review', 'approved', 'failed'].includes(selected.status) &&
+    ['pending_review', 'approved', 'failed', 'draft'].includes(selected.status) &&
     (selected.image_urls?.length ?? 0) > 0 &&
     !hasUnsaved &&
     !publishing
-  const canSkip = !!selected && selected.status !== 'published' && !skipping
-  const canDelete = !!selected && selected.status !== 'published' && !deleting
 
   const featuredItems = useMemo(
     () => localItems.filter((i) => i.featured).sort((a, b) => a.position - b.position),
@@ -611,10 +536,8 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
   const events = useMemo(() => sectionItems(localItems, 'event'), [localItems])
   const deals = useMemo(() => sectionItems(localItems, 'deal'), [localItems])
 
-  const stepIdx = selected ? pipelineStepIndex(selected.status) : -1
-
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 min-w-0 max-w-full overflow-x-hidden">
       <SocialToasts toasts={toasts} onDismiss={dismissToast} />
 
       <div>
@@ -626,7 +549,7 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
         </h2>
         <p className="mt-1 text-sm max-w-3xl" style={{ color: Colors.textSecondary }}>
           Build an Instagram carousel from the day&apos;s events, beer releases, and happy hours,
-          then review and publish to @hoppenings.
+          then publish to @hoppenings.
         </p>
       </div>
 
@@ -672,9 +595,9 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
         </AdminButton>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] gap-4">
         <div
-          className="rounded-lg border overflow-hidden"
+          className="rounded-lg border overflow-hidden min-w-0"
           style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
         >
           <div
@@ -699,7 +622,6 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
           ) : (
             <ul className="max-h-[720px] overflow-y-auto divide-y" style={{ borderColor: Colors.dividerLight }}>
               {posts.map((p) => {
-                const badge = STATUS_BADGE[p.status] ?? STATUS_BADGE.draft
                 const selectedRow = p.id === selectedId
                 return (
                   <li key={p.id}>
@@ -715,12 +637,14 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                         <span className="text-sm font-semibold" style={{ color: Colors.textDark }}>
                           {p.post_date}
                         </span>
-                        <span
-                          className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-                          style={{ backgroundColor: badge.bg, color: badge.fg }}
-                        >
-                          {badge.label}
-                        </span>
+                        {p.status === 'published' && p.permalink ? (
+                          <span
+                            className="text-[10px] font-semibold uppercase tracking-wide"
+                            style={{ color: Colors.success }}
+                          >
+                            Live
+                          </span>
+                        ) : null}
                       </div>
                       <div
                         className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs"
@@ -758,7 +682,7 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
         </div>
 
         <div
-          className="rounded-lg border p-4 space-y-5 min-h-[320px]"
+          className="rounded-lg border p-4 space-y-5 min-h-[320px] min-w-0 overflow-x-hidden"
           style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
         >
           {!selected ? (
@@ -793,53 +717,19 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                 </div>
               ) : null}
 
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-                    style={{
-                      backgroundColor: (STATUS_BADGE[selected.status] ?? STATUS_BADGE.draft).bg,
-                      color: (STATUS_BADGE[selected.status] ?? STATUS_BADGE.draft).fg,
-                    }}
+              {selected.permalink ? (
+                <div className="mb-2">
+                  <a
+                    href={selected.permalink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-semibold underline"
+                    style={{ color: Colors.primary }}
                   >
-                    {(STATUS_BADGE[selected.status] ?? STATUS_BADGE.draft).label}
-                  </span>
-                  {selected.permalink ? (
-                    <a
-                      href={selected.permalink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-semibold underline"
-                      style={{ color: Colors.primary }}
-                    >
-                      View on Instagram
-                    </a>
-                  ) : null}
+                    View on Instagram
+                  </a>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {PIPELINE_STEPS.map((step, i) => {
-                    const active = stepIdx === i
-                    const done = stepIdx > i
-                    return (
-                      <div
-                        key={step.key}
-                        className="px-2.5 py-1 text-xs font-semibold rounded border"
-                        style={{
-                          borderColor: active || done ? Colors.primaryDark : Colors.dividerLight,
-                          backgroundColor: active
-                            ? Colors.primaryDark
-                            : done
-                              ? Colors.surfaceLight
-                              : Colors.surface,
-                          color: active ? Colors.onPrimary : Colors.textDark,
-                        }}
-                      >
-                        {step.label}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              ) : null}
 
               {/* Slides */}
               <div>
@@ -854,21 +744,24 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                     Not rendered yet
                   </p>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="flex flex-wrap gap-2">
                     {selected.image_urls.map((url, i) => (
                       <button
                         key={`${url}-${i}`}
                         type="button"
                         onClick={() => setLightboxUrl(url)}
-                        className="shrink-0 rounded border overflow-hidden"
+                        className="rounded border overflow-hidden w-[calc(50%-0.25rem)] sm:w-[160px] md:w-[200px] lg:w-[220px]"
                         style={{
-                          width: 220,
                           aspectRatio: '4 / 5',
                           borderColor: Colors.dividerLight,
                         }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`Slide ${i + 1}`} className="h-full w-full object-cover" />
+                        <img
+                          src={url}
+                          alt={`Slide ${i + 1}`}
+                          className="h-full w-full object-cover"
+                        />
                       </button>
                     ))}
                   </div>
@@ -936,7 +829,7 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                 </h3>
                 {featuredItems.length === 0 ? (
                   <p className="text-xs" style={{ color: Colors.textMuted }}>
-                    Star up to {MAX_FEATURED} items below to give them their own slides after the cover.
+                    Star up to {MAX_FEATURED} items for their own slides (cover + Tap Tracker + app ads fill the rest). Unstarred items stay off the carousel.
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -1129,36 +1022,12 @@ export function SocialSection({ cities = [] }: { cities?: string[] }) {
                       {(selected.image_urls?.length ?? 0) > 0 ? 'Re-render' : 'Render'}
                     </AdminButton>
                     <AdminButton
-                      variant="accept"
-                      loading={approving}
-                      disabled={!canApprove}
-                      onClick={() => void handleApprove()}
-                    >
-                      Approve
-                    </AdminButton>
-                    <AdminButton
                       variant="save"
                       loading={publishing}
                       disabled={!canPublish}
                       onClick={() => setPublishConfirm(true)}
                     >
                       Publish to Instagram
-                    </AdminButton>
-                    <AdminButton
-                      variant="cancel"
-                      loading={skipping}
-                      disabled={!canSkip}
-                      onClick={() => void handleSkip()}
-                    >
-                      Skip
-                    </AdminButton>
-                    <AdminButton
-                      variant="delete"
-                      loading={deleting}
-                      disabled={!canDelete}
-                      onClick={() => void handleDelete()}
-                    >
-                      Delete
                     </AdminButton>
                   </>
                 ) : (
@@ -1744,6 +1613,7 @@ const COLOR_KEYS: (keyof BrandColors)[] = [
   'primary_dark',
   'accent',
   'cream',
+  'tan',
   'charcoal',
   'text_primary',
   'text_secondary',

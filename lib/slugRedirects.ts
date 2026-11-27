@@ -19,7 +19,7 @@ import {
   getTodayMountainDateString,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
-import { EXPIRED_EVENT_REDIRECT, EXPIRED_RELEASE_REDIRECT } from '@/lib/contentExpiry'
+import { expiredEventRedirectPath, expiredReleaseRedirectPath } from '@/lib/contentExpiry'
 
 export type SlugRedirectReason = 'deleted' | 'renamed'
 export type SlugRedirectSourceType = 'event' | 'release'
@@ -63,6 +63,7 @@ type EventSlugInput = {
   is_recurring_monthly?: boolean | null
   breweryName: string
   location: string | null
+  Region?: string | null
 }
 
 type ReleaseSlugInput = {
@@ -71,6 +72,7 @@ type ReleaseSlugInput = {
   Type: string | null
   breweryName: string
   location: string | null
+  Region?: string | null
 }
 
 function isRecurringFlags(event: EventSlugInput): boolean {
@@ -244,9 +246,12 @@ export async function recordEventDeletedRedirects(
   event: EventSlugInput
 ): Promise<{ error?: string; paths: string[] }> {
   const paths = collectEventPublicPaths(event)
+  const to_path = expiredEventRedirectPath({
+    breweries: { Region: event.Region, location: event.location },
+  })
   const rows = paths.map((from_path) => ({
     from_path,
-    to_path: EXPIRED_EVENT_REDIRECT,
+    to_path,
     source_type: 'event' as const,
     source_id: event.id,
     reason: 'deleted' as const,
@@ -260,9 +265,12 @@ export async function recordReleaseDeletedRedirects(
   release: ReleaseSlugInput
 ): Promise<{ error?: string; paths: string[] }> {
   const paths = collectReleasePublicPaths(release)
+  const to_path = expiredReleaseRedirectPath({
+    breweries: { Region: release.Region, location: release.location },
+  })
   const rows = paths.map((from_path) => ({
     from_path,
-    to_path: EXPIRED_RELEASE_REDIRECT,
+    to_path,
     source_type: 'release' as const,
     source_id: release.id,
     reason: 'deleted' as const,

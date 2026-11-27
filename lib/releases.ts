@@ -1,6 +1,12 @@
 import { supabase } from './supabase'
 import { BeerRelease } from '@/types/supabase'
 import { generateReleaseSlug, generateLegacyReleaseSlug } from './slug'
+import {
+  extractLegacyIdSuffix,
+  idMatchesLegacySuffix,
+  mapGetWithSlugAliases,
+  slugIndexKeys,
+} from './slugAliases'
 import { getReleaseListDateBounds, isReleaseInIndexableWindow } from './contentExpiry'
 import { ensureFreshBreweryImages } from './storageUrls'
 
@@ -12,10 +18,22 @@ export interface BeerReleaseWithSlug extends BeerRelease {
 function buildReleaseSlugMap(releases: BeerReleaseWithSlug[]): Map<string, BeerReleaseWithSlug> {
   const map = new Map<string, BeerReleaseWithSlug>()
   for (const release of releases) {
-    map.set(release.slug, release)
-    map.set(release.legacySlug, release)
+    for (const key of slugIndexKeys(release.slug)) map.set(key, release)
+    for (const key of slugIndexKeys(release.legacySlug)) map.set(key, release)
   }
   return map
+}
+
+function findReleaseBySlugOrSuffix(
+  releases: BeerReleaseWithSlug[],
+  slug: string
+): BeerReleaseWithSlug | null {
+  const map = buildReleaseSlugMap(releases)
+  const hit = mapGetWithSlugAliases(map, slug)
+  if (hit) return hit
+  const suffix = extractLegacyIdSuffix(slug)
+  if (!suffix) return null
+  return releases.find((r) => idMatchesLegacySuffix(String(r.id), suffix)) ?? null
 }
 
 function memoizeListLoader<T>(load: () => Promise<T>, ttlMs: number): () => Promise<T> {
@@ -139,7 +157,7 @@ export async function getAllReleasesWithSlugs(): Promise<BeerReleaseWithSlug[]> 
  */
 export async function getReleaseBySlug(slug: string): Promise<BeerReleaseWithSlug | null> {
   const allReleases = await getAllReleasesWithSlugs()
-  return buildReleaseSlugMap(allReleases).get(slug) || null
+  return findReleaseBySlugOrSuffix(allReleases, slug)
 }
 
 /**
@@ -147,37 +165,41 @@ export async function getReleaseBySlug(slug: string): Promise<BeerReleaseWithSlu
  */
 async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[]> {
   try {
-    const { data, error } = await supabase
-      .from('beer_releases_base')
-      .select(`
-        id,
-        created_at,
-        beer_name,
-        "ABV",
-        "Type",
-        description,
-        brewery_id,
-        brewery_id2,
-        brewery_id3,
-        release_date,
-        breweries!beer_releases_brewery_id_fkey (
+    const pageSize = 1000
+    const rows: any[] = []
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from('beer_releases_base')
+        .select(`
           id,
-          name,
-          location,
-          Region
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(500)
+          created_at,
+          beer_name,
+          "ABV",
+          "Type",
+          description,
+          brewery_id,
+          brewery_id2,
+          brewery_id3,
+          release_date,
+          breweries!beer_releases_brewery_id_fkey (
+            id,
+            name,
+            location,
+            Region
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
 
-    if (error) {
-      console.error('Error fetching releases (unfiltered):', error)
-      return []
+      if (error) {
+        console.error('Error fetching releases (unfiltered):', error)
+        break
+      }
+      rows.push(...(data ?? []))
+      if (!data || data.length < pageSize) break
     }
 
-    if (!data) return []
-
-    const releases = data.map((release: any) => ({
+    const releases = rows.map((release: any) => ({
       id: release.id,
       created_at: release.created_at,
       beer_name: release.beer_name,
@@ -224,7 +246,7 @@ async function getAllReleasesWithSlugsUnfiltered(): Promise<BeerReleaseWithSlug[
  */
 export async function getReleaseBySlugIncludingExpired(slug: string): Promise<BeerReleaseWithSlug | null> {
   const allReleases = await getAllReleasesWithSlugsUnfiltered()
-  return buildReleaseSlugMap(allReleases).get(slug) || null
+  return findReleaseBySlugOrSuffix(allReleases, slug)
 }
 
 /**

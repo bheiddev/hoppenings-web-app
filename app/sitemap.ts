@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllReleasesWithSlugs } from '@/lib/releases'
 import { getAllEventsWithSlugs } from '@/lib/events'
 import { getAllBreweriesWithSlugs } from '@/lib/breweries'
+import { selectEventsForSitemap } from '@/lib/contentExpiry'
 import { ACTIVITY_CONFIG, listPublicRegionBuckets } from '@/lib/seoCities'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
@@ -9,8 +10,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hoppeningsco.com'
 export const revalidate = 3600
 
 /**
- * Sitemap only lists indexable URLs (see lib/contentExpiry.ts).
- * Expired release/event URLs are not included; visits to those URLs get a 301 to the listing page.
+ * Sitemap only lists indexable URLs (see lib/contentExpiry.ts):
+ * city/brewery hubs, releases in window, and a small event set
+ * (next occurrence per recurring series + rich near-term one-offs).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [releases, events, breweries] = await Promise.all([
@@ -18,14 +20,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAllEventsWithSlugs(),
     getAllBreweriesWithSlugs(),
   ])
+  const sitemapEvents = selectEventsForSitemap(events)
 
   const now = new Date()
 
+  // Region hubs are the primary SEO surfaces (daily curated local content).
+  // Global /events|/releases|/breweries are secondary indexes.
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
-    { url: `${BASE_URL}/events`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${BASE_URL}/releases`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${BASE_URL}/breweries`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${BASE_URL}/events`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
+    { url: `${BASE_URL}/releases`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
+    { url: `${BASE_URL}/breweries`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
   ]
 
   const regionSlugs = (await listPublicRegionBuckets()).map((bucket) => bucket.slug)
@@ -33,34 +38,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cityPages: MetadataRoute.Sitemap = regionSlugs.map((city) => ({
     url: `${BASE_URL}/${city}`,
     lastModified: now,
-    changeFrequency: 'daily' as const,
-    priority: 0.85,
+    changeFrequency: 'hourly' as const,
+    priority: 0.95,
   }))
 
   const cityCategoryPages: MetadataRoute.Sitemap = regionSlugs.flatMap((city) => ([
     {
       url: `${BASE_URL}/${city}/events`,
       lastModified: now,
-      changeFrequency: 'daily' as const,
-      priority: 0.85,
+      changeFrequency: 'hourly' as const,
+      priority: 0.9,
     },
     {
       url: `${BASE_URL}/${city}/breweries`,
       lastModified: now,
       changeFrequency: 'daily' as const,
-      priority: 0.8,
+      priority: 0.88,
     },
     {
       url: `${BASE_URL}/${city}/releases`,
       lastModified: now,
       changeFrequency: 'daily' as const,
-      priority: 0.8,
+      priority: 0.88,
     },
     {
       url: `${BASE_URL}/${city}/happy-hours`,
       lastModified: now,
       changeFrequency: 'daily' as const,
-      priority: 0.8,
+      priority: 0.85,
     },
   ]))
 
@@ -69,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE_URL}/${city}/${activity}`,
       lastModified: now,
       changeFrequency: 'daily' as const,
-      priority: 0.75,
+      priority: 0.8,
     }))
   )
 
@@ -77,30 +82,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${BASE_URL}/releases/${r.slug}`,
     lastModified: new Date(r.created_at),
     changeFrequency: 'weekly' as const,
-    priority: 0.7,
+    priority: 0.55,
   }))
 
-  const eventPages: MetadataRoute.Sitemap = events.map((e) => ({
+  const eventPages: MetadataRoute.Sitemap = sitemapEvents.map((e) => ({
     url: `${BASE_URL}/events/${e.slug}`,
     lastModified: new Date(e.created_at),
     changeFrequency: 'weekly' as const,
-    priority: 0.7,
+    priority: 0.55,
   }))
 
   const breweryPages: MetadataRoute.Sitemap = breweries.map((b) => ({
     url: `${BASE_URL}/breweries/${b.slug}`,
     lastModified: new Date(b.created_at),
-    changeFrequency: 'monthly' as const,
-    priority: 0.8,
+    changeFrequency: 'weekly' as const,
+    priority: 0.75,
   }))
 
+  // Region hubs first so crawlers see them before the long tail of detail URLs.
   return [
     ...staticPages,
     ...cityPages,
     ...cityCategoryPages,
     ...cityActivityPages,
+    ...breweryPages,
     ...releasePages,
     ...eventPages,
-    ...breweryPages,
   ]
 }

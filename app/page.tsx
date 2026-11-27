@@ -13,11 +13,14 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Hoppenings | Colorado Brewery Guide by Region',
   description:
-    'Choose your Colorado region to explore tonight\'s taprooms, events, and releases across the Front Range.',
+    'Pick your Front Range region for a daily-updated brewery guide — events, beer releases, and happy hours crawled from local taprooms.',
+  alternates: { canonical: BASE_URL },
   openGraph: {
     title: 'Hoppenings | Colorado Brewery Guide by Region',
     description:
-      'Choose your Colorado region to explore tonight\'s taprooms, events, and releases.',
+      'Region-by-region Colorado brewery guides, updated daily from local brewery posts.',
+    url: BASE_URL,
+    type: 'website',
   },
 }
 

@@ -32,7 +32,7 @@ import { FoodTruckSchedule } from '@/components/breweryDemo/FoodTruckSchedule'
 import { OtherBreweryLocation } from '@/components/breweryDemo/OtherBreweryLocation'
 import { BreweryUpcomingEvents } from '@/components/BreweryUpcomingEvents'
 import { PoshPageShell } from '@/components/PoshPageShell'
-import { getRegionDisplayName } from '@/lib/seoCities'
+import { getRegionDisplayName, inferCityFromRegionOrLocation } from '@/lib/seoCities'
 import {
   formatHappyHourWindow,
   getTodaysHappyHourDeals,
@@ -94,6 +94,8 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   if (!brewery) {
     notFound()
   }
+  // Legacy UUID suffix or old location tokens (east-cos → east) resolve above; always
+  // 301 to the current canonical so Google stops storing the old URL.
   if (slug !== brewery.slug) {
     permanentRedirect(`/breweries/${brewery.slug}`)
   }
@@ -202,6 +204,7 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
   )
   const city = brewery.location ? brewery.location.split(',')[0].trim() : 'Colorado'
   const regionName = getRegionDisplayName(brewery.Region, brewery.location, city)
+  const regionSlug = inferCityFromRegionOrLocation(brewery.Region, brewery.location)
   const isDemoBrewery = brewery.slug === 'mash-mechanix-downtown'
   const hoppeningRelease = isDemoBrewery
     ? {
@@ -277,6 +280,20 @@ export default async function BreweryDetailPage({ params }: { params: Promise<{ 
         ) : null}
 
         <div className="relative z-[2] mx-auto w-full max-w-6xl px-6 py-10 sm:px-10">
+          {regionSlug ? (
+            <Link
+              href={`/${regionSlug}`}
+              className="mb-3 inline-block text-[11px] font-semibold uppercase tracking-[0.28em] transition-opacity hover:opacity-85 sm:text-xs"
+              style={{
+                color: Colors.accent,
+                fontFamily: 'var(--font-be-vietnam-pro)',
+                textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+              }}
+            >
+              {regionName} brewery guide
+            </Link>
+          ) : null}
+
           <h1
             className="text-left font-bold uppercase leading-[0.95] tracking-wide text-[clamp(1.75rem,7vw,4rem)]"
             style={{

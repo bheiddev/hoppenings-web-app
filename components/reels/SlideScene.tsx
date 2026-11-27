@@ -1,8 +1,8 @@
 'use client'
 
 // One reel scene from one slide spec: the carousel slide's own layout, animated in.
-// The 1080×1350 (4:5) slide is scaled to fill as much of the 9:16 frame as Instagram
-// safe zones allow, so we don't leave a huge empty maroon band under the content.
+// Fits the 1080×1350 (4:5) slide at full width — no horizontal scale/crop — so static
+// promos and edge text aren't clipped.
 import { useMemo } from 'react'
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from 'remotion'
 import type { SlideSpec } from './shared/slides'
@@ -12,10 +12,10 @@ import { DURATION, LEAD_FRAMES, sceneFrames } from './anim/timing'
 
 export const REEL_W = 1080
 export const REEL_H = 1920
-/** Top inset — status bar / back control. Keep headlines out of this band. */
+/** Top inset — status bar / back control. */
 export const SLIDE_TOP = 72
-/** Bottom inset — caption, account name, CTA. */
-export const SLIDE_BOTTOM_SAFE = 340
+/** Bottom inset — caption, account name, CTA (keep some air, but don't leave a huge empty band). */
+export const SLIDE_BOTTOM_SAFE = 240
 
 export type ReelSpec = SlideSpec | { kind: 'static'; url: string }
 
@@ -27,17 +27,8 @@ export function slideTree(spec: ReelSpec, brand: Brand) {
 /** Frames this scene needs: all of its animations plus a short hold. */
 export function sceneDuration(spec: ReelSpec, brand: Brand): number {
   const tree = slideTree(spec, brand)
-  return tree ? sceneFrames(tree) : 75
-}
-
-/** Scale 4:5 slide up to fill available 9:16 height (slight side clip; PAD still clears). */
-export function slideLayout() {
-  const availH = REEL_H - SLIDE_TOP - SLIDE_BOTTOM_SAFE
-  const scale = Math.min(availH / HEIGHT, 1.12)
-  const drawW = WIDTH * scale
-  const drawH = HEIGHT * scale
-  const left = (REEL_W - drawW) / 2
-  return { scale, drawW, drawH, left, top: SLIDE_TOP, availH }
+  // Static promos: a bit longer so the fade-in + hold reads clearly.
+  return tree ? sceneFrames(tree) : 90
 }
 
 export function SlideScene({
@@ -53,7 +44,6 @@ export function SlideScene({
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const tree = useMemo(() => slideTree(spec, brand), [spec, brand])
-  const { scale, drawW, drawH, left, top } = slideLayout()
 
   const bg =
     (tree?.props?.style as React.CSSProperties | undefined)?.backgroundColor ??
@@ -67,47 +57,40 @@ export function SlideScene({
           extrapolateRight: 'clamp',
         })
 
+  // Scale the 4:5 slide up to fill the safe 9:16 band (small side crop is OK; less empty maroon).
+  const availH = REEL_H - SLIDE_TOP - SLIDE_BOTTOM_SAFE
+  const scale = Math.min(availH / HEIGHT, 1.16)
+
   return (
     <AbsoluteFill style={{ backgroundColor: bg as string }}>
-      {/* Clip side overflow from scale-up so fly-ins can't paint outside the reel. */}
       <div
         style={{
           position: 'absolute',
-          top,
-          left: Math.min(0, left),
-          width: Math.max(REEL_W, drawW),
-          height: drawH,
+          top: SLIDE_TOP,
+          left: (REEL_W - WIDTH * scale) / 2,
+          width: WIDTH,
+          height: HEIGHT,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top center',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: left < 0 ? 0 : left,
-            width: WIDTH,
-            height: HEIGHT,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {tree ? (
-            toReact(tree as never, { frame, fps, animate })
-          ) : (
-            <Img
-              src={(spec as { url: string }).url}
-              style={{
-                width: WIDTH,
-                height: HEIGHT,
-                objectFit: 'cover',
-                opacity: staticOpacity,
-              }}
-            />
-          )}
-        </div>
+        {tree ? (
+          toReact(tree as never, { frame, fps, animate })
+        ) : (
+          <Img
+            src={(spec as { url: string }).url}
+            style={{
+              width: WIDTH,
+              height: HEIGHT,
+              objectFit: 'contain',
+              objectPosition: 'center top',
+              opacity: staticOpacity,
+            }}
+          />
+        )}
       </div>
     </AbsoluteFill>
   )

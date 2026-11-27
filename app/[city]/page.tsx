@@ -7,6 +7,7 @@ import {
   type ExploreSection,
   type ExploreTeaserItem,
 } from '@/components/RegionExploreLanding'
+import { RegionSeoContent } from '@/components/RegionSeoContent'
 import { getAllBreweriesWithSlugs, getHappyHourDealsForBreweryIds } from '@/lib/breweries'
 import {
   getBreweryCardContext,
@@ -41,6 +42,7 @@ import {
   formatReleaseDate,
   formatTime12Hour,
   getMountainDateRangeFromToday,
+  getTodayMountainDateString,
   isEventInPast,
   normalizeEventDateToMountainTime,
 } from '@/lib/utils'
@@ -53,6 +55,30 @@ export async function generateStaticParams() {
   return buckets.map((bucket) => ({ city: bucket.slug }))
 }
 
+async function regionHubStats(citySlug: string) {
+  const today = getTodayMountainDateString()
+  const [breweries, events, releases] = await Promise.all([
+    getAllBreweriesWithSlugs(),
+    getAllEventsWithSlugs(),
+    getAllReleasesWithSlugs(),
+  ])
+  const cityBreweries = filterBreweriesForCity(breweries, citySlug)
+  const cityEvents = filterEventsForCity(events, citySlug)
+  const cityReleases = filterReleasesForCity(releases, citySlug)
+  const todayEvents = cityEvents.filter(
+    (e) => normalizeEventDateToMountainTime(e.event_date) === today
+  )
+  const deals = await getHappyHourDealsForBreweryIds(cityBreweries.map((b) => b.id))
+  const todayHappyHours = getHappyHourDealsForCalendarDate(deals, today)
+  return {
+    breweryCount: cityBreweries.length,
+    eventCountToday: todayEvents.length,
+    releaseCount: cityReleases.length,
+    happyHourCountToday: todayHappyHours.length,
+    todayLabel: formatEventDateShort(today),
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -62,13 +88,24 @@ export async function generateMetadata({
   const region = await resolvePublicRegion(city)
   if (!region) return { title: 'City Not Found | Hoppenings' }
   const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
-  const title = `Brewery Events in ${cityName}, Colorado | Hoppenings`
-  const description = `Find breweries, beer releases, trivia nights, run clubs, and live music in ${cityName}. Updated local listings from Hoppenings.`
+  const stats = await regionHubStats(region.slug)
+
+  const title = `${cityName} Brewery Guide — Events, Releases & Taprooms | Hoppenings`
+  const description = `Daily-updated ${cityName} brewery guide: ${stats.eventCountToday} event${stats.eventCountToday === 1 ? '' : 's'} today, ${stats.releaseCount} beer release${stats.releaseCount === 1 ? '' : 's'}, ${stats.happyHourCountToday} happy hour${stats.happyHourCountToday === 1 ? '' : 's'}, and ${stats.breweryCount} taprooms. Crawled from local brewery posts — junk filtered out.`
+
   return {
     title,
     description,
+    keywords: `${cityName} breweries, ${cityName} brewery events, ${cityName} beer releases, trivia ${cityName}, craft beer ${cityName}, Colorado brewery guide`,
     alternates: { canonical: `${BASE_URL}/${city}` },
-    openGraph: { title, description, type: 'website', url: `${BASE_URL}/${city}` },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `${BASE_URL}/${city}`,
+      siteName: 'Hoppenings',
+    },
+    twitter: { card: 'summary_large_image', title, description },
   }
 }
 
@@ -294,39 +331,142 @@ export default async function CityLandingPage({
     }),
   ]
 
+  const todayYmd = getTodayMountainDateString()
+  const todayEvents = cityEvents
+    .filter((e) => normalizeEventDateToMountainTime(e.event_date) === todayYmd)
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+  const todayHappyHours = getHappyHourDealsForCalendarDate(cityHappyHourDeals, todayYmd)
+  const todayLabel = formatEventDateShort(todayYmd)
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Hoppenings', item: BASE_URL },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: cityName,
+        item: `${BASE_URL}/${citySlug}`,
+      },
+    ],
+  }
+
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${cityName} Brewery Guide`,
+    description: `Daily-updated brewery events, beer releases, happy hours, and taprooms in ${cityName}, Colorado.`,
+    url: `${BASE_URL}/${citySlug}`,
+    isPartOf: { '@type': 'WebSite', name: 'Hoppenings', url: BASE_URL },
+    about: {
+      '@type': 'Place',
+      name: cityName,
+      address: { '@type': 'PostalAddress', addressLocality: cityName, addressRegion: 'CO', addressCountry: 'US' },
+    },
+  }
+
+  const todayEventsJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Brewery events in ${cityName} — ${todayLabel}`,
+    numberOfItems: todayEvents.length,
+    itemListElement: todayEvents.slice(0, 30).map((event, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: `${BASE_URL}/events/${event.slug}`,
+      name: `${event.title} at ${event.breweries.name}`,
+    })),
+  }
+
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     mainEntity: [
       {
         '@type': 'Question',
-        name: `Where can I find trivia nights in ${cityName}?`,
+        name: `What's happening at breweries in ${cityName} today?`,
         acceptedAnswer: {
           '@type': 'Answer',
-          text: `Use Hoppenings to browse weekly trivia nights and recurring brewery events in ${cityName}.`,
+          text:
+            todayEvents.length > 0
+              ? `Hoppenings lists ${todayEvents.length} brewery event${todayEvents.length === 1 ? '' : 's'} in ${cityName} for ${todayLabel}, including ${todayEvents
+                  .slice(0, 5)
+                  .map((e) => `${e.title} at ${e.breweries.name}`)
+                  .join('; ')}. Listings are crawled daily from brewery posts.`
+              : `Hoppenings tracks brewery events in ${cityName} daily. Check back for tonight's lineup, or browse the full ${cityName} calendar.`,
         },
       },
       {
         '@type': 'Question',
-        name: `What are the best breweries in ${cityName}?`,
+        name: `Where can I find new beer releases in ${cityName}?`,
         acceptedAnswer: {
           '@type': 'Answer',
-          text: `Hoppenings lists local breweries in ${cityName} with details, events, and new releases.`,
+          text: `Hoppenings currently lists ${cityReleases.length} beer release${cityReleases.length === 1 ? '' : 's'} for ${cityName} taprooms, updated from brewery announcements.`,
+        },
+      },
+      {
+        '@type': 'Question',
+        name: `How many breweries are in ${cityName} on Hoppenings?`,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: `Hoppenings covers ${cityBreweries.length} brewery taproom${cityBreweries.length === 1 ? '' : 's'} in ${cityName}, with events, releases, and happy hours.`,
         },
       },
     ],
   }
 
+  const subtitle = `${todayEvents.length} event${todayEvents.length === 1 ? '' : 's'} today · ${cityReleases.length} release${cityReleases.length === 1 ? '' : 's'} · ${cityBreweries.length} taprooms — updated daily from local brewery posts.`
+
   return (
-    <RegionExploreLanding
-      cityName={cityName}
-      subtitle={`Select a category to preview what's on in ${cityName}, then open the full list.`}
-      sections={sections}
-    >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-    </RegionExploreLanding>
+    <>
+      <RegionExploreLanding cityName={cityName} subtitle={subtitle} sections={sections}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(todayEventsJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      </RegionExploreLanding>
+      <div className="bg-[#3A1515]">
+        <RegionSeoContent
+          cityName={cityName}
+          citySlug={citySlug}
+          todayLabel={todayLabel}
+          breweryCount={cityBreweries.length}
+          eventCountToday={todayEvents.length}
+          releaseCount={cityReleases.length}
+          happyHourCountToday={todayHappyHours.length}
+          todayEvents={todayEvents.slice(0, 40).map((event) => ({
+            href: `/events/${event.slug}`,
+            title: event.title,
+            meta: [formatTime12Hour(event.start_time), event.breweries.name]
+              .filter(Boolean)
+              .join(' · '),
+          }))}
+          releases={flattenReleaseSections(splitReleasesForDisplay(cityReleases))
+            .slice(0, 20)
+            .map((release) => ({
+              href: `/releases/${release.slug}`,
+              title: release.beer_name,
+              meta: [release.breweries.name, release.Type].filter(Boolean).join(' · '),
+            }))}
+          breweries={sortedCityBreweries.map((brewery) => ({
+            href: `/breweries/${brewery.slug}`,
+            title: brewery.name,
+          }))}
+        />
+      </div>
+    </>
   )
 }

@@ -39,14 +39,21 @@ export async function generateMetadata({
   if (!region) return { title: 'Not Found | Hoppenings' }
 
   const cityName = displayNameForRegionSlug(region.slug, region.displayLabel)
-  const title = `Brewery Events in ${cityName} | Hoppenings`
-  const description = `Find upcoming brewery events, trivia nights, run clubs, and live music in ${cityName}.`
+  const all = await getAllEventsWithSlugs()
+  const upcoming = filterEventsForCity(all, region.slug).filter((e) => !isEventInPast(e.event_date))
+  const title = `${cityName} Brewery Events Calendar | Hoppenings`
+  const description = `${upcoming.length} upcoming brewery event${upcoming.length === 1 ? '' : 's'} in ${cityName} — trivia, live music, run clubs, and more. Updated daily from local brewery posts.`
 
   return {
     title,
     description,
     alternates: { canonical: `${BASE_URL}/${city}/events` },
-    openGraph: { title, description, type: 'website', url: `${BASE_URL}/${city}/events` },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `${BASE_URL}/${city}/events`,
+    },
   }
 }
 

@@ -53,7 +53,7 @@ export function PostReelPanel({
       try {
         const base = specsFromPost(post)
         const [specs, brandObj] = await Promise.all([
-          prepareSpecs(base),
+          prepareSpecs(base, brand),
           brandFromRow(brand),
         ])
         if (!cancelled) setReelProps({ specs, brand: brandObj })
@@ -145,7 +145,7 @@ export function PostReelPanel({
 
   return (
     <div
-      className="rounded-lg border p-4 space-y-4"
+      className="rounded-lg border p-4 space-y-4 min-w-0 max-w-full overflow-hidden"
       style={{ borderColor: Colors.dividerLight, backgroundColor: Colors.surface }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -178,14 +178,16 @@ export function PostReelPanel({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-4 items-start">
-        <div className="relative" style={{ width: 360 }}>
+      <div className="flex flex-wrap gap-4 items-start min-w-0">
+        <div className="relative w-full max-w-[360px] min-w-0">
           <div
-            className="rounded border"
+            className="rounded border overflow-hidden"
             style={{
               borderColor: Colors.dividerLight,
               backgroundColor: Colors.surfaceDark,
               lineHeight: 0,
+              // Remotion's unscaled 1080 canvas must not expand the page.
+              contain: 'layout paint',
             }}
           >
             {reelProps ? (
@@ -196,7 +198,7 @@ export function PostReelPanel({
                 compositionWidth={REEL_WIDTH}
                 compositionHeight={REEL_HEIGHT}
                 fps={FPS}
-                style={{ width: '100%' }}
+                style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}
                 controls
                 loop
                 autoPlay

@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getReleaseBySlug, getReleaseBySlugIncludingExpired, getAllReleasesWithSlugs, getReleaseBreweries } from '@/lib/releases'
-import { EXPIRED_RELEASE_REDIRECT } from '@/lib/contentExpiry'
+import { expiredReleaseRedirectPath } from '@/lib/contentExpiry'
 import { resolveReleaseSlugRedirect } from '@/lib/slugRedirects'
 import { formatReleaseDate } from '@/lib/utils'
 import { generateBrewerySlug } from '@/lib/slug'
@@ -65,7 +65,12 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   if (!release) {
     const expiredRelease = await getReleaseBySlugIncludingExpired(slug)
     if (expiredRelease) {
-      permanentRedirect(EXPIRED_RELEASE_REDIRECT)
+      // Old location tokens / legacy slugs → current slug if still indexable; else city hub.
+      if (expiredRelease.slug && slug !== expiredRelease.slug) {
+        const stillLive = await getReleaseBySlug(expiredRelease.slug)
+        if (stillLive) permanentRedirect(`/releases/${stillLive.slug}`)
+      }
+      permanentRedirect(expiredReleaseRedirectPath(expiredRelease))
     }
     const tombstone = await resolveReleaseSlugRedirect(slug)
     if (tombstone) {
